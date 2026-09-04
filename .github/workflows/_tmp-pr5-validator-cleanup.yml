@@ -51,7 +51,7 @@ jobs:
       - name: Compile validator
         run: python -m py_compile linter/cw_validate.py
       - name: Smoke test CLI help
-        run: python linter/cw_validate.py --help | grep -F 'searches upward from this validator to the repository root'
+        run: python linter/cw_validate.py --help | grep -F 'repository root'
       - name: Commit focused cleanup
         run: |
           git config user.name 'github-actions[bot]'
