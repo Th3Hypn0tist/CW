@@ -1,0 +1,313 @@
+{
+  "id": "CW_NODETYPES",
+  "name": "CanonicalWireframe NodeTypes",
+  "version": "1.3.0",
+  "ccf_ref": "CANONICAL_CONTRACT_FORMAT",
+  "purpose": "Define CanonicalWireframe NodeTypes, Entity-local Property expectations, mandatory canonical Link attachments, generic abstraction boundary NodeTypes, and abstraction-local Binding semantics using Canonical Contract Format 2.0.",
+  "model": {
+    "ccf": "Defines canonical Entity and Property structure.",
+    "nodetypes": "Define what Property types an Entity owns or is expected to own and which canonical Link attachments are mandatory for readiness.",
+    "rulesets": "Interpret canonical Property values, Link semantics, endpoint roles, causality, flow, Link ownership/placement and unresolved impact direction.",
+    "projection": "Consumes resolved semantic/readiness state but never becomes canonical authority."
+  },
+  "rules": [
+    "Entity.entity_type_ref resolves a NodeType by id inside the active NodeTypes registry.",
+    "NodeTypes describe Entity-local Property expectations and Required Link declarations.",
+    "NodeTypes do not define Property value semantics.",
+    "NodeTypes do not define Link direction, Link Property placement, flow semantics, causality, rendering, animation, geometry or layout.",
+    "Additional Properties may exist when their Rulesets resolve them.",
+    "Required Links declare canonical Link attachments that must exist for readiness.",
+    "Every effective Required Link entry is mandatory; Required Links are evaluated as AND, never OR.",
+    "Multiple Required Link entries may use the same link_type_ref and MUST NOT be deduplicated by Link type.",
+    "A concrete Required Link requirement is identified by requiring Entity id plus Required Link id.",
+    "Only canonical Link Properties explicitly bound to that concrete requirement through value.required_link_ref satisfy it.",
+    "A canonical Link may satisfy at most one concrete Required Link requirement.",
+    "Derived/projected Links and unbound ordinary Links do not satisfy Required Links.",
+    "Missing required Properties or Required Links make the Entity UNRESOLVED/unready; they do not make otherwise well-formed canonical data INVALID.",
+    "UNRESOLVED != INVALID"
+  ],
+  "nodetype_schema": {
+    "required": [
+      "id",
+      "name",
+      "required_property_types",
+      "owned_property_types"
+    ],
+    "optional": [
+      "extends",
+      "property_cardinality",
+      "required_links",
+      "description",
+      "constraints"
+    ],
+    "semantics": {
+      "required_property_types": "Minimum local Property types expected for readiness.",
+      "owned_property_types": "Property types structurally associated with this NodeType. This is not a closed allow-list.",
+      "extends": "Optional inheritance from other NodeTypes. Effective Required Links retain stable requirement ids through inheritance.",
+      "property_cardinality": "Optional readiness constraints for local Property counts.",
+      "required_links": "Independent mandatory canonical Link attachment requirements. Entries are conjunctive and retain stable ids."
+    },
+    "required_link_schema": {
+      "required": [
+        "id",
+        "link_type_ref",
+        "self_role",
+        "min"
+      ],
+      "optional": [
+        "max",
+        "other_endpoint",
+        "description"
+      ],
+      "other_endpoint_optional": [
+        "entity_nodetype_ref",
+        "property_type_ref"
+      ],
+      "semantics": {
+        "id": "Stable requirement declaration id within the effective NodeType inheritance closure.",
+        "link_type_ref": "Required canonical Link specialization.",
+        "self_role": "Semantic role the requiring Entity must occupy under the governing Link Ruleset.",
+        "min": "Minimum number of distinct canonical Link Properties explicitly bound to this requirement instance.",
+        "max": "Optional maximum number of canonical Link Properties explicitly bound to this requirement instance.",
+        "other_endpoint": "Optional constraints on the opposite canonical endpoint."
+      },
+      "conjunction": "Every effective Required Link entry is mandatory.",
+      "duplicate_types": "Two entries with the same link_type_ref remain separate requirements.",
+      "concrete_identity": {
+        "entity_ref": "requiring Entity canonical id",
+        "required_link_id": "effective Required Link id"
+      }
+    }
+  },
+  "nodetypes": [
+    {
+      "id": "generic",
+      "name": "Generic",
+      "required_property_types": [],
+      "owned_property_types": []
+    },
+    {
+      "id": "system",
+      "name": "System",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "event",
+        "effect",
+        "data",
+        "function"
+      ]
+    },
+    {
+      "id": "component",
+      "name": "Component",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "event",
+        "effect",
+        "data",
+        "function"
+      ]
+    },
+    {
+      "id": "static_file",
+      "name": "Static File",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "database",
+      "name": "Database",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "function",
+        "event"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "api",
+      "name": "API",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "function"
+      ],
+      "owned_property_types": [
+        "function",
+        "data",
+        "event"
+      ],
+      "property_cardinality": {
+        "function": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "stream_source",
+      "name": "Stream Source",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "event"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "derived_output",
+      "name": "Derived Output",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "input",
+      "name": "Input",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [],
+      "description": "The one generic canonical inbound Abstraction boundary NodeType.",
+      "constraints": [
+        "Input is a real canonical Entity inside an Abstraction.",
+        "Input does not encode or copy transported semantic type/signature.",
+        "Transported semantics are derived from the explicit canonical internal attachment/binding or exposed Required Link.",
+        "An Input exposing an unsatisfied Required Link does not itself satisfy that Required Link.",
+        "Event boundaries use this same generic Input NodeType; no Event-specific Input NodeType exists."
+      ]
+    },
+    {
+      "id": "output",
+      "name": "Output",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [],
+      "description": "The one generic canonical outbound Abstraction boundary NodeType.",
+      "constraints": [
+        "Output is a real canonical Entity inside an Abstraction.",
+        "Output does not encode or copy transported semantic type/signature.",
+        "Transported semantics are derived from the explicit canonical internal attachment/binding or selected abstraction-local Binding identity.",
+        "Output creates no analogous inbound requirement.",
+        "Event boundaries use this same generic Output NodeType; no Event-specific Output NodeType exists.",
+        "An Output may consume an abstraction-local Binding only through the explicit canonical Binding-consumption relation defined by CW_RULESETS.",
+        "The consumed Binding is referenced by canonical Binding Entity identity, never by free-text Binding name.",
+        "An Output consuming a Binding derives transported semantic type/signature from that Binding's resolved source semantics.",
+        "The consumed Binding must belong to the same Abstraction semantic source as the Output."
+      ]
+    },
+    {
+      "id": "binding",
+      "name": "Binding",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [],
+      "description": "Abstraction-local named routing/clarification node.",
+      "constraints": [
+        "Binding is valid only inside exactly one Abstraction semantic source.",
+        "Top-level Workspace Binding use is forbidden.",
+        "Cross-Abstraction Binding lookup is forbidden.",
+        "Binding Entity.name is the machine-significant Binding symbol and must be unique among Binding Entities in the same Abstraction.",
+        "A resolved Binding has exactly one incoming canonical semantic source at a time; absence while authoring is UNRESOLVED.",
+        "Binding accepts only canonical Link types whose governing Ruleset permits the Binding Entity in the relevant endpoint role.",
+        "Binding defines no universal special Link type and bypasses no Ruleset.",
+        "Binding semantic type/signature is derived from its connected canonical source endpoint and governing Ruleset and is never independently copied.",
+        "Output consumers select a Binding by canonical Binding Entity identity, not by free-text name.",
+        "Any number of Output nodes inside the same Abstraction may select the same Binding.",
+        "Binding lookup is non-spatial within its containing Abstraction.",
+        "Binding identity does not become part of the parent-level Abstraction interface.",
+        "Binding trace visualization is transient projection only and creates no canonical Link.",
+        "Output consumers reference a Binding by canonical Binding Entity identity through the explicit canonical Binding-consumption relation defined by CW_RULESETS.",
+        "Free-text Binding references are forbidden.",
+        "Any number of Output nodes inside the same Abstraction may consume the same Binding.",
+        "Binding trace visualization is transient projection only and MUST NOT be used as traversal authority.",
+        "Forward/backward semantic traversal across a Binding follows canonical Binding-consumption references defined by CW_RULESETS."
+      ]
+    }
+  ],
+  "required_link_readiness": {
+    "ready": "Every effective Required Link requirement instance satisfies its own minimum through distinct canonical Link Properties explicitly bound using value.required_link_ref.",
+    "unready": "At least one concrete Required Link requirement instance is below its minimum.",
+    "requirement_identity": "requiring Entity id + Required Link id",
+    "same_link_type": "Multiple requirements of the same Link type remain independent.",
+    "one_link_one_requirement": true,
+    "derived_links_count": false,
+    "unbound_links_count": false,
+    "input_boundary_counts": false,
+    "principle": "UNRESOLVED != INVALID"
+  },
+  "readiness": {
+    "ready": "The Entity satisfies required Properties, Property cardinalities and every concrete Required Link requirement used by active evaluation.",
+    "unready": "One or more expected NodeType Properties, Property cardinalities or Required Link attachments are unresolved or missing.",
+    "principle": "UNRESOLVED != INVALID"
+  },
+  "namespace": "cw",
+  "resolution": {
+    "registry_ref": "CW_NODETYPES",
+    "rule": "Entity.entity_type_ref resolves a local NodeType id inside the explicitly active CW_NODETYPES registry. Local ids do not become globally unique merely by spelling.",
+    "unresolved_state": "unready",
+    "principle": "UNRESOLVED != INVALID"
+  },
+  "binding_model": {
+    "scope": "same_abstraction_only",
+    "consumer_nodetype_ref": "output",
+    "reference_authority": "canonical Binding Entity id",
+    "free_text_reference": false,
+    "transported_semantics": "derived from Binding resolved canonical source semantics",
+    "trace_projection_authority": false,
+    "semantic_traversal": "follows canonical Binding-consumption relation, never trace-line geometry"
+  }
+}

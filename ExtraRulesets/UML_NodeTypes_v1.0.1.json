@@ -1,0 +1,204 @@
+{
+  "id": "UML_NODETYPES",
+  "name": "UML NodeTypes",
+  "version": "1.0.1",
+  "ccf_ref": "CANONICAL_CONTRACT_FORMAT",
+  "namespace": "uml",
+  "purpose": "Define UML Entity categories and the machine-significant Property types each UML NodeType owns or may own.",
+  "principles": [
+    "Entity core fields such as id and name remain CCF fields and are not duplicated as UML Properties.",
+    "NodeTypes define node-local Property expectations.",
+    "Relationships to other Entities are Links interpreted by UML Dependency Rules, not NodeType-owned relationship fields.",
+    "NodeTypes do not define relationship interpretation.",
+    "NodeTypes do not define flow or traversal semantics.",
+    "NodeTypes do not define rendering or layout.",
+    "Missing expected Properties make a node unready for rules that require them; they do not make the node invalid.",
+    "UNRESOLVED != INVALID"
+  ],
+  "resolution": {
+    "registry_ref": "UML_NODETYPES",
+    "rule": "Entity.entity_type_ref resolves a local NodeType id inside the explicitly active UML_NODETYPES registry.",
+    "unresolved_state": "unready"
+  },
+  "nodetype_schema": {
+    "required": [
+      "id",
+      "name",
+      "required_property_types",
+      "owned_property_types"
+    ],
+    "optional": [
+      "extends",
+      "property_cardinality",
+      "description"
+    ]
+  },
+  "nodetypes": [
+    {
+      "id": "model",
+      "name": "Model",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.visibility"
+      ]
+    },
+    {
+      "id": "package",
+      "name": "Package",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.visibility"
+      ]
+    },
+    {
+      "id": "class",
+      "name": "Class",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.visibility",
+        "uml.attribute",
+        "uml.operation",
+        "uml.template_parameter",
+        "uml.abstract",
+        "uml.active"
+      ]
+    },
+    {
+      "id": "interface",
+      "name": "Interface",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.visibility",
+        "uml.attribute",
+        "uml.operation"
+      ]
+    },
+    {
+      "id": "datatype",
+      "name": "DataType",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.visibility",
+        "uml.attribute",
+        "uml.operation"
+      ]
+    },
+    {
+      "id": "enumeration",
+      "name": "Enumeration",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.visibility",
+        "uml.literal"
+      ]
+    },
+    {
+      "id": "component",
+      "name": "Component",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.visibility",
+        "uml.port"
+      ]
+    },
+    {
+      "id": "node",
+      "name": "Node",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.visibility"
+      ]
+    },
+    {
+      "id": "artifact",
+      "name": "Artifact",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.visibility",
+        "uml.file_name"
+      ]
+    },
+    {
+      "id": "actor",
+      "name": "Actor",
+      "required_property_types": [],
+      "owned_property_types": []
+    },
+    {
+      "id": "use_case",
+      "name": "Use Case",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.precondition",
+        "uml.postcondition",
+        "uml.extension_point"
+      ]
+    },
+    {
+      "id": "object",
+      "name": "Object",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.slot"
+      ]
+    },
+    {
+      "id": "state_machine",
+      "name": "State Machine",
+      "required_property_types": [],
+      "owned_property_types": []
+    },
+    {
+      "id": "state",
+      "name": "State",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.entry_behavior",
+        "uml.do_behavior",
+        "uml.exit_behavior"
+      ]
+    },
+    {
+      "id": "activity",
+      "name": "Activity",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.parameter"
+      ]
+    },
+    {
+      "id": "action",
+      "name": "Action",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.input_pin",
+        "uml.output_pin"
+      ]
+    },
+    {
+      "id": "lifeline",
+      "name": "Lifeline",
+      "required_property_types": [],
+      "owned_property_types": []
+    },
+    {
+      "id": "interaction",
+      "name": "Interaction",
+      "required_property_types": [],
+      "owned_property_types": []
+    },
+    {
+      "id": "association",
+      "name": "Association",
+      "required_property_types": [],
+      "owned_property_types": [
+        "uml.association_name"
+      ]
+    }
+  ],
+  "readiness": {
+    "ready": "The node satisfies the Property requirements used by the active UML Ruleset evaluation.",
+    "unready": "One or more Property requirements used by the active UML Ruleset evaluation are unresolved or missing.",
+    "principle": "UNRESOLVED != INVALID"
+  }
+}

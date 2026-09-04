@@ -1,0 +1,340 @@
+{
+  "id": "UML_DEPENDENCY_RULES",
+  "name": "UML Dependency Rules",
+  "version": "1.0.0",
+  "nodetypes_ref": "UML_NODETYPES",
+  "purpose": "Define how UML relationships between typed nodes are interpreted.",
+  "principles": [
+    "Relationships are interpreted by rules, not by node rendering.",
+    "Relationship semantics remain separate from NodeTypes.",
+    "Endpoint roles are explicit.",
+    "Direction is semantic and must not be inferred from visual placement.",
+    "Unresolved rule requirements produce unready state, not invalid structure.",
+    "UNRESOLVED != INVALID"
+  ],
+  "relation_schema": {
+    "required": [
+      "id",
+      "relation_type",
+      "source_ref",
+      "target_ref"
+    ],
+    "optional": [
+      "name",
+      "properties",
+      "stereotypes"
+    ]
+  },
+  "rulesets": [
+    {
+      "id": "UML_RULE_ASSOCIATION",
+      "relation_type": "association",
+      "semantic_roles": {
+        "source_ref": "association_end",
+        "target_ref": "association_end"
+      },
+      "directionality": "undirected_by_default",
+      "properties": [
+        "source_multiplicity",
+        "target_multiplicity",
+        "source_role",
+        "target_role",
+        "source_navigable",
+        "target_navigable"
+      ]
+    },
+    {
+      "id": "UML_RULE_DIRECTED_ASSOCIATION",
+      "relation_type": "directed_association",
+      "semantic_roles": {
+        "source_ref": "navigating_source",
+        "target_ref": "navigable_target"
+      },
+      "directionality": "source_to_target"
+    },
+    {
+      "id": "UML_RULE_DEPENDENCY",
+      "relation_type": "dependency",
+      "semantic_roles": {
+        "source_ref": "client",
+        "target_ref": "supplier"
+      },
+      "directionality": "client_to_supplier",
+      "meaning": "The client depends on the supplier."
+    },
+    {
+      "id": "UML_RULE_USAGE",
+      "relation_type": "usage",
+      "semantic_roles": {
+        "source_ref": "client",
+        "target_ref": "supplier"
+      },
+      "directionality": "client_to_supplier",
+      "meaning": "The client requires the supplier for implementation or operation."
+    },
+    {
+      "id": "UML_RULE_GENERALIZATION",
+      "relation_type": "generalization",
+      "semantic_roles": {
+        "source_ref": "specific",
+        "target_ref": "general"
+      },
+      "directionality": "specific_to_general",
+      "endpoint_constraints": {
+        "source_nodetypes": [
+          "class",
+          "interface",
+          "datatype"
+        ],
+        "target_nodetypes": [
+          "class",
+          "interface",
+          "datatype"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_REALIZATION",
+      "relation_type": "realization",
+      "semantic_roles": {
+        "source_ref": "implementing_classifier",
+        "target_ref": "specification"
+      },
+      "directionality": "implementation_to_specification",
+      "endpoint_constraints": {
+        "source_nodetypes": [
+          "class",
+          "component"
+        ],
+        "target_nodetypes": [
+          "interface",
+          "class"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_AGGREGATION",
+      "relation_type": "aggregation",
+      "semantic_roles": {
+        "source_ref": "whole",
+        "target_ref": "part"
+      },
+      "directionality": "whole_to_part",
+      "properties": [
+        "whole_multiplicity",
+        "part_multiplicity"
+      ]
+    },
+    {
+      "id": "UML_RULE_COMPOSITION",
+      "relation_type": "composition",
+      "semantic_roles": {
+        "source_ref": "composite",
+        "target_ref": "part"
+      },
+      "directionality": "composite_to_part",
+      "properties": [
+        "composite_multiplicity",
+        "part_multiplicity"
+      ],
+      "constraints": [
+        "A part instance belongs to at most one composite instance at a time."
+      ]
+    },
+    {
+      "id": "UML_RULE_PACKAGE_IMPORT",
+      "relation_type": "package_import",
+      "semantic_roles": {
+        "source_ref": "importing_package",
+        "target_ref": "imported_package"
+      },
+      "directionality": "importer_to_imported",
+      "endpoint_constraints": {
+        "source_nodetypes": [
+          "package",
+          "model"
+        ],
+        "target_nodetypes": [
+          "package",
+          "model"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_INCLUDE",
+      "relation_type": "include",
+      "semantic_roles": {
+        "source_ref": "including_use_case",
+        "target_ref": "included_use_case"
+      },
+      "directionality": "including_to_included",
+      "endpoint_constraints": {
+        "source_nodetypes": [
+          "use_case"
+        ],
+        "target_nodetypes": [
+          "use_case"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_EXTEND",
+      "relation_type": "extend",
+      "semantic_roles": {
+        "source_ref": "extending_use_case",
+        "target_ref": "extended_use_case"
+      },
+      "directionality": "extending_to_extended",
+      "endpoint_constraints": {
+        "source_nodetypes": [
+          "use_case"
+        ],
+        "target_nodetypes": [
+          "use_case"
+        ]
+      },
+      "properties": [
+        "extension_point_ref",
+        "condition"
+      ]
+    },
+    {
+      "id": "UML_RULE_ACTOR_USE_CASE",
+      "relation_type": "actor_use_case_association",
+      "semantic_roles": {
+        "source_ref": "actor",
+        "target_ref": "use_case"
+      },
+      "directionality": "undirected_by_default",
+      "endpoint_constraints": {
+        "source_nodetypes": [
+          "actor"
+        ],
+        "target_nodetypes": [
+          "use_case"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_DEPLOYMENT",
+      "relation_type": "deployment",
+      "semantic_roles": {
+        "source_ref": "deployment_target",
+        "target_ref": "deployed_artifact"
+      },
+      "directionality": "target_to_artifact",
+      "endpoint_constraints": {
+        "source_nodetypes": [
+          "node"
+        ],
+        "target_nodetypes": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_MANIFESTATION",
+      "relation_type": "manifestation",
+      "semantic_roles": {
+        "source_ref": "artifact",
+        "target_ref": "modeled_element"
+      },
+      "directionality": "artifact_to_modeled_element",
+      "endpoint_constraints": {
+        "source_nodetypes": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_TRANSITION",
+      "relation_type": "transition",
+      "semantic_roles": {
+        "source_ref": "source_state",
+        "target_ref": "target_state"
+      },
+      "directionality": "source_to_target",
+      "endpoint_constraints": {
+        "source_nodetypes": [
+          "state"
+        ],
+        "target_nodetypes": [
+          "state"
+        ]
+      },
+      "properties": [
+        "trigger",
+        "guard",
+        "effect"
+      ]
+    },
+    {
+      "id": "UML_RULE_CONTROL_FLOW",
+      "relation_type": "control_flow",
+      "semantic_roles": {
+        "source_ref": "control_source",
+        "target_ref": "control_target"
+      },
+      "directionality": "source_to_target",
+      "endpoint_constraints": {
+        "source_nodetypes": [
+          "action",
+          "activity"
+        ],
+        "target_nodetypes": [
+          "action",
+          "activity"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_OBJECT_FLOW",
+      "relation_type": "object_flow",
+      "semantic_roles": {
+        "source_ref": "object_source",
+        "target_ref": "object_target"
+      },
+      "directionality": "source_to_target",
+      "properties": [
+        "object_type_ref",
+        "transformation"
+      ]
+    },
+    {
+      "id": "UML_RULE_MESSAGE",
+      "relation_type": "message",
+      "semantic_roles": {
+        "source_ref": "sending_lifeline",
+        "target_ref": "receiving_lifeline"
+      },
+      "directionality": "sender_to_receiver",
+      "endpoint_constraints": {
+        "source_nodetypes": [
+          "lifeline"
+        ],
+        "target_nodetypes": [
+          "lifeline"
+        ]
+      },
+      "properties": [
+        "message_sort",
+        "operation_ref",
+        "arguments",
+        "return_ref"
+      ]
+    }
+  ],
+  "readiness": {
+    "ready": "The relationship resolves to a ruleset and its required endpoint constraints are satisfied.",
+    "unready": "The relationship is structurally present but one or more ruleset requirements are unresolved or not satisfied.",
+    "unready_reasons": [
+      "unresolved_ruleset",
+      "unresolved_source",
+      "unresolved_target",
+      "unresolved_nodetype",
+      "endpoint_constraint_not_satisfied",
+      "required_relation_property_missing"
+    ],
+    "principle": "Unready relationships remain visible and editable."
+  }
+}

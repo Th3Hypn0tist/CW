@@ -1,0 +1,1606 @@
+{
+  "id": "CW_RULESETS",
+  "name": "CanonicalWireframe Dependency Rules",
+  "version": "3.5.0",
+  "ccf_ref": "CANONICAL_CONTRACT_FORMAT",
+  "nodetypes_ref": "CW_NODETYPES",
+  "purpose": "Define how CanonicalWireframe interprets CCF Properties, Links, Events, Effects, causal relations, Link ownership/placement, Required Link satisfaction and flow.",
+  "principles": [
+    "Canonical CCF structure remains authoritative.",
+    "NodeTypes define Entity-local Property expectations and mandatory Required Link declarations.",
+    "Rulesets define Property value semantics, Link interpretation, semantic roles, Link Property ownership/placement, flow and unresolved impact direction.",
+    "Required Link satisfaction is explicit canonical data through Link.value.required_link_ref.",
+    "Projection behavior is derived from resolved Ruleset semantics and is not canonical Ruleset state.",
+    "No semantics are inferred from filenames, extensions, names, paths, geometry, color or visual appearance.",
+    "Unresolved Ruleset or Required Link requirements produce unready state, not invalid canonical data unless declared canonical data itself is malformed or contradictory.",
+    "UNRESOLVED != INVALID",
+    "Binding consumption is represented by an explicit canonical Link relation and never by free-text name lookup or transient visual trace lines.",
+    "Binding trace visualization may explain canonical routing but never defines canonical routing.",
+    "Forward and backward traversal through Binding follows canonical source and binding-consumption Links.",
+    "Abstraction inputs created by missing requirements are direct projections of concrete Required Link requirement instances.",
+    "Required Link input projection does not create an intermediate canonical Input Entity or boundary_input Link.",
+    "The external Abstraction input preserves the original required_link_ref identity and disappears when that requirement is satisfied.",
+    "Every readiness evaluation resolves against an explicit applicable specification version/set.",
+    "Historical satisfaction and current readiness are separate results.",
+    "Specification evolution changes evaluation context, not historical canonical truth.",
+    "Existing required_link_ref bindings are never silently rebound to superseding requirements.",
+    "A historical binding to a requirement absent from the current effective set contributes zero to current readiness without automatically invalidating the semantic Link.",
+    "Canonical readiness provenance is pinned by the canonical state/snapshot specification_ref, not supplied only as an external caller assumption.",
+    "A causal cycle may be valid; static causal traversal MUST terminate without mutating or guessing canonical semantics.",
+    "Specification provenance requires immutable reference resolution, not merely an immutable target artifact.",
+    "For preserved snapshots, the same specification_ref value must always resolve to the same specification-set content.",
+    "Mutable aliases and moving specification pointers are forbidden as readiness provenance.",
+    "The applicable specification set validates before the canonical model; specification failure and model failure are distinct result classes.",
+    "READY is a contract-conformance claim, not a claim that human intent or external reality is correct.",
+    "Free-text prose is never hidden semantic authority and cannot satisfy machine-readable requirements.",
+    "Validator implementation failure is reported as implementation failure, not converted into a semantic model result.",
+    "Semantic causal-cycle detection is path-scoped; convergence and fan-in are not cycles.",
+    "Validation contracts are version-scoped to the artifact being validated.",
+    "Later validation requirements are never applied retroactively to earlier valid artifacts.",
+    "Explicit migration is required to move an artifact under a newer validation contract.",
+    "Failure to resolve a required historical validation contract is an implementation failure, not a semantic model result.",
+    "Immutable specification provenance includes every transitive interpretation dependency, not only specification_ref.",
+    "Validation-contract dispatch must have immutable resolution: the same dispatch identity always selects the same contract content.",
+    "Local semantic refs resolve inside the pinned immutable closure; external interpretation refs require immutable resolution.",
+    "All Property/Ruleset semantic reference resolution is scoped to the canonical artifact's pinned immutable specification closure.",
+    "Historical ruleset_ref semantics are never reinterpreted through a newer/current Rulesets registry.",
+    "CW READY is a modeled contract-conformance claim, not proof of external implementation correspondence.",
+    "Artifact version identity, format version and specification_ref must form one coherent immutable interpretation context.",
+    "Version conflicts are explicit specification failures; validators never resolve them by precedence or latest-version guessing.",
+    "An unresolved Binding propagates UNRESOLVED through binding_consume to its consuming Output; Binding transport semantics are never considered resolved without a resolved Binding source."
+  ],
+  "shared_value_types": {
+    "required_link_ref": {
+      "required": [
+        "entity_ref",
+        "required_link_id"
+      ],
+      "fields": {
+        "entity_ref": "canonical_entity_ref",
+        "required_link_id": "string"
+      },
+      "meaning": "Explicitly binds one canonical Link Property to one concrete Required Link requirement instance.",
+      "requirement_identity": "entity_ref + required_link_id",
+      "one_link_one_requirement": true
+    }
+  },
+  "required_links": {
+    "authority": "NodeType.required_links declares the requirement; the canonical Link Property remains the relationship authority.",
+    "satisfaction_binding": "A Link contributes to Required Link satisfaction only when value.required_link_ref identifies a concrete requirement that is effective in the applicable specification context and the Link matches that requirement's semantics.",
+    "all_entries_mandatory": true,
+    "same_link_type_entries_are_distinct": true,
+    "derived_links_satisfy": false,
+    "unbound_links_satisfy": false,
+    "input_boundary_satisfies": false,
+    "authoring": {
+      "zero_compatible_unsatisfied": "Author the Link normally when otherwise valid; required_link_ref is absent.",
+      "one_compatible_unsatisfied": "Structure may bind the newly authored Link automatically to that one requirement instance.",
+      "multiple_compatible_unsatisfied": "User MUST explicitly choose exactly one compatible requirement instance before commit.",
+      "no_implicit_choice": true
+    },
+    "validation": [
+      "required_link_ref has exactly entity_ref + required_link_id",
+      "required_link_ref.entity_ref resolves to the requiring Entity identity",
+      "if required_link_id is effective for that Entity in the applicable specification context, validate Link type, self_role, endpoint constraints and cardinality against that declaration",
+      "if required_link_id is not effective in the applicable specification context, preserve the binding but give it zero readiness contribution",
+      "one canonical Link is never reused to satisfy another concrete requirement instance"
+    ],
+    "invalid": "A required_link_ref is INVALID when malformed, when entity_ref is contradictory/unresolvable as canonical identity, or when it resolves an effective requirement in the applicable specification context but the Link contradicts that requirement's Link type, self_role or endpoint constraints. A previously valid binding is NOT invalid merely because its requirement is non-effective in a later specification version.",
+    "unready": "A missing Required Link attachment leaves the requiring Entity UNRESOLVED/unready.",
+    "abstraction_input": {
+      "canonical_source": "concrete Required Link requirement instance",
+      "projection": "unsatisfied internal requirement projects directly as an Abstraction input",
+      "boundary_entity": false,
+      "boundary_input_link": false,
+      "requirement_identity_preserved": true,
+      "satisfaction": "A compatible external canonical Link authored through the projected input MUST carry value.required_link_ref pointing to the original internal requirement instance.",
+      "no_intermediate_satisfaction": true,
+      "no_copied_type": true
+    },
+    "version_scoped_evaluation": {
+      "current_effective_set": "The applicable specification version defines which Required Link declarations are effective for the evaluation.",
+      "historical_binding": "A canonical Link may retain required_link_ref to a requirement that was effective in an earlier specification version.",
+      "current_contribution": "If that requirement is not effective in the current specification, the binding contributes zero to current readiness.",
+      "link_semantic_validity": "Non-effectiveness of the historical requirement does not by itself invalidate the underlying canonical Link relationship.",
+      "new_requirement": "A superseding/new Required Link is satisfied only by an explicit canonical Link bound to that new concrete requirement identity.",
+      "no_silent_rebind": true
+    },
+    "reference_resolution": {
+      "case_1_effective_matching": {
+        "result": "eligible_for_satisfaction",
+        "readiness_contribution": "counts subject to min/max"
+      },
+      "case_2_non_effective_in_applicable_spec": {
+        "result": "preserved_historical_binding",
+        "readiness_contribution": 0,
+        "semantic_link_invalidated": false,
+        "implicit_rebind": false
+      },
+      "case_3_effective_but_incompatible": {
+        "result": "INVALID",
+        "readiness_contribution": 0
+      }
+    }
+  },
+  "flow_patterns": [
+    {
+      "id": "static",
+      "name": "Static",
+      "legs": [],
+      "meaning": "The relation is semantically present but defines no transport leg."
+    },
+    {
+      "id": "one_way",
+      "name": "One Way",
+      "legs": [
+        {
+          "phase": "transfer",
+          "direction": "parent_ref_to_child_ref"
+        }
+      ]
+    },
+    {
+      "id": "request_reply",
+      "name": "Request Reply",
+      "legs": [
+        {
+          "phase": "request",
+          "direction": "child_ref_to_parent_ref"
+        },
+        {
+          "phase": "reply",
+          "direction": "parent_ref_to_child_ref"
+        }
+      ]
+    },
+    {
+      "id": "continuous",
+      "name": "Continuous",
+      "legs": [
+        {
+          "phase": "stream",
+          "direction": "parent_ref_to_child_ref",
+          "continuous": true
+        }
+      ]
+    }
+  ],
+  "property_rulesets": [
+    {
+      "id": "RULESET_MOUNT",
+      "property_type_ref": "mount",
+      "value_schema": {
+        "required": [
+          "mount_type_ref",
+          "target_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "mount_type_ref": "string",
+          "target_ref": "canonical_or_external_ref",
+          "properties": "object"
+        }
+      },
+      "readiness": [
+        "mount_type_ref is present",
+        "target_ref is explicit"
+      ]
+    },
+    {
+      "id": "RULESET_EVENT",
+      "property_type_ref": "event",
+      "value_schema": {
+        "required": [
+          "event_type_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "event_type_ref": "string",
+          "properties": "object"
+        }
+      },
+      "readiness": [
+        "event_type_ref is present"
+      ]
+    },
+    {
+      "id": "RULESET_EFFECT",
+      "property_type_ref": "effect",
+      "value_schema": {
+        "required": [
+          "effect_type_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "effect_type_ref": "string",
+          "properties": "object"
+        }
+      },
+      "readiness": [
+        "effect_type_ref is present"
+      ]
+    },
+    {
+      "id": "RULESET_DATA",
+      "property_type_ref": "data",
+      "value_schema": {
+        "required": [
+          "data_type_ref",
+          "value",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "data_type_ref": "string",
+          "value": "inert_semantic_value",
+          "properties": "object"
+        }
+      },
+      "readiness": [
+        "data_type_ref is present"
+      ]
+    },
+    {
+      "id": "RULESET_FUNCTION",
+      "property_type_ref": "function",
+      "value_schema": {
+        "required": [
+          "function_type_ref",
+          "properties"
+        ],
+        "optional": [
+          "input_refs",
+          "output_refs"
+        ],
+        "fields": {
+          "function_type_ref": "string",
+          "properties": "object",
+          "input_refs": "array<canonical_ref>",
+          "output_refs": "array<canonical_ref>"
+        }
+      },
+      "readiness": [
+        "function_type_ref is present",
+        "every input_refs and output_refs item resolves when present"
+      ]
+    }
+  ],
+  "link_rulesets": [
+    {
+      "id": "RULESET_LINK_DEPENDENCY",
+      "property_type_ref": "link",
+      "link_type_ref": "dependency",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "dependency_target",
+        "child_ref": "dependent"
+      },
+      "property_owner": "dependent",
+      "unresolved_impact": {
+        "from_role": "dependency_target",
+        "to_role": "dependent"
+      }
+    },
+    {
+      "id": "RULESET_LINK_OWNERSHIP",
+      "property_type_ref": "link",
+      "link_type_ref": "ownership",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "owner",
+        "child_ref": "owned"
+      },
+      "property_owner": "owned",
+      "unresolved_impact": {
+        "from_role": "owner",
+        "to_role": "owned"
+      },
+      "constraints": [
+        "Each owned endpoint may have zero or one active ownership owner.",
+        "Assigning a new ownership owner replaces the previous active ownership relation."
+      ]
+    },
+    {
+      "id": "RULESET_LINK_AUTHORITY",
+      "property_type_ref": "link",
+      "link_type_ref": "authority",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "authority",
+        "child_ref": "governed"
+      },
+      "property_owner": "governed",
+      "unresolved_impact": {
+        "from_role": "authority",
+        "to_role": "governed"
+      }
+    },
+    {
+      "id": "RULESET_LINK_CONTAINMENT",
+      "property_type_ref": "link",
+      "link_type_ref": "containment",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "container",
+        "child_ref": "contained"
+      },
+      "property_owner": "contained",
+      "unresolved_impact": {
+        "from_role": "container",
+        "to_role": "contained"
+      }
+    },
+    {
+      "id": "RULESET_LINK_ARCHITECTURE_PARENT",
+      "property_type_ref": "link",
+      "link_type_ref": "architecture_parent",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "architecture_parent",
+        "child_ref": "architecture_child"
+      },
+      "property_owner": "architecture_child",
+      "unresolved_impact": {
+        "from_role": "architecture_parent",
+        "to_role": "architecture_child"
+      }
+    },
+    {
+      "id": "RULESET_LINK_RELATION",
+      "property_type_ref": "link",
+      "link_type_ref": "relation",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "relation_parent",
+        "child_ref": "relation_child"
+      },
+      "property_owner": "relation_child"
+    },
+    {
+      "id": "RULESET_LINK_EVENT_CAUSE",
+      "property_type_ref": "link",
+      "link_type_ref": "event_cause",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "cause_source",
+        "child_ref": "event"
+      },
+      "property_owner": "event",
+      "unresolved_impact": {
+        "from_role": "cause_source",
+        "to_role": "event"
+      },
+      "flow": {
+        "pattern_ref": "static"
+      },
+      "endpoint_constraints": {
+        "child_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_READ",
+      "property_type_ref": "link",
+      "link_type_ref": "event_read",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "observed_source",
+        "child_ref": "event"
+      },
+      "property_owner": "event",
+      "unresolved_impact": {
+        "from_role": "observed_source",
+        "to_role": "event"
+      },
+      "flow": {
+        "resolver": "parent_owner_nodetype",
+        "cases": [
+          {
+            "parent_owner_nodetype_ref": "static_file",
+            "pattern_ref": "one_way"
+          },
+          {
+            "parent_owner_nodetype_ref": "database",
+            "pattern_ref": "request_reply"
+          },
+          {
+            "parent_owner_nodetype_ref": "api",
+            "pattern_ref": "request_reply"
+          },
+          {
+            "parent_owner_nodetype_ref": "stream_source",
+            "pattern_ref": "continuous"
+          }
+        ],
+        "no_match": "unready"
+      },
+      "endpoint_constraints": {
+        "child_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_INPUT",
+      "property_type_ref": "link",
+      "link_type_ref": "event_input",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "input_source",
+        "child_ref": "event"
+      },
+      "property_owner": "event",
+      "unresolved_impact": {
+        "from_role": "input_source",
+        "to_role": "event"
+      },
+      "flow": {
+        "pattern_ref": "one_way"
+      },
+      "endpoint_constraints": {
+        "child_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_OUTPUT",
+      "property_type_ref": "link",
+      "link_type_ref": "event_output",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "event",
+        "child_ref": "output_target"
+      },
+      "property_owner": "event",
+      "unresolved_impact": {
+        "from_role": "event",
+        "to_role": "output_target"
+      },
+      "flow": {
+        "pattern_ref": "one_way"
+      },
+      "endpoint_constraints": {
+        "parent_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_EFFECT",
+      "property_type_ref": "link",
+      "link_type_ref": "event_effect",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "event",
+        "child_ref": "effect"
+      },
+      "property_owner": "event",
+      "unresolved_impact": {
+        "from_role": "event",
+        "to_role": "effect"
+      },
+      "flow": {
+        "pattern_ref": "one_way"
+      },
+      "endpoint_constraints": {
+        "parent_ref": [
+          "property:event"
+        ],
+        "child_ref": [
+          "property:effect"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_CONDITION",
+      "property_type_ref": "link",
+      "link_type_ref": "event_condition",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "condition_source",
+        "child_ref": "event"
+      },
+      "property_owner": "event",
+      "unresolved_impact": {
+        "from_role": "condition_source",
+        "to_role": "event"
+      },
+      "endpoint_constraints": {
+        "child_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EFFECT_TARGET",
+      "property_type_ref": "link",
+      "link_type_ref": "effect_target",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "effect",
+        "child_ref": "effect_target"
+      },
+      "property_owner": "effect",
+      "unresolved_impact": {
+        "from_role": "effect",
+        "to_role": "effect_target"
+      },
+      "flow": {
+        "pattern_ref": "one_way"
+      },
+      "endpoint_constraints": {
+        "parent_ref": [
+          "property:effect"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_BINDING_CONSUME",
+      "property_type_ref": "link",
+      "link_type_ref": "binding_consume",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "binding",
+        "child_ref": "binding_consumer"
+      },
+      "property_owner": "binding_consumer",
+      "flow": {
+        "pattern_ref": "static"
+      },
+      "endpoint_constraints": {
+        "parent_ref": [
+          "entity_nodetype:binding"
+        ],
+        "child_ref": [
+          "entity_nodetype:output"
+        ]
+      },
+      "scope_constraints": [
+        "Binding and consuming Output MUST belong to the same Abstraction semantic source.",
+        "Cross-Abstraction Binding consumption is invalid.",
+        "Binding consumption is non-spatial; geometry never determines or limits the relation."
+      ],
+      "transported_semantics": {
+        "type_signature": "derived from the Binding resolved canonical source endpoint and its governing Ruleset",
+        "copied_type_field_forbidden": true,
+        "binding_identity_exposed_outside_abstraction": false
+      },
+      "trace_semantics": {
+        "canonical": true,
+        "forward": "source endpoint -> canonical source Link -> Binding -> binding_consume -> Output -> downstream canonical route",
+        "backward": "downstream canonical route -> Output -> binding_consume -> Binding -> canonical source Link -> source endpoint",
+        "visual_trace_line_is_authority": false,
+        "visual_trace_line_is_persistent": false,
+        "visual_trace_line_creates_link": false
+      },
+      "unresolved_impact": {
+        "from_role": "binding",
+        "to_role": "binding_consumer"
+      },
+      "unresolved_semantics": {
+        "origin": "If the Binding is UNRESOLVED because its canonical source semantics are unresolved or absent, the Binding is the unresolved origin for this relation.",
+        "propagation": "UNRESOLVED propagates through binding_consume from semantic role 'binding' to semantic role 'binding_consumer'.",
+        "consumer_effect": "An Output consuming an unresolved Binding cannot derive a resolved transported semantic type/signature from that Binding and is therefore UNRESOLVED through this relation.",
+        "directional_only": true,
+        "reverse_propagation": false,
+        "no_semantic_guessing": true
+      }
+    }
+  ],
+  "event_required_targets": {
+    "rule": "Event-related Required Link declarations may contain any number of independent mandatory targets.",
+    "all_required": true,
+    "same_link_type_allowed": true,
+    "same_visual_event_socket_may_aggregate": true,
+    "visual_aggregation_changes_canonical_multiplicity": false,
+    "one_event_link_satisfies_multiple_required_targets": false
+  },
+  "event_read": {
+    "parallel_reads": true,
+    "effect_barrier": "Event Effects become ready after all required reads for that Event have reached their Ruleset-defined ready condition.",
+    "ready_condition_by_flow": {
+      "one_way": "transfer_complete",
+      "request_reply": "reply_complete",
+      "continuous": "ruleset_defined",
+      "static": "relation_ready"
+    }
+  },
+  "derived_dependency": {
+    "rule": "Cross-owner Event use may derive a locked Entity-level dependency where the governing Event contract declares that use dependency-forming.",
+    "canonical_authority": "The specific causal/Event Link remains authority.",
+    "persist_as_canonical_dependency": false,
+    "locked": true,
+    "satisfies_required_link": false,
+    "multiple_causes_may_aggregate_visually": true
+  },
+  "unresolved": {
+    "rule": "Unresolved impact propagates only from unresolved origin through each Link Ruleset's explicit unresolved_impact direction.",
+    "no_bidirectional_default": true,
+    "no_geometry_or_color_inference": true,
+    "required_link_origin": "The requiring Entity is the unresolved origin when any concrete Required Link requirement is below min."
+  },
+  "readiness": {
+    "ready": "All active Property, Link, Required Link and flow requirements are satisfied.",
+    "unready": "One or more requirements are unresolved, missing or not yet satisfied.",
+    "unready_reasons": [
+      "missing_required_property",
+      "missing_required_link",
+      "unresolved_nodetype",
+      "unresolved_endpoint",
+      "unresolved_ruleset",
+      "unresolved_flow",
+      "cardinality_not_satisfied",
+      "event_read_not_ready",
+      "binding_source_unresolved",
+      "abstraction_required_input_unresolved",
+      "historical_specification_provenance_unresolved"
+    ],
+    "invalid_examples": [
+      "required_link_ref points to a requirement whose Link type, self role or endpoint constraints do not match the Link",
+      "declared Link property_owner cannot be resolved through the Ruleset semantic_roles",
+      "binding_consume references a Binding or Output outside the same Abstraction semantic source",
+      "binding_consume parent_ref does not resolve to an Entity of NodeType binding",
+      "binding_consume child_ref does not resolve to an Entity of NodeType output",
+      "malformed required_link_ref",
+      "required_link_ref has an invalid or contradictory requiring Entity identity",
+      "required_link_ref resolves an effective requirement in the applicable specification context but the Link contradicts its Link type, self_role or endpoint constraints"
+    ],
+    "principle": "Unready structure remains canonical, visible and editable. UNRESOLVED != INVALID.",
+    "evaluation_context": "explicit applicable specification version/set",
+    "historical_rule": "Historical readiness MUST use the historical specification context.",
+    "current_rule": "Current readiness MUST use the current specification context.",
+    "superseded_required_binding": "Preserved but contributes zero to current readiness.",
+    "historical_satisfaction_not_equal_current_readiness": true,
+    "historical_provenance_rule": "Historical readiness cannot be reconstructed when the historical snapshot's specification_ref is missing or unresolvable; do not substitute current specification.",
+    "prerequisites": [
+      "applicable specification set is valid",
+      "canonical model is valid"
+    ],
+    "READY_scope": "All applicable machine-readable readiness requirements are satisfied; no external-reality claim is implied.",
+    "INVALID_SPECIFICATION_is_not_readiness": true,
+    "IMPLEMENTATION_FAILURE_is_not_readiness": true
+  },
+  "authoring": {
+    "direct_socket_link_creation": true,
+    "link_type_resolution": "Resolve valid Link Rulesets and endpoint roles from canonical context.",
+    "multiple_valid_link_types": "Require explicit Link-type choice.",
+    "required_link_binding": {
+      "zero_compatible_unsatisfied": "Create ordinary valid Link with no required_link_ref.",
+      "one_compatible_unsatisfied": "May auto-bind to the one concrete requirement instance.",
+      "multiple_compatible_unsatisfied": "Require explicit user choice of exactly one concrete requirement instance before commit."
+    },
+    "no_semantic_guessing": true,
+    "binding_consumption": {
+      "source": "binding",
+      "target": "output",
+      "link_type_ref": "binding_consume",
+      "selection_ui": "Output may provide searchable Binding selection restricted to the same Abstraction.",
+      "selection_value": "canonical Binding Entity id",
+      "free_text_reference": false,
+      "same_abstraction_only": true
+    },
+    "abstraction_required_input": {
+      "source": "projected concrete Required Link requirement instance",
+      "result": "direct canonical Link creation carrying value.required_link_ref",
+      "intermediate_input_entity": false,
+      "intermediate_boundary_link": false,
+      "multiple_compatible_requirements": "explicit user choice required"
+    }
+  },
+  "binding": {
+    "scope": {
+      "same_abstraction_only": true,
+      "top_level_workspace_use": false,
+      "cross_abstraction_lookup": false,
+      "cross_abstraction_consumption": false
+    },
+    "identity": {
+      "reference_authority": "Binding Entity canonical id",
+      "display_lookup_name": "Binding Entity.name",
+      "free_text_reference": false
+    },
+    "input": {
+      "cardinality": "exactly one resolved incoming canonical semantic source at a time",
+      "absence": "UNRESOLVED",
+      "typing": "derived from the resolved source endpoint and governing Ruleset",
+      "copied_signature_forbidden": true
+    },
+    "output_consumption": {
+      "consumer_nodetype_ref": "output",
+      "link_type_ref": "binding_consume",
+      "same_abstraction_only": true,
+      "multiplicity": "any number of Outputs may consume one Binding",
+      "transported_semantics": "derived from Binding resolved source semantics",
+      "binding_identity_visible_outside_abstraction": false
+    },
+    "trace": {
+      "canonical_path": "source endpoint -> source Link -> Binding -> binding_consume -> Output -> downstream route",
+      "forward_backward_traversal_uses_canonical_references": true,
+      "temporary_visual_lines": true,
+      "visual_lines_are_canonical_links": false,
+      "visual_lines_are_persistent": false,
+      "visual_lines_have_validation_effect": false,
+      "visual_lines_have_readiness_effect": false,
+      "visual_lines_determine_membership": false
+    }
+  },
+  "abstraction_input_projection": {
+    "source": "unsatisfied concrete Required Link requirement instance",
+    "identity": "required_link_ref = { entity_ref, required_link_id }",
+    "rendered_as": "derived inbound socket/item on the parent Abstraction Entity",
+    "semantic_type": "resolved from the Required Link declaration and governing Link Ruleset; never copied onto the projected socket",
+    "authoring": {
+      "drag_to_input": "Create the chosen valid canonical Link directly against the original internal requirement context and persist its value.required_link_ref.",
+      "multiple_compatible_required": "If multiple projected requirements accept the same Link type, the user explicitly selects the concrete Required Link requirement instance being satisfied."
+    },
+    "canonical_mutation": "only the newly authored canonical Link is created; the projected input itself is not canonical data",
+    "resolved_transition": "When the original Required Link minimum becomes satisfied, the corresponding unresolved input projection disappears.",
+    "no_boundary_input_link": true,
+    "no_input_entity_required": true
+  },
+  "specification_versioning": {
+    "principle": "Readiness is a result of canonical state evaluated under an explicit specification version/set.",
+    "evaluation_input": [
+      "canonical state/snapshot",
+      "canonical state/snapshot specification_ref",
+      "immutable specification-set artifact resolved by specification_ref"
+    ],
+    "historical_evaluation": {
+      "rule": "Resolve the historical canonical snapshot's own specification_ref and evaluate against that immutable specification set.",
+      "preserve_historical_satisfaction": true,
+      "newer_spec_substitution_forbidden": true,
+      "historical_canonical_rewrite_forbidden": true
+    },
+    "current_evaluation": {
+      "rule": "Evaluate the current canonical state against the immutable specification set identified by its current specification_ref.",
+      "effective_requirements_only": true,
+      "historical_binding_contribution": 0
+    },
+    "required_link_ref": {
+      "identity": "requiring Entity id + Required Link id",
+      "contains_spec_version": false,
+      "implicit_migration_forbidden": true,
+      "implicit_substitution_forbidden": true,
+      "implicit_rebinding_forbidden": true,
+      "semantic_similarity_irrelevant": true,
+      "explicit_migration_only": "A migration may alter requirement bindings only if an explicit canonical migration operation is separately defined and performed."
+    },
+    "required_link_id_lineage_rule": "Within one specification lineage, a Required Link id is a semantically immutable identity and MUST NOT be reused for a different requirement across specification versions.",
+    "removed_id_remains_reserved": true,
+    "semantic_change_requires_new_id": true,
+    "provenance_binding": {
+      "field": "specification_ref",
+      "location": "canonical state/snapshot root",
+      "required_for_reconstructable_readiness": true,
+      "meaning": "Pins the canonical state/snapshot to the immutable specification-set artifact that defines the applicable NodeTypes, Rulesets and inheritance context.",
+      "required_link_ref_contains_spec_version": false,
+      "historical_snapshot_mutation": false,
+      "silent_specification_substitution": false,
+      "immutable_reference_resolution": true,
+      "same_ref_same_content": true,
+      "mutable_alias_forbidden": true,
+      "moving_target_forbidden": true
+    },
+    "specification_set": {
+      "immutable": true,
+      "must_resolve": [
+        "NodeTypes registry identity/content used by evaluation",
+        "Rulesets registry identity/content used by evaluation",
+        "inheritance semantics required for effective NodeType resolution",
+        "CCF/format/schema contract used to interpret each artifact",
+        "validation contract used to validate each artifact"
+      ],
+      "opaque_reference_allowed": true,
+      "reference_syntax_defined_here": false,
+      "immutable_reference_resolution_required": true,
+      "same_reference_same_content_required": true,
+      "transitive_closure_immutable": true,
+      "same_reference_same_transitive_evaluation_content": true,
+      "external_interpretation_dependencies_require_immutable_resolution": true
+    },
+    "missing_provenance": {
+      "historical_reconstruction_result": "UNRESOLVED/UNPROVABLE",
+      "current_spec_substitution": false,
+      "invented_historical_readiness": false
+    }
+  },
+  "link_validity_vs_requirement_satisfaction": {
+    "separate_concerns": true,
+    "semantic_link_validity": "Validated independently against the Link Ruleset and canonical endpoints.",
+    "requirement_satisfaction": "Evaluated only against effective Required Links in the applicable specification context.",
+    "non_effective_historical_binding": {
+      "preserved": true,
+      "current_readiness_contribution": 0,
+      "semantic_link_invalidated": false,
+      "implicit_rebind": false
+    },
+    "effective_incompatible_binding": "INVALID"
+  },
+  "adversarial_requirement_mutation": {
+    "T1": {
+      "specification": "SPEC_V1",
+      "effective_requirement": "R1",
+      "link_binding": "L1 -> {A, R1}",
+      "result": "A READY",
+      "snapshot_specification_ref": "SPEC_V1"
+    },
+    "T3": {
+      "specification": "SPEC_V2",
+      "effective_requirement": "R2",
+      "preserved_historical_binding": "L1 -> {A, R1}",
+      "R2_satisfaction": false,
+      "result": "A UNREADY",
+      "snapshot_specification_ref": "SPEC_V2"
+    },
+    "forbidden": [
+      "silent R1 -> R2 rebinding",
+      "silent mutation of L1",
+      "retroactive rewrite of T1 readiness",
+      "invented satisfaction of R2",
+      "evaluating T1 with SPEC_V2",
+      "collapsing historical satisfaction and current readiness"
+    ],
+    "principle": "Historical satisfaction != current readiness.",
+    "provenance_rule": "T1 and T3 are paired to their specification contexts by their own snapshot specification_ref values."
+  },
+  "required_link_versioning_test_oracle": {
+    "historical": {
+      "context": "SPEC_V1",
+      "effective": "R1",
+      "binding": {
+        "entity_ref": "A",
+        "required_link_id": "R1"
+      },
+      "expected": "R1 satisfied; A READY"
+    },
+    "current": {
+      "context": "SPEC_V2",
+      "effective": "R2",
+      "preserved_binding": {
+        "entity_ref": "A",
+        "required_link_id": "R1"
+      },
+      "expected": "R1 contributes 0; R2 unsatisfied; A UNREADY"
+    },
+    "id_reuse_case": {
+      "forbidden": "R1 removed in one version and later reintroduced with a different semantic meaning",
+      "required_action": "allocate a new Required Link id"
+    }
+  },
+  "specification_provenance": {
+    "field": "specification_ref",
+    "location": "canonical state/snapshot root",
+    "normative": true,
+    "purpose": "Make the state-to-specification pairing explicit and reconstructable instead of relying on caller-supplied historical context.",
+    "resolution": "specification_ref MUST resolve exactly one immutable specification-set artifact.",
+    "snapshot_rule": "A preserved historical snapshot retains its original specification_ref. Changing the applicable specification requires an explicit state/snapshot evolution step.",
+    "historical_readiness": "Historical readiness is reconstructable only when both the historical canonical state and its pinned immutable specification set are available.",
+    "missing_reference": "If specification_ref is missing or unresolvable, historical readiness MUST NOT be invented; the result is UNRESOLVED/UNPROVABLE.",
+    "forbidden": [
+      "substituting the current specification for a missing historical specification_ref",
+      "silently rewriting a preserved snapshot's specification_ref",
+      "placing specification version inside required_link_ref",
+      "inferring specification context from current registry contents"
+    ],
+    "immutable_resolution": {
+      "required": true,
+      "normative_rule": "For the lifetime of a preserved canonical state/snapshot, identical specification_ref values MUST resolve to identical specification-set content.",
+      "artifact_immutability_alone_is_insufficient": true,
+      "mutable_alias_forbidden": true,
+      "moving_target_forbidden": true,
+      "same_ref_same_content": true,
+      "allowed_identity_models": [
+        "immutable artifact identity plus immutable version/revision",
+        "content-addressed digest/hash",
+        "immutable registry revision identity"
+      ],
+      "forbidden_reference_classes": [
+        "latest",
+        "current",
+        "active",
+        "mutable branch",
+        "moving tag",
+        "mutable alias",
+        "any reference whose resolution may change over time without changing the reference value"
+      ],
+      "reference_syntax_defined_here": false,
+      "syntax_requirement": "Implementations MAY choose the concrete reference syntax, but MUST guarantee immutable resolution."
+    },
+    "validation_contract_chain": {
+      "artifact": "canonical/specification artifact",
+      "artifact_version": "declared format/schema/version identity",
+      "validation_contract": "immutable version-scoped contract selected by artifact version",
+      "evaluation": "performed only after artifact validation succeeds"
+    }
+  },
+  "causal_cycles": {
+    "principle": "A canonical causal cycle MAY be valid. Cyclicity alone does not make a model INVALID_MODEL or UNREADY.",
+    "scope": "CW causal tracing is static semantic graph traversal. It does not execute Events, Effects, state transitions, callbacks, retries or runtime loops.",
+    "traversal_state": {
+      "definition": "The canonical identity currently being traversed under the fixed trace direction (forward or backward) within one active traversal branch.",
+      "semantic_cycle_test": "A cycle exists only when the same canonical traversal state is encountered again while that state is already present in the CURRENT ACTIVE TRAVERSAL PATH."
+    },
+    "path_scoped_cycle_detection": {
+      "required": true,
+      "active_path_is_cycle_authority": true,
+      "globally_previously_seen_is_cycle_authority": false,
+      "completed_branch_revisit_is_cycle": false,
+      "parallel_branch_revisit_is_cycle": false,
+      "fan_in_is_cycle": false,
+      "diamond_convergence_is_cycle": false,
+      "shared_downstream_target_is_cycle": false
+    },
+    "termination": {
+      "must_terminate": true,
+      "rule": "When a traversal state already present in the current active path is encountered, record the cycle closure and stop recursively expanding THAT ROUTE beyond the repeated state.",
+      "preserve_cycle": true,
+      "report_cycle": true,
+      "delete_edge": false,
+      "invent_break": false
+    },
+    "memoization": {
+      "allowed": true,
+      "purpose": "performance optimization only",
+      "may_cache_expanded_states": true,
+      "must_not_define_cycle_classification": true,
+      "must_not_suppress_semantically_distinct_valid_routes": true
+    },
+    "unresolved_propagation": "UNRESOLVED propagation through a valid causal cycle follows declared impact directions. Cycle closure is detected path-scopingly; the affected route terminates at closure without repeated expansion or semantic mutation.",
+    "forbidden": [
+      "classifying a node as cyclic merely because it was reached earlier in another branch",
+      "using a trace-global visited set as semantic cycle authority",
+      "deleting or ignoring canonical edges merely to guarantee termination",
+      "inventing a missing edge or cycle break",
+      "inferring runtime repetition count from a causal cycle",
+      "treating static graph traversal as Event execution"
+    ]
+  },
+  "causal_cycle_test_oracle": {
+    "diamond": {
+      "graph": [
+        "A -> B -> D",
+        "A -> C -> D"
+      ],
+      "expected": {
+        "cycle": false,
+        "D_reached_multiple_times": true,
+        "classification": "convergence/fan-in"
+      }
+    },
+    "cycle": {
+      "graph": [
+        "A -> B -> C -> A"
+      ],
+      "expected": {
+        "cycle": true,
+        "closure_at": "A when A is encountered while already in current active path",
+        "recursive_expansion_after_closure": false
+      }
+    },
+    "rule": "Reaching the same canonical identity through another completed/parallel branch is not sufficient for cycle classification."
+  },
+  "specification_reference_validation": {
+    "valid": "specification_ref resolves exactly one immutable specification-set artifact and the resolution is immutable: the same reference value always resolves to the same content.",
+    "invalid": [
+      "specification_ref resolves through a mutable alias or moving pointer",
+      "the same specification_ref value can resolve to different specification-set content over time",
+      "specification_ref resolution is ambiguous",
+      "specification_ref target is mutable under the same identity"
+    ],
+    "historical_reconstruction": "Historical readiness is reconstructable only when the historical snapshot carries a specification_ref whose resolution is immutable and whose referenced specification-set artifact remains available."
+  },
+  "adversarial_mutable_specification_ref": {
+    "invalid_scenario": {
+      "T1": "snapshot.specification_ref = CURRENT_SPEC; CURRENT_SPEC resolves to SPEC_V1",
+      "T3": "same snapshot.specification_ref = CURRENT_SPEC; CURRENT_SPEC now resolves to SPEC_V2"
+    },
+    "expected": "This provenance mechanism is invalid because identical specification_ref values do not have immutable resolution.",
+    "forbidden_fix": "Do not infer that the historical snapshot used SPEC_V1 merely from external history.",
+    "required_property": "same specification_ref value -> same specification-set content for the lifetime of the preserved snapshot"
+  },
+  "evaluation_result_model": {
+    "classes": {
+      "INVALID_SPECIFICATION": "The applicable specification set (NodeTypes, Rulesets, inheritance or their internal references/constraints) is contradictory, malformed, ambiguous or otherwise invalid.",
+      "INVALID_MODEL": "The applicable specification set is valid, but declared canonical model data violates it or is itself malformed/contradictory.",
+      "UNREADY": "Specification and canonical model are valid, but one or more declared readiness requirements are not currently satisfied.",
+      "READY": "Specification and canonical model are valid and all applicable machine-readable readiness requirements are satisfied.",
+      "IMPLEMENTATION_FAILURE": "The validator/runtime failed to execute the specification correctly, for example because of a crash, race condition, non-termination, resource exhaustion or internal defect."
+    },
+    "ordering": [
+      "validate specification set",
+      "validate canonical model",
+      "evaluate readiness"
+    ],
+    "rules": [
+      "INVALID_SPECIFICATION aborts canonical model readiness evaluation.",
+      "INVALID_MODEL is reported only after the applicable specification set itself is valid.",
+      "UNREADY is not INVALID_MODEL.",
+      "READY is not a claim of real-world correctness.",
+      "IMPLEMENTATION_FAILURE is not converted into READY, UNREADY, INVALID_MODEL or INVALID_SPECIFICATION."
+    ],
+    "historical_contract_resolution": "Failure to resolve a required historical validation contract is IMPLEMENTATION_FAILURE, not INVALID_SPECIFICATION and not INVALID_MODEL."
+  },
+  "specification_self_validation": {
+    "required_before_model_evaluation": true,
+    "scope": [
+      "NodeTypes registry",
+      "Rulesets registry",
+      "inheritance closure semantics",
+      "Required Link identity-lineage rules",
+      "Ruleset semantic role definitions",
+      "Ruleset endpoint constraints",
+      "Ruleset/property/link type consistency",
+      "specification provenance contract"
+    ],
+    "contradiction_result": "INVALID_SPECIFICATION",
+    "ambiguous_result": "INVALID_SPECIFICATION",
+    "unresolved_internal_reference_result": "INVALID_SPECIFICATION",
+    "readiness_evaluation_allowed_after_failure": false,
+    "partial_ruleset_fallback": false,
+    "self_healing_or_guessing": false,
+    "validation_contract_selection": "Each specification artifact is self-validated under the validation contract selected by its own declared format/schema version.",
+    "later_rules_apply_retroactively": false,
+    "historical_contract_substitution": false
+  },
+  "prose_semantics_boundary": {
+    "principle": "Free-text prose is non-authoritative for machine validation unless a separate contract explicitly defines a structured field as semantic input. Ordinary summary/notes/comment text is never semantic authority.",
+    "cannot": [
+      "satisfy a Required Link",
+      "satisfy a required Property",
+      "change a Link type or semantic role",
+      "change endpoint constraints",
+      "change causal semantics",
+      "change readiness",
+      "override an INVALID/UNREADY result",
+      "introduce a hidden machine-enforced requirement"
+    ],
+    "formalization_requirement": "Architectural constraints that must affect machine behavior MUST be moved into structured canonical semantics governed by NodeTypes/Rulesets.",
+    "validator_must_not_parse_prose_for_hidden_semantics": true
+  },
+  "model_claim_boundary": {
+    "READY_claim": "The canonical model is valid and satisfies all machine-readable readiness requirements under its pinned valid specification context.",
+    "READY_does_not_claim": [
+      "correspondence with external reality",
+      "business correctness",
+      "mathematical usefulness unless explicitly modeled",
+      "implementation correctness",
+      "deployment viability",
+      "completeness of unstated human requirements"
+    ],
+    "validator_must_not_infer_human_intent": true,
+    "external_truth_validation": "outside CW unless explicitly modeled through additional contracts/evidence"
+  },
+  "validator_implementation_conformance": {
+    "principle": "The specification defines required semantic behavior; a concrete validator implementation that fails to produce that behavior is non-conformant.",
+    "requirements": [
+      "deterministic interpretation of the same canonical state + same specification_ref",
+      "termination of finite static validation/traversal",
+      "no semantic mutation during validation",
+      "no data races that change semantic results",
+      "no silent fallback after internal failure",
+      "resource failure must not be misreported as semantic validity/readiness",
+      "version-aware validation-contract dispatch before artifact validation",
+      "historical artifacts are validated with their own applicable validation contract",
+      "no silent latest-version fallback when a historical validation contract is required"
+    ],
+    "failure_result": "IMPLEMENTATION_FAILURE",
+    "semantic_result_must_not_be_invented_on_failure": true,
+    "missing_required_validation_contract": "IMPLEMENTATION_FAILURE"
+  },
+  "validation_contract_versioning": {
+    "principle": "Every specification artifact is validated under the validation contract applicable to that artifact's own declared format/schema version.",
+    "dispatch_order": [
+      "read artifact-declared validation/format identity and version",
+      "resolve exactly one immutable validation-contract content through an immutable dispatch mapping/reference",
+      "validate the artifact using that contract",
+      "only then use the validated artifact in model evaluation"
+    ],
+    "historical_artifacts": {
+      "latest_contract_substitution": false,
+      "retroactive_new_requirement": false,
+      "historical_validity_preserved": true,
+      "missing_later_field": "A historical artifact is not invalid merely because it lacks a field introduced as mandatory only in a later validation contract."
+    },
+    "current_artifacts": {
+      "rule": "A current artifact MUST satisfy every requirement of its own applicable current validation contract."
+    },
+    "migration": {
+      "implicit": false,
+      "explicit_only": true,
+      "result": "Migration produces a new artifact governed by the target validation contract; it does not rewrite the historical artifact."
+    },
+    "unsupported_contract": {
+      "result": "IMPLEMENTATION_FAILURE",
+      "latest_fallback": false,
+      "semantic_result_must_not_be_invented": true
+    },
+    "immutable_contract_resolution_required": true,
+    "same_dispatch_identity_same_contract_content": true,
+    "mutable_validation_contract_alias_forbidden": true
+  },
+  "validation_version_test_oracle": {
+    "historical_valid": {
+      "artifact": "SPEC_V1",
+      "artifact_contract": "VALIDATION_CONTRACT_V1",
+      "field_introduced_later": "specification_ref",
+      "field_required_in_V1": false,
+      "expected": "SPEC_V1 is not invalid merely for lacking that later field."
+    },
+    "current_invalid": {
+      "artifact": "SPEC_V3",
+      "artifact_contract": "VALIDATION_CONTRACT_V3",
+      "field_required_in_V3": "specification_ref",
+      "field_missing": true,
+      "expected": "INVALID_SPECIFICATION"
+    },
+    "forbidden": [
+      "validate SPEC_V1 using VALIDATION_CONTRACT_V3 merely because V3 is latest",
+      "retroactively mutate SPEC_V1",
+      "silently inject missing later fields",
+      "implicitly migrate SPEC_V1 to V3 semantics"
+    ]
+  },
+  "reference_classes": {
+    "local_semantic_ref": {
+      "meaning": "An identity resolved only inside an already pinned immutable canonical/specification artifact or registry closure. It is not an external locator.",
+      "examples": [
+        "entity_type_ref",
+        "ruleset_ref",
+        "Required Link required_link_id",
+        "NodeType extends ids",
+        "canonical Entity/Property ids"
+      ],
+      "immutable_external_resolution_required": false,
+      "rule": "Local semantic refs are safe only because the containing artifact/registry closure is immutable and uniquely selected. They MUST NOT silently escape to a mutable external lookup namespace."
+    },
+    "interpretation_provenance_ref": {
+      "meaning": "A reference whose resolved content can change validation, interpretation, inheritance, readiness or historical reconstruction.",
+      "examples": [
+        "specification_ref",
+        "external validation-contract reference when used",
+        "external CCF/format-contract reference when used",
+        "external NodeTypes/Rulesets registry dependency when not embedded"
+      ],
+      "immutable_external_resolution_required": true,
+      "rule": "The same reference value MUST always resolve to the same content."
+    },
+    "runtime_or_domain_ref": {
+      "meaning": "A domain/runtime reference whose mutability is governed by its own semantic contract and which is not automatically evaluation provenance.",
+      "examples": [
+        "external resource target_ref",
+        "runtime endpoint or resource identifiers"
+      ],
+      "immutable_external_resolution_required": "only when another contract elevates it into interpretation provenance"
+    }
+  },
+  "evaluation_dependency_closure": {
+    "principle": "Immutable specification provenance applies to the full transitive interpretation/evaluation dependency closure, not only to the root specification_ref.",
+    "root": "canonical state/snapshot specification_ref",
+    "same_root_same_closure": true,
+    "closure_members": [
+      "specification-set artifact",
+      "NodeTypes registry content used by evaluation",
+      "Rulesets registry content used by evaluation",
+      "inheritance definitions used by evaluation",
+      "CCF/format/schema contract content used to interpret the artifacts",
+      "validation contract content used to validate the artifacts",
+      "any other external contract whose resolved content can change model validity or readiness"
+    ],
+    "dependency_rule": "Every closure member MUST either be embedded in an immutable parent artifact or be reached through an immutable-resolution interpretation_provenance_ref.",
+    "transitive_rule": "If a closure member itself references another interpretation dependency, the same rule applies recursively.",
+    "mutable_alias_anywhere_in_closure": "INVALID_PROVENANCE",
+    "forbidden": [
+      "immutable root manifest containing a mutable NodeTypes pointer",
+      "immutable root manifest containing a mutable Rulesets pointer",
+      "immutable root manifest selecting a validation contract through a moving alias",
+      "CCF/format semantics resolved through latest/current/active",
+      "any transitive interpretation dependency changing while the root provenance reference stays unchanged"
+    ],
+    "not_applied_automatically_to": "runtime/domain references that do not participate in interpretation, validation or readiness"
+  },
+  "validation_contract_resolution": {
+    "principle": "The mapping from an artifact's version-scoped validation dispatch identity to validation-contract content MUST itself be immutable.",
+    "same_dispatch_identity_same_contract_content": true,
+    "contract_identity_semantically_immutable": true,
+    "removed_contract_identity_remains_reserved": true,
+    "reuse_for_different_contract": false,
+    "allowed_resolution_models": [
+      "immutable validation-contract artifact identity + immutable revision/version",
+      "content-addressed validation-contract digest",
+      "immutable format-lineage dispatch table whose revision is itself immutable"
+    ],
+    "forbidden_resolution_models": [
+      "CURRENT_VALIDATION_CONTRACT",
+      "LATEST_VALIDATION_CONTRACT",
+      "active validator alias",
+      "mutable registry alias",
+      "moving branch/tag/pointer",
+      "same validation-contract identity whose content can be edited in place"
+    ],
+    "external_ref_rule": "If dispatch resolves through an explicit external validation_contract_ref, that ref MUST satisfy the same immutable-resolution rules as specification_ref.",
+    "failure": "If the immutable historical validation contract cannot be resolved, return IMPLEMENTATION_FAILURE and do not substitute another contract."
+  },
+  "ccf_ref_semantics": {
+    "field": "ccf_ref",
+    "current_value": "CANONICAL_CONTRACT_FORMAT",
+    "class": "interpretation dependency",
+    "rule": "The CCF/format contract used to interpret CW_RULESETS is pinned by the immutable evaluation dependency closure.",
+    "short_id_is_not_global_latest_alias": true,
+    "external_resolution": "MUST be immutable-resolution"
+  },
+  "nodetypes_ref_semantics": {
+    "field": "nodetypes_ref",
+    "current_value": "CW_NODETYPES",
+    "class": "local_semantic_ref within pinned specification set",
+    "rule": "nodetypes_ref resolves only within the same pinned immutable specification-set closure. It MUST NOT be interpreted as a mutable global 'current NodeTypes' alias."
+  },
+  "immutable_resolution_bootstrap": {
+    "principle": "Immutable-resolution requirements recurse through interpretation dependencies until reaching embedded immutable content or an immutable identity mechanism whose same-key/same-content property is guaranteed externally.",
+    "no_infinite_meta_chain_required": true,
+    "acceptable_roots": [
+      "content-addressed identity",
+      "immutable artifact revision identity enforced by storage",
+      "immutable version-to-contract mapping enforced by the format/validator host"
+    ],
+    "host_obligation": "The host may provide the final immutable identity mechanism, but it MUST satisfy same identity -> same content and MUST NOT expose mutable aliases as provenance."
+  },
+  "validation_contract_mutation_test_oracle": {
+    "invalid_scenario": {
+      "T1": "artifact version V1 dispatches to VALIDATION_CONTRACT_V1 content A",
+      "T3": "the same V1 dispatch identity now resolves to different content B"
+    },
+    "expected": "INVALID_PROVENANCE / non-conformant dispatch mechanism; historical validation MUST NOT proceed under B",
+    "required_property": "same validation dispatch identity -> same validation-contract content forever"
+  },
+  "transitive_provenance_test_oracle": {
+    "invalid_scenario": {
+      "root": "specification_ref immutably resolves to SPEC_SET_X",
+      "nested": "SPEC_SET_X contains NODETYPES_CURRENT whose target changes from NodeTypes A to NodeTypes B"
+    },
+    "expected": "Invalid provenance mechanism: immutable root identity does not save a mutable interpretation dependency.",
+    "required_property": "same root specification_ref -> same fully resolved transitive evaluation dependency closure"
+  },
+  "semantic_reference_resolution": {
+    "authority": "CCF semantic-reference-resolution contract",
+    "property_ruleset_ref": "Property.ruleset_ref resolves only inside the immutable Rulesets registry/closure pinned by the containing canonical artifact's specification_ref.",
+    "link_ruleset_ref": "Link ruleset_ref and its link_type_ref semantics are interpreted only in that same pinned specification closure.",
+    "nodetypes_ref": "nodetypes_ref remains a local semantic identity inside the pinned specification set, not a mutable global current registry locator.",
+    "ccf_ref": "ccf_ref remains a local semantic identity inside the pinned specification set or an immutable-resolution interpretation reference.",
+    "historical": "Historical Property/Ruleset semantics are reconstructed from the historical artifact's own specification_ref.",
+    "current_registry_fallback": false,
+    "latest_fallback": false,
+    "silent_semantic_rebind": false
+  },
+  "property_ruleset_resolution": {
+    "locked_property": {
+      "one_compatible_match_in_pinned_closure": "VALID",
+      "zero_matches_in_pinned_closure": "INVALID_MODEL",
+      "multiple_matches": "INVALID_SPECIFICATION"
+    },
+    "unlocked_property": {
+      "zero_matches": "UNREADY/UNRESOLVED",
+      "one_compatible_match": "interpretable",
+      "guessing": false
+    },
+    "historical_property": "A historical ruleset_ref is not re-resolved against a later Rulesets registry. Its meaning comes from the historical artifact's pinned immutable specification closure.",
+    "forbidden": [
+      "silent ruleset_ref migration",
+      "current/latest registry substitution",
+      "semantic matching by Ruleset name",
+      "choosing a semantically similar newer Ruleset"
+    ]
+  },
+  "model_implementation_correspondence": {
+    "principle": "CW validates modeled canonical semantics; it does not implicitly verify that external implementation behavior matches the model.",
+    "READY_means": "Canonical model and specification are valid and all applicable modeled readiness requirements are satisfied.",
+    "READY_does_not_mean": [
+      "hidden kwargs/runtime inputs are safe",
+      "middleware cannot intercept or abort behavior",
+      "runtime exceptions cannot occur",
+      "external code follows modeled causal paths",
+      "derived Binding signatures match unmodeled runtime type changes",
+      "deployment/runtime behavior is proven"
+    ],
+    "shadow_semantics": "Runtime/code behavior that must affect validation must be formalized as structured canonical semantics. Prose, comments and implementation behavior are not hidden Rulesets.",
+    "correspondence_verification": "Model-to-code correspondence requires an explicit evidence, generation, mapper, verification or other contracted mechanism."
+  },
+  "model_implementation_boundary_test_oracle": {
+    "dark_matter_function": "A runtime exception caused by an unmodeled kwargs convention does not invalidate CW itself; the model can be READY while implementation correspondence is unverified. If the kwargs constraint must affect readiness, model it explicitly.",
+    "middleware_blind_spot": "Unmodeled middleware is implementation divergence/omission, not a canonical edge that CW may invent.",
+    "leaky_binding": "A runtime-only source type change that is absent from canonical state does not silently mutate Binding semantics. If canonical source semantics change, the canonical state/specification changes and readiness is reevaluated."
+  },
+  "version_identity_coherence": {
+    "authority": "CCF version-identity-coherence contract",
+    "checks": [
+      "CW_RULESETS artifact version is structurally valid for its own artifact lineage",
+      "CCF format/version used to interpret CW_RULESETS is compatible with the artifact shape",
+      "specification_ref resolves an immutable specification set compatible with that CCF format/version",
+      "NodeTypes and Rulesets registry versions selected by the specification set belong to the declared compatible specification lineage"
+    ],
+    "conflict_result": "INVALID_SPECIFICATION",
+    "no_precedence_guessing": true,
+    "no_latest_wins": true,
+    "no_silent_specification_override": true
+  },
+  "version_identity_test_oracle": {
+    "valid": {
+      "artifact_version": "3.4.0",
+      "format_version": "2.1",
+      "specification_ref": "SPEC_SET_COMPATIBLE_WITH_CCF_2_1_AND_CW_3_4",
+      "expected": "continue validation"
+    },
+    "invalid_format_spec_conflict": {
+      "artifact_version": "3.4.0",
+      "format_version": "2.1",
+      "specification_ref": "SPEC_SET_REQUIRING_INCOMPATIBLE_CCF_2_0",
+      "expected": "INVALID_SPECIFICATION"
+    },
+    "forbidden": [
+      "specification_ref wins over format_version",
+      "format_version wins over specification_ref",
+      "latest compatible version is guessed",
+      "one field is silently rewritten to match another"
+    ]
+  },
+  "binding_unresolved_test_oracle": {
+    "setup": [
+      "Binding B exists inside one Abstraction.",
+      "B has no resolved canonical source and is therefore UNRESOLVED.",
+      "Output O consumes B through RULESET_LINK_BINDING_CONSUME."
+    ],
+    "expected": {
+      "B": "UNRESOLVED",
+      "O": "UNRESOLVED",
+      "propagation": "B -> O through binding_consume unresolved_impact",
+      "reverse_propagation": false
+    },
+    "forbidden": [
+      "O reported READY while B is unresolved solely because binding_consume lacks propagation metadata",
+      "inventing a transported type/signature for O",
+      "reverse propagation from O to B unless another governing semantic rule independently requires it"
+    ]
+  }
+}

@@ -1,0 +1,185 @@
+{
+  "id": "CW_NODETYPES",
+  "name": "CanonicalWireframe NodeTypes",
+  "version": "1.0.1",
+  "ccf_ref": "CANONICAL_CONTRACT_FORMAT",
+  "purpose": "Define NodeTypes and the Property ownership expectations of Entities using Canonical Contract Format 2.0.",
+  "model": {
+    "ccf": "Defines canonical Entity and Property structure.",
+    "nodetypes": "Define what Property types an Entity of a given NodeType owns or is expected to own.",
+    "rulesets": "Interpret canonical structure, Property semantics, relations, causality and flow."
+  },
+  "rules": [
+    "Entity.entity_type_ref resolves a NodeType by id inside the active NodeTypes registry.",
+    "NodeTypes describe Entity-local Property expectations.",
+    "NodeTypes do not define Property value semantics.",
+    "NodeTypes do not define flow semantics.",
+    "NodeTypes do not define Link semantics.",
+    "NodeTypes do not define Event or Effect execution semantics.",
+    "NodeTypes do not define rendering, animation, geometry or layout.",
+    "Additional Properties may exist when their Rulesets resolve them.",
+    "Missing expected Properties make the Entity unready for the relevant Ruleset; they do not make the canonical Entity invalid."
+  ],
+  "nodetype_schema": {
+    "required": [
+      "id",
+      "name",
+      "required_property_types",
+      "owned_property_types"
+    ],
+    "optional": [
+      "extends",
+      "property_cardinality",
+      "description"
+    ],
+    "semantics": {
+      "required_property_types": "Minimum local Property types expected for readiness.",
+      "owned_property_types": "Property types structurally associated with this NodeType. This is not a closed allow-list.",
+      "extends": "Optional inheritance from other NodeTypes.",
+      "property_cardinality": "Optional readiness constraints for local Property counts."
+    }
+  },
+  "nodetypes": [
+    {
+      "id": "generic",
+      "name": "Generic",
+      "required_property_types": [],
+      "owned_property_types": []
+    },
+    {
+      "id": "system",
+      "name": "System",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "event",
+        "effect",
+        "data",
+        "function"
+      ]
+    },
+    {
+      "id": "component",
+      "name": "Component",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "event",
+        "effect",
+        "data",
+        "function"
+      ]
+    },
+    {
+      "id": "static_file",
+      "name": "Static File",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "database",
+      "name": "Database",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "function",
+        "event"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "api",
+      "name": "API",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "function"
+      ],
+      "owned_property_types": [
+        "function",
+        "data",
+        "event"
+      ],
+      "property_cardinality": {
+        "function": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "stream_source",
+      "name": "Stream Source",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "event"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "derived_output",
+      "name": "Derived Output",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      }
+    }
+  ],
+  "readiness": {
+    "ready": "The Entity satisfies the NodeType requirements used by the active Ruleset evaluation.",
+    "unready": "One or more expected NodeType Properties or cardinalities are unresolved or missing.",
+    "principle": "UNRESOLVED != INVALID"
+  },
+  "namespace": "cw",
+  "resolution": {
+    "registry_ref": "CW_NODETYPES",
+    "rule": "Entity.entity_type_ref resolves a local NodeType id inside the explicitly active CW_NODETYPES registry. Local ids do not become globally unique merely by spelling.",
+    "unresolved_state": "unready",
+    "principle": "UNRESOLVED != INVALID"
+  }
+}

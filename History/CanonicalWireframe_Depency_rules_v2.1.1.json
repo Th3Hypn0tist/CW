@@ -1,0 +1,595 @@
+{
+  "id": "CW_RULESETS",
+  "name": "CanonicalWireframe Dependency Rules",
+  "version": "2.1.1",
+  "ccf_ref": "CANONICAL_CONTRACT_FORMAT",
+  "nodetypes_ref": "CW_NODETYPES",
+  "purpose": "Define how CanonicalWireframe interprets CCF Properties, Links, Events, Effects, causal relations and flow.",
+  "principles": [
+    "Canonical CCF structure remains authoritative.",
+    "NodeTypes define Entity-local Property expectations.",
+    "Rulesets define Property value semantics and Link interpretation.",
+    "Flow semantics belong to Rulesets.",
+    "NodeTypes may be used as explicit context when resolving a Ruleset.",
+    "Projection behavior is derived from resolved Ruleset semantics and is not canonical Ruleset state.",
+    "No semantics are inferred from filenames, extensions, names, paths, geometry or visual appearance.",
+    "Unresolved Ruleset requirements produce unready state, not invalid canonical data.",
+    "UNRESOLVED != INVALID"
+  ],
+  "flow_patterns": [
+    {
+      "id": "static",
+      "name": "Static",
+      "legs": [],
+      "meaning": "The relation is semantically present but defines no transport leg."
+    },
+    {
+      "id": "one_way",
+      "name": "One Way",
+      "legs": [
+        {
+          "phase": "transfer",
+          "direction": "parent_ref_to_child_ref"
+        }
+      ]
+    },
+    {
+      "id": "request_reply",
+      "name": "Request Reply",
+      "legs": [
+        {
+          "phase": "request",
+          "direction": "child_ref_to_parent_ref"
+        },
+        {
+          "phase": "reply",
+          "direction": "parent_ref_to_child_ref"
+        }
+      ]
+    },
+    {
+      "id": "continuous",
+      "name": "Continuous",
+      "legs": [
+        {
+          "phase": "stream",
+          "direction": "parent_ref_to_child_ref",
+          "continuous": true
+        }
+      ]
+    }
+  ],
+  "property_rulesets": [
+    {
+      "id": "RULESET_MOUNT",
+      "property_type_ref": "mount",
+      "value_schema": {
+        "required": [
+          "mount_type_ref",
+          "target_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "mount_type_ref": "string",
+          "target_ref": "canonical_or_external_ref",
+          "properties": "object"
+        }
+      },
+      "readiness": [
+        "mount_type_ref is present",
+        "target_ref is explicit"
+      ]
+    },
+    {
+      "id": "RULESET_EVENT",
+      "property_type_ref": "event",
+      "value_schema": {
+        "required": [
+          "event_type_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "event_type_ref": "string",
+          "properties": "object"
+        }
+      },
+      "readiness": [
+        "event_type_ref is present"
+      ]
+    },
+    {
+      "id": "RULESET_EFFECT",
+      "property_type_ref": "effect",
+      "value_schema": {
+        "required": [
+          "effect_type_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "effect_type_ref": "string",
+          "properties": "object"
+        }
+      },
+      "readiness": [
+        "effect_type_ref is present"
+      ]
+    },
+    {
+      "id": "RULESET_DATA",
+      "property_type_ref": "data",
+      "value_schema": {
+        "required": [
+          "data_type_ref",
+          "value",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "data_type_ref": "string",
+          "value": "inert_semantic_value",
+          "properties": "object"
+        }
+      },
+      "readiness": [
+        "data_type_ref is present"
+      ]
+    },
+    {
+      "id": "RULESET_FUNCTION",
+      "property_type_ref": "function",
+      "value_schema": {
+        "required": [
+          "function_type_ref",
+          "properties"
+        ],
+        "optional": [
+          "input_refs",
+          "output_refs"
+        ],
+        "fields": {
+          "function_type_ref": "string",
+          "properties": "object",
+          "input_refs": "array<canonical_ref>",
+          "output_refs": "array<canonical_ref>"
+        }
+      },
+      "readiness": [
+        "function_type_ref is present",
+        "every input_refs and output_refs item resolves when present"
+      ]
+    }
+  ],
+  "link_rulesets": [
+    {
+      "id": "RULESET_LINK_DEPENDENCY",
+      "property_type_ref": "link",
+      "link_type_ref": "dependency",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "dependency_target",
+        "child_ref": "dependent"
+      },
+      "property_owner": "child_owner"
+    },
+    {
+      "id": "RULESET_LINK_OWNERSHIP",
+      "property_type_ref": "link",
+      "link_type_ref": "ownership",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "owner",
+        "child_ref": "owned"
+      },
+      "property_owner": "child_owner",
+      "constraints": [
+        "Each child_ref may have zero or one active ownership parent_ref.",
+        "Assigning a new ownership parent replaces the previous active ownership relation."
+      ]
+    },
+    {
+      "id": "RULESET_LINK_AUTHORITY",
+      "property_type_ref": "link",
+      "link_type_ref": "authority",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "authority",
+        "child_ref": "governed"
+      },
+      "property_owner": "child_owner"
+    },
+    {
+      "id": "RULESET_LINK_CONTAINMENT",
+      "property_type_ref": "link",
+      "link_type_ref": "containment",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "container",
+        "child_ref": "contained"
+      },
+      "property_owner": "child_owner"
+    },
+    {
+      "id": "RULESET_LINK_ARCHITECTURE_PARENT",
+      "property_type_ref": "link",
+      "link_type_ref": "architecture_parent",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "architecture_parent",
+        "child_ref": "architecture_child"
+      },
+      "property_owner": "child_owner"
+    },
+    {
+      "id": "RULESET_LINK_RELATION",
+      "property_type_ref": "link",
+      "link_type_ref": "relation",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "relation_parent",
+        "child_ref": "relation_child"
+      },
+      "property_owner": "child_owner"
+    },
+    {
+      "id": "RULESET_LINK_EVENT_CAUSE",
+      "property_type_ref": "link",
+      "link_type_ref": "event_cause",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "cause_source",
+        "child_ref": "event"
+      },
+      "property_owner": "child_owner",
+      "flow": {
+        "pattern_ref": "static"
+      },
+      "endpoint_constraints": {
+        "child_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_READ",
+      "property_type_ref": "link",
+      "link_type_ref": "event_read",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "observed_source",
+        "child_ref": "event"
+      },
+      "property_owner": "child_owner",
+      "flow": {
+        "resolver": "parent_owner_nodetype",
+        "cases": [
+          {
+            "parent_owner_nodetype_ref": "static_file",
+            "pattern_ref": "one_way"
+          },
+          {
+            "parent_owner_nodetype_ref": "database",
+            "pattern_ref": "request_reply"
+          },
+          {
+            "parent_owner_nodetype_ref": "api",
+            "pattern_ref": "request_reply"
+          },
+          {
+            "parent_owner_nodetype_ref": "stream_source",
+            "pattern_ref": "continuous"
+          }
+        ],
+        "no_match": "unready"
+      },
+      "endpoint_constraints": {
+        "child_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_INPUT",
+      "property_type_ref": "link",
+      "link_type_ref": "event_input",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "input_source",
+        "child_ref": "event"
+      },
+      "property_owner": "child_owner",
+      "flow": {
+        "pattern_ref": "one_way"
+      },
+      "endpoint_constraints": {
+        "child_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_OUTPUT",
+      "property_type_ref": "link",
+      "link_type_ref": "event_output",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "event",
+        "child_ref": "output_target"
+      },
+      "property_owner": "parent_owner",
+      "flow": {
+        "pattern_ref": "one_way"
+      },
+      "endpoint_constraints": {
+        "parent_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_EFFECT",
+      "property_type_ref": "link",
+      "link_type_ref": "event_effect",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "event",
+        "child_ref": "effect"
+      },
+      "property_owner": "parent_owner",
+      "flow": {
+        "pattern_ref": "one_way"
+      },
+      "endpoint_constraints": {
+        "parent_ref": [
+          "property:event"
+        ],
+        "child_ref": [
+          "property:effect"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_CONDITION",
+      "property_type_ref": "link",
+      "link_type_ref": "event_condition",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "condition_source",
+        "child_ref": "event"
+      },
+      "property_owner": "child_owner",
+      "endpoint_constraints": {
+        "child_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EFFECT_TARGET",
+      "property_type_ref": "link",
+      "link_type_ref": "effect_target",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "effect",
+        "child_ref": "effect_target"
+      },
+      "property_owner": "parent_owner",
+      "flow": {
+        "pattern_ref": "one_way"
+      },
+      "endpoint_constraints": {
+        "parent_ref": [
+          "property:effect"
+        ]
+      }
+    }
+  ],
+  "event_read": {
+    "parallel_reads": true,
+    "effect_barrier": "Event Effects become ready after all required reads for that Event have reached their Ruleset-defined ready condition.",
+    "ready_condition_by_flow": {
+      "one_way": "transfer_complete",
+      "request_reply": "reply_complete",
+      "continuous": "ruleset_defined",
+      "static": "relation_ready"
+    }
+  },
+  "readiness": {
+    "ready": "All requirements evaluated by the active Ruleset are satisfied.",
+    "unready": "One or more Ruleset requirements are unresolved, missing or not yet satisfied.",
+    "unready_reasons": [
+      "missing_required_property",
+      "unresolved_nodetype",
+      "unresolved_endpoint",
+      "unresolved_ruleset",
+      "unresolved_flow",
+      "cardinality_not_satisfied",
+      "event_read_not_ready"
+    ],
+    "principle": "Unready structure remains canonical, visible and editable."
+  }
+}

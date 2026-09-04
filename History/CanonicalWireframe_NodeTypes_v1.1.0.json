@@ -1,0 +1,428 @@
+{
+  "id": "CW_NODETYPES",
+  "name": "CanonicalWireframe NodeTypes",
+  "version": "1.1.0",
+  "ccf_ref": "CANONICAL_CONTRACT_FORMAT",
+  "purpose": "Define CanonicalWireframe NodeTypes, Entity-local Property expectations, required Link minima, and abstraction boundary node roles using Canonical Contract Format 2.0.",
+  "model": {
+    "ccf": "Defines canonical Entity and Property structure.",
+    "nodetypes": "Define what Property types and Link minima an Entity of a given NodeType owns or is expected to satisfy.",
+    "rulesets": "Interpret canonical structure, Property semantics, Link roles, required-Link matching, causality, flow and abstraction boundary behavior."
+  },
+  "rules": [
+    "Entity.entity_type_ref resolves a NodeType by id inside the active NodeTypes registry.",
+    "NodeTypes describe Entity-local Property expectations and required Link minima.",
+    "NodeTypes do not define Property value semantics.",
+    "NodeTypes do not define Link meaning; link_type_ref semantics are owned by Rulesets.",
+    "NodeTypes do not define Event or Effect execution semantics.",
+    "NodeTypes do not define rendering, animation, geometry, layout or colors.",
+    "Additional Properties may exist when their Rulesets resolve them.",
+    "Additional Links may exist when their Rulesets resolve them.",
+    "Missing expected Properties or required Links make the Entity unready for the relevant Ruleset evaluation; they do not make the canonical Entity invalid.",
+    "Input and Output are canonical nodes inside an abstraction and are projected as ports on the containing abstraction when viewed from outside it.",
+    "Input and Output MUST NOT declare a copied transported semantic type. Their exposed type is derived by Rulesets from their explicit internal binding.",
+    "An Input boundary node does not itself satisfy an internal required Link. It exposes the unresolved requirement through the abstraction boundary.",
+    "An Output boundary node exposes an attached internal semantic endpoint outward and creates no requirement by itself.",
+    "file_input and file_output use an explicit file Property for the machine-significant filename. Entity.name MUST NOT be used as the filename authority.",
+    "UNRESOLVED != INVALID"
+  ],
+  "nodetype_schema": {
+    "required": [
+      "id",
+      "name",
+      "required_property_types",
+      "owned_property_types"
+    ],
+    "optional": [
+      "extends",
+      "property_cardinality",
+      "required_links",
+      "description"
+    ],
+    "semantics": {
+      "required_property_types": "Minimum local Property types expected for readiness.",
+      "owned_property_types": "Property types structurally associated with this NodeType. This is not a closed allow-list.",
+      "extends": "Optional inheritance from other NodeTypes.",
+      "property_cardinality": "Optional readiness constraints for local Property counts.",
+      "required_links": "Minimum typed Link relations that an Entity of this NodeType must satisfy. Link semantics and matching are resolved by CW_RULESETS."
+    }
+  },
+  "required_link_schema": {
+    "required": [
+      "id",
+      "link_type_ref",
+      "self_role",
+      "min"
+    ],
+    "optional": [
+      "max",
+      "other_endpoint",
+      "description"
+    ],
+    "other_endpoint_optional": [
+      "entity_nodetype_ref",
+      "property_type_ref"
+    ],
+    "rules": [
+      "required_links is an unbounded collection.",
+      "id is stable within the resolved NodeType inheritance closure.",
+      "link_type_ref selects the applicable Link Ruleset.",
+      "self_role MUST resolve to one semantic role defined by that Link Ruleset.",
+      "other_endpoint constrains the opposite endpoint when present.",
+      "entity_nodetype_ref matching uses NodeType inheritance.",
+      "property_type_ref matching uses the resolved canonical Property type.",
+      "min is inclusive and MUST be a non-negative integer.",
+      "max is inclusive when present, MUST be a non-negative integer, and MUST be greater than or equal to min.",
+      "A missing minimum produces unready state.",
+      "An exceeded maximum produces a Ruleset finding as defined by CW_RULESETS.",
+      "Boundary Input exposure does not increment the satisfied count of the requirement it exposes."
+    ]
+  },
+  "nodetypes": [
+    {
+      "id": "generic",
+      "name": "Generic",
+      "required_property_types": [],
+      "owned_property_types": [
+        "link"
+      ],
+      "description": "Minimal generic canonical node. Link ownership is available to all derived NodeTypes."
+    },
+    {
+      "id": "system",
+      "name": "System",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "event",
+        "effect",
+        "data",
+        "function",
+        "link"
+      ]
+    },
+    {
+      "id": "component",
+      "name": "Component",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "event",
+        "effect",
+        "data",
+        "function",
+        "link"
+      ]
+    },
+    {
+      "id": "input",
+      "name": "Input",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "link"
+      ],
+      "required_links": [
+        {
+          "id": "INPUT_BOUNDARY_BINDING",
+          "link_type_ref": "boundary_input",
+          "self_role": "input_boundary",
+          "min": 1,
+          "max": 1,
+          "description": "Input must have exactly one explicit internal boundary binding."
+        },
+        {
+          "id": "INPUT_CONTAINMENT",
+          "link_type_ref": "containment",
+          "self_role": "contained",
+          "min": 1,
+          "max": 1,
+          "description": "Input belongs to exactly one abstraction boundary."
+        }
+      ],
+      "description": "Internal abstraction boundary node. Outside the abstraction it is projected as an input port on the containing abstraction node."
+    },
+    {
+      "id": "output",
+      "name": "Output",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "link"
+      ],
+      "required_links": [
+        {
+          "id": "OUTPUT_BOUNDARY_BINDING",
+          "link_type_ref": "boundary_output",
+          "self_role": "output_boundary",
+          "min": 1,
+          "max": 1,
+          "description": "Output must have exactly one explicit internal boundary binding."
+        },
+        {
+          "id": "OUTPUT_CONTAINMENT",
+          "link_type_ref": "containment",
+          "self_role": "contained",
+          "min": 1,
+          "max": 1,
+          "description": "Output belongs to exactly one abstraction boundary."
+        }
+      ],
+      "description": "Internal abstraction boundary node. Outside the abstraction it is projected as an output port on the containing abstraction node."
+    },
+    {
+      "id": "file_input",
+      "name": "File",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "file"
+      ],
+      "owned_property_types": [
+        "file",
+        "link"
+      ],
+      "property_cardinality": {
+        "file": {
+          "min": 1,
+          "max": 1
+        }
+      },
+      "description": "Declares one external file that must be supplied to the implementation. The required filename is carried by the file Property."
+    },
+    {
+      "id": "file_output",
+      "name": "File Output",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "file"
+      ],
+      "owned_property_types": [
+        "file",
+        "link"
+      ],
+      "property_cardinality": {
+        "file": {
+          "min": 1,
+          "max": 1
+        }
+      },
+      "description": "Declares one externally materialized output file. The output filename is carried by the file Property."
+    },
+    {
+      "id": "api",
+      "name": "API",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "api"
+      ],
+      "owned_property_types": [
+        "api",
+        "function",
+        "data",
+        "event",
+        "link"
+      ],
+      "property_cardinality": {
+        "api": {
+          "min": 1,
+          "max": 1
+        }
+      },
+      "description": "API boundary or service node. API type plus canonical input/output refs are carried by its api Property."
+    },
+    {
+      "id": "database",
+      "name": "Database",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "function",
+        "event",
+        "link"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "stream_input",
+      "name": "Stream Input",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "event",
+        "link"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      },
+      "description": "External or upstream continuous data input."
+    },
+    {
+      "id": "stream_output",
+      "name": "Stream Output",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "event",
+        "link"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      },
+      "description": "Continuous data output."
+    },
+    {
+      "id": "user_input",
+      "name": "User Input",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "data",
+        "event",
+        "link"
+      ],
+      "description": "Human-originated input surface. Concrete semantics are carried by Properties and Links."
+    },
+    {
+      "id": "user_output",
+      "name": "User Output",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "data",
+        "event",
+        "effect",
+        "link"
+      ],
+      "description": "Human-facing output surface. Concrete semantics are carried by Properties and Links."
+    },
+    {
+      "id": "static_file",
+      "name": "Static File",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "link"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "derived_output",
+      "name": "Derived Output",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "link"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "stream_source",
+      "name": "Stream Source",
+      "extends": [
+        "stream_input"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "event",
+        "link"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      },
+      "description": "Compatibility NodeType retained for existing CW models; semantically a stream_input specialization."
+    }
+  ],
+  "inheritance": {
+    "required_property_types": "union",
+    "owned_property_types": "union",
+    "property_cardinality": "constraints compose; incompatible inherited constraints are conflict",
+    "required_links": "union by stable requirement id; different active definitions of the same inherited requirement id are conflict",
+    "cycle_result": "invalid_registry"
+  },
+  "readiness": {
+    "ready": "The Entity satisfies the NodeType Property and required-Link requirements used by the active Ruleset evaluation.",
+    "unready": "One or more expected NodeType Properties, cardinalities or required Links are unresolved or missing.",
+    "principle": "UNRESOLVED != INVALID"
+  },
+  "authoring": {
+    "required_links": {
+      "operations": [
+        "add",
+        "edit",
+        "remove"
+      ],
+      "rule": "Authoring tools SHOULD expose Required Links as an editable NodeType collection. Editing Required Links changes the NodeType definition, not an individual Entity instance."
+    }
+  },
+  "namespace": "cw",
+  "resolution": {
+    "registry_ref": "CW_NODETYPES",
+    "rule": "Entity.entity_type_ref resolves a local NodeType id inside the explicitly active CW_NODETYPES registry. Local ids do not become globally unique merely by spelling.",
+    "unresolved_state": "unready",
+    "principle": "UNRESOLVED != INVALID"
+  }
+}

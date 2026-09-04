@@ -1,0 +1,269 @@
+{
+  "id": "UML_NODETYPES",
+  "name": "UML NodeTypes",
+  "version": "1.0.0",
+  "purpose": "Define UML node categories and the semantic properties each node type owns or may own.",
+  "principles": [
+    "NodeTypes define node-local semantic structure.",
+    "NodeTypes do not define relationship interpretation.",
+    "NodeTypes do not define flow or traversal semantics.",
+    "NodeTypes do not define rendering or layout.",
+    "Missing expected properties make a node unready for rules that require them; they do not make the node invalid."
+  ],
+  "nodetype_schema": {
+    "required": [
+      "id",
+      "name",
+      "required_properties",
+      "owned_properties"
+    ],
+    "optional": [
+      "extends",
+      "property_cardinality",
+      "description"
+    ]
+  },
+  "nodetypes": [
+    {
+      "id": "model",
+      "name": "Model",
+      "required_properties": [],
+      "owned_properties": [
+        "name",
+        "visibility",
+        "documentation"
+      ]
+    },
+    {
+      "id": "package",
+      "name": "Package",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "visibility",
+        "documentation",
+        "members"
+      ]
+    },
+    {
+      "id": "class",
+      "name": "Class",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "visibility",
+        "documentation",
+        "attributes",
+        "operations",
+        "template_parameters",
+        "is_abstract",
+        "is_active"
+      ]
+    },
+    {
+      "id": "interface",
+      "name": "Interface",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "visibility",
+        "documentation",
+        "operations",
+        "attributes"
+      ]
+    },
+    {
+      "id": "datatype",
+      "name": "DataType",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "visibility",
+        "documentation",
+        "attributes",
+        "operations"
+      ]
+    },
+    {
+      "id": "enumeration",
+      "name": "Enumeration",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "visibility",
+        "documentation",
+        "literals"
+      ]
+    },
+    {
+      "id": "component",
+      "name": "Component",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "visibility",
+        "documentation",
+        "provided_interfaces",
+        "required_interfaces",
+        "ports"
+      ]
+    },
+    {
+      "id": "node",
+      "name": "Node",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "visibility",
+        "documentation",
+        "deployment_targets"
+      ]
+    },
+    {
+      "id": "artifact",
+      "name": "Artifact",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "visibility",
+        "documentation",
+        "file_name",
+        "manifestations"
+      ]
+    },
+    {
+      "id": "actor",
+      "name": "Actor",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "documentation"
+      ]
+    },
+    {
+      "id": "use_case",
+      "name": "Use Case",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "documentation",
+        "preconditions",
+        "postconditions",
+        "extension_points"
+      ]
+    },
+    {
+      "id": "object",
+      "name": "Object",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "classifier_ref",
+        "slots",
+        "documentation"
+      ]
+    },
+    {
+      "id": "state_machine",
+      "name": "State Machine",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "documentation",
+        "regions"
+      ]
+    },
+    {
+      "id": "state",
+      "name": "State",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "documentation",
+        "entry_behavior",
+        "do_behavior",
+        "exit_behavior"
+      ]
+    },
+    {
+      "id": "activity",
+      "name": "Activity",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "documentation",
+        "parameters"
+      ]
+    },
+    {
+      "id": "action",
+      "name": "Action",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "documentation",
+        "inputs",
+        "outputs"
+      ]
+    },
+    {
+      "id": "lifeline",
+      "name": "Lifeline",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "classifier_ref",
+        "documentation"
+      ]
+    },
+    {
+      "id": "interaction",
+      "name": "Interaction",
+      "required_properties": [
+        "name"
+      ],
+      "owned_properties": [
+        "name",
+        "documentation",
+        "lifelines"
+      ]
+    }
+  ],
+  "readiness": {
+    "ready": "The node satisfies the properties required by the active UML rule evaluation.",
+    "unready": "One or more properties required by the active UML rule evaluation are unresolved or missing.",
+    "principle": "UNRESOLVED != INVALID"
+  }
+}

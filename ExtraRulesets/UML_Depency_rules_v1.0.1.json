@@ -1,0 +1,979 @@
+{
+  "id": "UML_DEPENDENCY_RULES",
+  "name": "UML Dependency Rules",
+  "version": "1.0.1",
+  "ccf_ref": "CANONICAL_CONTRACT_FORMAT",
+  "nodetypes_ref": "UML_NODETYPES",
+  "purpose": "Interpret UML semantics over CCF Entities and Link Properties without introducing a parallel UML relationship store.",
+  "principles": [
+    "All UML relationships are represented through CCF Link Properties.",
+    "UML Dependency Rules interpret Link Properties; they do not define a parallel relation data model.",
+    "Endpoint roles are explicit.",
+    "Direction is semantic and is not inferred from visual placement.",
+    "Undirected or n-ary UML Association is represented as an Association Entity with Association End Links.",
+    "Relationship-specific machine-significant values live in the Link Property value defined by the applicable Ruleset.",
+    "Unresolved rule requirements produce unready state, not invalid canonical data.",
+    "UNRESOLVED != INVALID"
+  ],
+  "property_rulesets": [
+    {
+      "id": "UML_PROPERTY_VISIBILITY",
+      "property_type_ref": "uml.visibility",
+      "value_schema": {
+        "required": [
+          "value"
+        ],
+        "optional": [],
+        "fields": {
+          "value": "public|protected|private|package"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_ATTRIBUTE",
+      "property_type_ref": "uml.attribute",
+      "value_schema": {
+        "required": [
+          "name",
+          "type_ref"
+        ],
+        "optional": [
+          "multiplicity",
+          "default",
+          "visibility",
+          "is_static"
+        ],
+        "fields": {
+          "name": "string",
+          "type_ref": "canonical_or_external_ref",
+          "multiplicity": "uml_multiplicity",
+          "default": "inert_semantic_value",
+          "visibility": "uml_visibility",
+          "is_static": "boolean"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_OPERATION",
+      "property_type_ref": "uml.operation",
+      "value_schema": {
+        "required": [
+          "name"
+        ],
+        "optional": [
+          "parameters",
+          "return_type_ref",
+          "visibility",
+          "is_static",
+          "is_abstract"
+        ],
+        "fields": {
+          "name": "string",
+          "parameters": "array<uml_parameter>",
+          "return_type_ref": "canonical_or_external_ref",
+          "visibility": "uml_visibility",
+          "is_static": "boolean",
+          "is_abstract": "boolean"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_TEMPLATE_PARAMETER",
+      "property_type_ref": "uml.template_parameter",
+      "value_schema": {
+        "required": [
+          "name"
+        ],
+        "optional": [
+          "constraint_ref"
+        ],
+        "fields": {
+          "name": "string",
+          "constraint_ref": "canonical_or_external_ref"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_ABSTRACT",
+      "property_type_ref": "uml.abstract",
+      "value_schema": {
+        "required": [
+          "value"
+        ],
+        "optional": [],
+        "fields": {
+          "value": "boolean"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_ACTIVE",
+      "property_type_ref": "uml.active",
+      "value_schema": {
+        "required": [
+          "value"
+        ],
+        "optional": [],
+        "fields": {
+          "value": "boolean"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_LITERAL",
+      "property_type_ref": "uml.literal",
+      "value_schema": {
+        "required": [
+          "name"
+        ],
+        "optional": [
+          "value"
+        ],
+        "fields": {
+          "name": "string",
+          "value": "inert_semantic_value"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_PORT",
+      "property_type_ref": "uml.port",
+      "value_schema": {
+        "required": [
+          "name"
+        ],
+        "optional": [
+          "type_ref"
+        ],
+        "fields": {
+          "name": "string",
+          "type_ref": "canonical_or_external_ref"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_FILE_NAME",
+      "property_type_ref": "uml.file_name",
+      "value_schema": {
+        "required": [
+          "value"
+        ],
+        "optional": [],
+        "fields": {
+          "value": "string"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_PRECONDITION",
+      "property_type_ref": "uml.precondition",
+      "value_schema": {
+        "required": [
+          "expression"
+        ],
+        "optional": [],
+        "fields": {
+          "expression": "string"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_POSTCONDITION",
+      "property_type_ref": "uml.postcondition",
+      "value_schema": {
+        "required": [
+          "expression"
+        ],
+        "optional": [],
+        "fields": {
+          "expression": "string"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_EXTENSION_POINT",
+      "property_type_ref": "uml.extension_point",
+      "value_schema": {
+        "required": [
+          "name"
+        ],
+        "optional": [
+          "location"
+        ],
+        "fields": {
+          "name": "string",
+          "location": "string"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_SLOT",
+      "property_type_ref": "uml.slot",
+      "value_schema": {
+        "required": [
+          "feature_ref",
+          "value"
+        ],
+        "optional": [],
+        "fields": {
+          "feature_ref": "canonical_or_external_ref",
+          "value": "inert_semantic_value"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_ENTRY_BEHAVIOR",
+      "property_type_ref": "uml.entry_behavior",
+      "value_schema": {
+        "required": [
+          "behavior_ref"
+        ],
+        "optional": [],
+        "fields": {
+          "behavior_ref": "canonical_or_external_ref"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_DO_BEHAVIOR",
+      "property_type_ref": "uml.do_behavior",
+      "value_schema": {
+        "required": [
+          "behavior_ref"
+        ],
+        "optional": [],
+        "fields": {
+          "behavior_ref": "canonical_or_external_ref"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_EXIT_BEHAVIOR",
+      "property_type_ref": "uml.exit_behavior",
+      "value_schema": {
+        "required": [
+          "behavior_ref"
+        ],
+        "optional": [],
+        "fields": {
+          "behavior_ref": "canonical_or_external_ref"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_PARAMETER",
+      "property_type_ref": "uml.parameter",
+      "value_schema": {
+        "required": [
+          "name"
+        ],
+        "optional": [
+          "type_ref",
+          "direction",
+          "default"
+        ],
+        "fields": {
+          "name": "string",
+          "type_ref": "canonical_or_external_ref",
+          "direction": "in|out|inout|return",
+          "default": "inert_semantic_value"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_INPUT_PIN",
+      "property_type_ref": "uml.input_pin",
+      "value_schema": {
+        "required": [
+          "name"
+        ],
+        "optional": [
+          "type_ref",
+          "multiplicity"
+        ],
+        "fields": {
+          "name": "string",
+          "type_ref": "canonical_or_external_ref",
+          "multiplicity": "uml_multiplicity"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_OUTPUT_PIN",
+      "property_type_ref": "uml.output_pin",
+      "value_schema": {
+        "required": [
+          "name"
+        ],
+        "optional": [
+          "type_ref",
+          "multiplicity"
+        ],
+        "fields": {
+          "name": "string",
+          "type_ref": "canonical_or_external_ref",
+          "multiplicity": "uml_multiplicity"
+        }
+      }
+    },
+    {
+      "id": "UML_PROPERTY_ASSOCIATION_NAME",
+      "property_type_ref": "uml.association_name",
+      "value_schema": {
+        "required": [
+          "value"
+        ],
+        "optional": [],
+        "fields": {
+          "value": "string"
+        }
+      }
+    }
+  ],
+  "link_rulesets": [
+    {
+      "id": "UML_RULE_ASSOCIATION_END",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.association_end",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "role_name",
+          "multiplicity",
+          "navigable",
+          "aggregation"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "role_name": "string",
+          "multiplicity": "uml_multiplicity",
+          "navigable": "boolean",
+          "aggregation": "none|shared|composite"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "association",
+        "child_ref": "participant"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "association"
+        ]
+      },
+      "constraints": [
+        "An Association may have two or more association_end Links.",
+        "aggregation=shared or composite is expressed on the Association End at the whole/composite side.",
+        "For aggregation=composite, a part instance is composite-owned according to UML composition semantics."
+      ]
+    },
+    {
+      "id": "UML_RULE_DEPENDENCY",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.dependency",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "client",
+        "child_ref": "supplier"
+      },
+      "property_owner": "parent_owner"
+    },
+    {
+      "id": "UML_RULE_USAGE",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.usage",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "client",
+        "child_ref": "supplier"
+      },
+      "property_owner": "parent_owner"
+    },
+    {
+      "id": "UML_RULE_GENERALIZATION",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.generalization",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "specific",
+        "child_ref": "general"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "class",
+          "interface",
+          "datatype"
+        ],
+        "child_owner_nodetypes": [
+          "class",
+          "interface",
+          "datatype"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_REALIZATION",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.realization",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "implementing_classifier",
+        "child_ref": "specification"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "class",
+          "component"
+        ],
+        "child_owner_nodetypes": [
+          "interface",
+          "class"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_PACKAGE_IMPORT",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.package_import",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "importing_package",
+        "child_ref": "imported_package"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "package",
+          "model"
+        ],
+        "child_owner_nodetypes": [
+          "package",
+          "model"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_INCLUDE",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.include",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "including_use_case",
+        "child_ref": "included_use_case"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "use_case"
+        ],
+        "child_owner_nodetypes": [
+          "use_case"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_EXTEND",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.extend",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "extension_point_ref",
+          "condition"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "extension_point_ref": "canonical_ref",
+          "condition": "string"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "extending_use_case",
+        "child_ref": "extended_use_case"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "use_case"
+        ],
+        "child_owner_nodetypes": [
+          "use_case"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_DEPLOYMENT",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.deployment",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "deployment_target",
+        "child_ref": "deployed_artifact"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "node"
+        ],
+        "child_owner_nodetypes": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_MANIFESTATION",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.manifestation",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "artifact",
+        "child_ref": "modeled_element"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_TRANSITION",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.transition",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "trigger",
+          "guard",
+          "effect_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "trigger": "string",
+          "guard": "string",
+          "effect_ref": "canonical_or_external_ref"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "source_state",
+        "child_ref": "target_state"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "state"
+        ],
+        "child_owner_nodetypes": [
+          "state"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_CONTROL_FLOW",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.control_flow",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "control_source",
+        "child_ref": "control_target"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "action",
+          "activity"
+        ],
+        "child_owner_nodetypes": [
+          "action",
+          "activity"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_OBJECT_FLOW",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.object_flow",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "object_type_ref",
+          "transformation_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "object_type_ref": "canonical_or_external_ref",
+          "transformation_ref": "canonical_or_external_ref"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "object_source",
+        "child_ref": "object_target"
+      },
+      "property_owner": "parent_owner"
+    },
+    {
+      "id": "UML_RULE_MESSAGE",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.message",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "message_sort",
+          "operation_ref",
+          "arguments",
+          "return_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "message_sort": "synchCall|asynchCall|asynchSignal|reply|createMessage|deleteMessage",
+          "operation_ref": "canonical_or_external_ref",
+          "arguments": "array<inert_semantic_value>",
+          "return_ref": "canonical_or_external_ref"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "sending_lifeline",
+        "child_ref": "receiving_lifeline"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "lifeline"
+        ],
+        "child_owner_nodetypes": [
+          "lifeline"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_MEMBERSHIP",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.membership",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "namespace_or_container",
+        "child_ref": "member"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "model",
+          "package",
+          "interaction",
+          "state_machine"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_PROVIDES",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.provides",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "component",
+        "child_ref": "provided_interface"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "component"
+        ],
+        "child_owner_nodetypes": [
+          "interface"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_REQUIRES",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.requires",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "component",
+        "child_ref": "required_interface"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "component"
+        ],
+        "child_owner_nodetypes": [
+          "interface"
+        ]
+      }
+    },
+    {
+      "id": "UML_RULE_CLASSIFIER",
+      "property_type_ref": "link",
+      "link_type_ref": "uml.classifier",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "instance",
+        "child_ref": "classifier"
+      },
+      "property_owner": "parent_owner",
+      "endpoint_constraints": {
+        "parent_owner_nodetypes": [
+          "object",
+          "lifeline"
+        ],
+        "child_owner_nodetypes": [
+          "class",
+          "interface",
+          "datatype",
+          "component",
+          "actor"
+        ]
+      }
+    }
+  ],
+  "shared_value_types": {
+    "uml_multiplicity": {
+      "required": [
+        "lower",
+        "upper"
+      ],
+      "fields": {
+        "lower": "non_negative_integer",
+        "upper": "non_negative_integer|unbounded"
+      }
+    }
+  },
+  "readiness": {
+    "ready": "The Property or Link resolves to a UML Ruleset and its required semantic constraints are satisfied.",
+    "unready": "One or more required UML semantics, endpoints or endpoint NodeTypes are unresolved or not yet satisfied.",
+    "unready_reasons": [
+      "unresolved_ruleset",
+      "unresolved_parent_ref",
+      "unresolved_child_ref",
+      "unresolved_nodetype",
+      "endpoint_constraint_not_satisfied",
+      "required_property_missing"
+    ],
+    "principle": "Unready UML structure remains canonical, visible and editable."
+  }
+}

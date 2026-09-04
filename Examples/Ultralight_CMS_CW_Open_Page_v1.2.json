@@ -1,0 +1,329 @@
+{
+  "format": {
+    "contract_format": "CANONICAL_CONTRACT",
+    "format_version": "2.0"
+  },
+  "identity": {
+    "id": "ULTRALIGHT_CMS",
+    "name": "Ultralight CMS",
+    "type": "system_architecture",
+    "version": "1.2.0"
+  },
+  "status": "unlocked",
+  "purpose": "Define the implementation structure and explicit open-page causal path of an ultralight CMS where canonical site data is loaded from one JSON source, presentation is provided by an independent CSS template, and opening a page reads the required data surfaces before rendering derived HTML output.",
+  "scope": {
+    "owns": [
+      "CMS implementation structure",
+      "component boundaries",
+      "structural dependencies",
+      "open-page causal structure",
+      "explicit data surfaces required for causal traceability"
+    ],
+    "does_not_own": [
+      "site content values",
+      "CSS styling values",
+      "rendered HTML values",
+      "runtime page-request values"
+    ]
+  },
+  "entities": [
+    {
+      "id": "CMS_ROOT",
+      "name": "Ultralight CMS",
+      "entity_type_ref": "system",
+      "status": "unlocked",
+      "properties": [
+        {
+          "id": "DATA_PAGE_REQUEST",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "page_request",
+            "value": null,
+            "properties": {}
+          }
+        },
+        {
+          "id": "EVENT_OPEN_PAGE",
+          "property_type_ref": "event",
+          "ruleset_ref": "RULESET_EVENT",
+          "status": "unlocked",
+          "value": {
+            "event_type_ref": "open_page",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_PAGE_REQUEST_TO_OPEN_PAGE",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_EVENT_INPUT",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "event_input",
+            "parent_ref": "DATA_PAGE_REQUEST",
+            "child_ref": "EVENT_OPEN_PAGE",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_JSON_DATA_TO_OPEN_PAGE",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_EVENT_READ",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "event_read",
+            "parent_ref": "DATA_JSON_DOCUMENT",
+            "child_ref": "EVENT_OPEN_PAGE",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_CSS_DATA_TO_OPEN_PAGE",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_EVENT_READ",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "event_read",
+            "parent_ref": "DATA_CSS_STYLESHEET",
+            "child_ref": "EVENT_OPEN_PAGE",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_OPEN_PAGE_TO_RENDER_PAGE",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_EVENT_EFFECT",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "event_effect",
+            "parent_ref": "EVENT_OPEN_PAGE",
+            "child_ref": "EFFECT_RENDER_PAGE",
+            "properties": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "JSON_SOURCE",
+      "name": "JSON Source",
+      "entity_type_ref": "static_file",
+      "status": "unlocked",
+      "properties": [
+        {
+          "id": "DATA_JSON_DOCUMENT",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "json_document",
+            "value": null,
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_CMS_JSON",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_CONTAINMENT",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "containment",
+            "parent_ref": "CMS_ROOT",
+            "child_ref": "JSON_SOURCE",
+            "properties": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "RENDERER",
+      "name": "Renderer",
+      "entity_type_ref": "component",
+      "status": "unlocked",
+      "properties": [
+        {
+          "id": "LINK_CMS_RENDERER",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_CONTAINMENT",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "containment",
+            "parent_ref": "CMS_ROOT",
+            "child_ref": "RENDERER",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_JSON_RENDERER",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_DEPENDENCY",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "dependency",
+            "parent_ref": "JSON_SOURCE",
+            "child_ref": "RENDERER",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_CSS_RENDERER",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_DEPENDENCY",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "dependency",
+            "parent_ref": "CSS_TEMPLATE",
+            "child_ref": "RENDERER",
+            "properties": {}
+          }
+        },
+        {
+          "id": "EFFECT_RENDER_PAGE",
+          "property_type_ref": "effect",
+          "ruleset_ref": "RULESET_EFFECT",
+          "status": "unlocked",
+          "value": {
+            "effect_type_ref": "render_page",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_RENDER_PAGE_TO_HTML_DATA",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_EFFECT_TARGET",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "effect_target",
+            "parent_ref": "EFFECT_RENDER_PAGE",
+            "child_ref": "DATA_HTML_DOCUMENT",
+            "properties": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "CSS_TEMPLATE",
+      "name": "CSS Template",
+      "entity_type_ref": "static_file",
+      "status": "unlocked",
+      "properties": [
+        {
+          "id": "DATA_CSS_STYLESHEET",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "css_stylesheet",
+            "value": null,
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_CMS_CSS",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_CONTAINMENT",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "containment",
+            "parent_ref": "CMS_ROOT",
+            "child_ref": "CSS_TEMPLATE",
+            "properties": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "HTML_OUTPUT",
+      "name": "HTML Output",
+      "entity_type_ref": "derived_output",
+      "status": "unlocked",
+      "properties": [
+        {
+          "id": "DATA_HTML_DOCUMENT",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "html_document",
+            "value": null,
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_CMS_OUTPUT",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_CONTAINMENT",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "containment",
+            "parent_ref": "CMS_ROOT",
+            "child_ref": "HTML_OUTPUT",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_RENDERER_OUTPUT",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_DEPENDENCY",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "dependency",
+            "parent_ref": "RENDERER",
+            "child_ref": "HTML_OUTPUT",
+            "properties": {}
+          }
+        }
+      ]
+    }
+  ],
+  "constraints": {
+    "invariants": [
+      {
+        "id": "CMS_SINGLE_JSON_SOURCE",
+        "rule": "The CMS implementation uses one canonical JSON source for site data."
+      },
+      {
+        "id": "CMS_CSS_SEPARATE",
+        "rule": "Presentation styling is structurally separate from canonical JSON data."
+      },
+      {
+        "id": "CMS_RENDERER_NOT_CANONICAL_DATA_AUTHORITY",
+        "rule": "The renderer does not become an independent canonical data authority."
+      },
+      {
+        "id": "CMS_OUTPUT_DERIVED",
+        "rule": "Rendered HTML output is derived and is not canonical source data."
+      },
+      {
+        "id": "CMS_NO_DATABASE_REQUIRED",
+        "rule": "The architecture does not require a database."
+      },
+      {
+        "id": "CMS_OPEN_PAGE_CAUSAL_PATH_EXPLICIT",
+        "rule": "The Open Page causal path is represented through explicit data, Event, Effect and effect-target Properties without inferring causality from dependency Links or rendering."
+      }
+    ]
+  },
+  "references": [
+    {
+      "id": "REF_CCF",
+      "target_ref": "CANONICAL_CONTRACT_FORMAT",
+      "purpose": "Canonical contract structure and semantic model."
+    },
+    {
+      "id": "REF_CW_RULESETS",
+      "target_ref": "CW_RULESETS",
+      "purpose": "CW Property, Link, Event, Effect, causality and flow semantics."
+    },
+    {
+      "id": "REF_CW_NODETYPES",
+      "target_ref": "CW_NODETYPES",
+      "purpose": "CW Entity NodeType resolution and Property expectations."
+    }
+  ],
+  "gaps": [],
+  "prose": {
+    "summary": "Minimal CMS implementation structure consisting of one JSON data source, one renderer, one CSS presentation source, one Open Page Event, one Render Page Effect and one derived HTML output data surface.",
+    "notes": "The example intentionally contains no site content or styling values. The page request, JSON document, CSS stylesheet and HTML document are explicit Data Properties so the modeled Open Page causal path can be traced without semantic guessing."
+  }
+}

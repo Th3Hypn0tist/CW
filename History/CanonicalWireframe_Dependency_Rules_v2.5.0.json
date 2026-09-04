@@ -1,0 +1,905 @@
+{
+  "id": "CW_RULESETS",
+  "name": "CanonicalWireframe Dependency Rules",
+  "version": "2.5.0",
+  "ccf_ref": "CANONICAL_CONTRACT_FORMAT",
+  "nodetypes_ref": "CW_NODETYPES",
+  "purpose": "Define how CanonicalWireframe interprets CCF Properties, Links, Events, Effects, causal relations, Link ownership/placement, Required Link satisfaction and flow.",
+  "principles": [
+    "Canonical CCF structure remains authoritative.",
+    "NodeTypes define Entity-local Property expectations and mandatory Required Link declarations.",
+    "Rulesets define Property value semantics, Link interpretation, semantic roles, Link Property ownership/placement, flow and unresolved impact direction.",
+    "Required Link satisfaction is explicit canonical data through Link.value.required_link_ref.",
+    "Projection behavior is derived from resolved Ruleset semantics and is not canonical Ruleset state.",
+    "No semantics are inferred from filenames, extensions, names, paths, geometry, color or visual appearance.",
+    "Unresolved Ruleset or Required Link requirements produce unready state, not invalid canonical data unless declared canonical data itself is malformed or contradictory.",
+    "UNRESOLVED != INVALID",
+    "Binding consumption is represented by an explicit canonical Link relation and never by free-text name lookup or transient visual trace lines.",
+    "Binding trace visualization may explain canonical routing but never defines canonical routing.",
+    "Forward and backward traversal through Binding follows canonical source and binding-consumption Links.",
+    "Abstraction inputs created by missing requirements are direct projections of concrete Required Link requirement instances.",
+    "Required Link input projection does not create an intermediate canonical Input Entity or boundary_input Link.",
+    "The external Abstraction input preserves the original required_link_ref identity and disappears when that requirement is satisfied."
+  ],
+  "shared_value_types": {
+    "required_link_ref": {
+      "required": [
+        "entity_ref",
+        "required_link_id"
+      ],
+      "fields": {
+        "entity_ref": "canonical_entity_ref",
+        "required_link_id": "string"
+      },
+      "meaning": "Explicitly binds one canonical Link Property to one concrete Required Link requirement instance.",
+      "requirement_identity": "entity_ref + required_link_id",
+      "one_link_one_requirement": true
+    }
+  },
+  "required_links": {
+    "authority": "NodeType.required_links declares the requirement; the canonical Link Property remains the relationship authority.",
+    "satisfaction_binding": "A Link satisfies a Required Link only when value.required_link_ref resolves to the requiring Entity and effective Required Link id.",
+    "all_entries_mandatory": true,
+    "same_link_type_entries_are_distinct": true,
+    "derived_links_satisfy": false,
+    "unbound_links_satisfy": false,
+    "input_boundary_satisfies": false,
+    "authoring": {
+      "zero_compatible_unsatisfied": "Author the Link normally when otherwise valid; required_link_ref is absent.",
+      "one_compatible_unsatisfied": "Structure may bind the newly authored Link automatically to that one requirement instance.",
+      "multiple_compatible_unsatisfied": "User MUST explicitly choose exactly one compatible requirement instance before commit.",
+      "no_implicit_choice": true
+    },
+    "validation": [
+      "required_link_ref.entity_ref resolves to the requiring Entity",
+      "required_link_ref.required_link_id resolves to an effective Required Link declaration on that Entity",
+      "Link link_type_ref matches the declaration",
+      "The requiring Entity occupies the declaration self_role",
+      "Declared opposite-endpoint constraints match",
+      "One Link is not reused for another concrete requirement instance"
+    ],
+    "invalid": "A present required_link_ref that does not resolve or contradicts Link semantics is invalid canonical data.",
+    "unready": "A missing Required Link attachment leaves the requiring Entity UNRESOLVED/unready.",
+    "abstraction_input": {
+      "canonical_source": "concrete Required Link requirement instance",
+      "projection": "unsatisfied internal requirement projects directly as an Abstraction input",
+      "boundary_entity": false,
+      "boundary_input_link": false,
+      "requirement_identity_preserved": true,
+      "satisfaction": "A compatible external canonical Link authored through the projected input MUST carry value.required_link_ref pointing to the original internal requirement instance.",
+      "no_intermediate_satisfaction": true,
+      "no_copied_type": true
+    }
+  },
+  "flow_patterns": [
+    {
+      "id": "static",
+      "name": "Static",
+      "legs": [],
+      "meaning": "The relation is semantically present but defines no transport leg."
+    },
+    {
+      "id": "one_way",
+      "name": "One Way",
+      "legs": [
+        {
+          "phase": "transfer",
+          "direction": "parent_ref_to_child_ref"
+        }
+      ]
+    },
+    {
+      "id": "request_reply",
+      "name": "Request Reply",
+      "legs": [
+        {
+          "phase": "request",
+          "direction": "child_ref_to_parent_ref"
+        },
+        {
+          "phase": "reply",
+          "direction": "parent_ref_to_child_ref"
+        }
+      ]
+    },
+    {
+      "id": "continuous",
+      "name": "Continuous",
+      "legs": [
+        {
+          "phase": "stream",
+          "direction": "parent_ref_to_child_ref",
+          "continuous": true
+        }
+      ]
+    }
+  ],
+  "property_rulesets": [
+    {
+      "id": "RULESET_MOUNT",
+      "property_type_ref": "mount",
+      "value_schema": {
+        "required": [
+          "mount_type_ref",
+          "target_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "mount_type_ref": "string",
+          "target_ref": "canonical_or_external_ref",
+          "properties": "object"
+        }
+      },
+      "readiness": [
+        "mount_type_ref is present",
+        "target_ref is explicit"
+      ]
+    },
+    {
+      "id": "RULESET_EVENT",
+      "property_type_ref": "event",
+      "value_schema": {
+        "required": [
+          "event_type_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "event_type_ref": "string",
+          "properties": "object"
+        }
+      },
+      "readiness": [
+        "event_type_ref is present"
+      ]
+    },
+    {
+      "id": "RULESET_EFFECT",
+      "property_type_ref": "effect",
+      "value_schema": {
+        "required": [
+          "effect_type_ref",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "effect_type_ref": "string",
+          "properties": "object"
+        }
+      },
+      "readiness": [
+        "effect_type_ref is present"
+      ]
+    },
+    {
+      "id": "RULESET_DATA",
+      "property_type_ref": "data",
+      "value_schema": {
+        "required": [
+          "data_type_ref",
+          "value",
+          "properties"
+        ],
+        "optional": [],
+        "fields": {
+          "data_type_ref": "string",
+          "value": "inert_semantic_value",
+          "properties": "object"
+        }
+      },
+      "readiness": [
+        "data_type_ref is present"
+      ]
+    },
+    {
+      "id": "RULESET_FUNCTION",
+      "property_type_ref": "function",
+      "value_schema": {
+        "required": [
+          "function_type_ref",
+          "properties"
+        ],
+        "optional": [
+          "input_refs",
+          "output_refs"
+        ],
+        "fields": {
+          "function_type_ref": "string",
+          "properties": "object",
+          "input_refs": "array<canonical_ref>",
+          "output_refs": "array<canonical_ref>"
+        }
+      },
+      "readiness": [
+        "function_type_ref is present",
+        "every input_refs and output_refs item resolves when present"
+      ]
+    }
+  ],
+  "link_rulesets": [
+    {
+      "id": "RULESET_LINK_DEPENDENCY",
+      "property_type_ref": "link",
+      "link_type_ref": "dependency",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "dependency_target",
+        "child_ref": "dependent"
+      },
+      "property_owner": "dependent",
+      "unresolved_impact": {
+        "from_role": "dependency_target",
+        "to_role": "dependent"
+      }
+    },
+    {
+      "id": "RULESET_LINK_OWNERSHIP",
+      "property_type_ref": "link",
+      "link_type_ref": "ownership",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "owner",
+        "child_ref": "owned"
+      },
+      "property_owner": "owned",
+      "unresolved_impact": {
+        "from_role": "owner",
+        "to_role": "owned"
+      },
+      "constraints": [
+        "Each owned endpoint may have zero or one active ownership owner.",
+        "Assigning a new ownership owner replaces the previous active ownership relation."
+      ]
+    },
+    {
+      "id": "RULESET_LINK_AUTHORITY",
+      "property_type_ref": "link",
+      "link_type_ref": "authority",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "authority",
+        "child_ref": "governed"
+      },
+      "property_owner": "governed",
+      "unresolved_impact": {
+        "from_role": "authority",
+        "to_role": "governed"
+      }
+    },
+    {
+      "id": "RULESET_LINK_CONTAINMENT",
+      "property_type_ref": "link",
+      "link_type_ref": "containment",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "container",
+        "child_ref": "contained"
+      },
+      "property_owner": "contained",
+      "unresolved_impact": {
+        "from_role": "container",
+        "to_role": "contained"
+      }
+    },
+    {
+      "id": "RULESET_LINK_ARCHITECTURE_PARENT",
+      "property_type_ref": "link",
+      "link_type_ref": "architecture_parent",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "architecture_parent",
+        "child_ref": "architecture_child"
+      },
+      "property_owner": "architecture_child",
+      "unresolved_impact": {
+        "from_role": "architecture_parent",
+        "to_role": "architecture_child"
+      }
+    },
+    {
+      "id": "RULESET_LINK_RELATION",
+      "property_type_ref": "link",
+      "link_type_ref": "relation",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "relation_parent",
+        "child_ref": "relation_child"
+      },
+      "property_owner": "relation_child"
+    },
+    {
+      "id": "RULESET_LINK_EVENT_CAUSE",
+      "property_type_ref": "link",
+      "link_type_ref": "event_cause",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "cause_source",
+        "child_ref": "event"
+      },
+      "property_owner": "event",
+      "unresolved_impact": {
+        "from_role": "cause_source",
+        "to_role": "event"
+      },
+      "flow": {
+        "pattern_ref": "static"
+      },
+      "endpoint_constraints": {
+        "child_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_READ",
+      "property_type_ref": "link",
+      "link_type_ref": "event_read",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "observed_source",
+        "child_ref": "event"
+      },
+      "property_owner": "event",
+      "unresolved_impact": {
+        "from_role": "observed_source",
+        "to_role": "event"
+      },
+      "flow": {
+        "resolver": "parent_owner_nodetype",
+        "cases": [
+          {
+            "parent_owner_nodetype_ref": "static_file",
+            "pattern_ref": "one_way"
+          },
+          {
+            "parent_owner_nodetype_ref": "database",
+            "pattern_ref": "request_reply"
+          },
+          {
+            "parent_owner_nodetype_ref": "api",
+            "pattern_ref": "request_reply"
+          },
+          {
+            "parent_owner_nodetype_ref": "stream_source",
+            "pattern_ref": "continuous"
+          }
+        ],
+        "no_match": "unready"
+      },
+      "endpoint_constraints": {
+        "child_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_INPUT",
+      "property_type_ref": "link",
+      "link_type_ref": "event_input",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "input_source",
+        "child_ref": "event"
+      },
+      "property_owner": "event",
+      "unresolved_impact": {
+        "from_role": "input_source",
+        "to_role": "event"
+      },
+      "flow": {
+        "pattern_ref": "one_way"
+      },
+      "endpoint_constraints": {
+        "child_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_OUTPUT",
+      "property_type_ref": "link",
+      "link_type_ref": "event_output",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "event",
+        "child_ref": "output_target"
+      },
+      "property_owner": "event",
+      "unresolved_impact": {
+        "from_role": "event",
+        "to_role": "output_target"
+      },
+      "flow": {
+        "pattern_ref": "one_way"
+      },
+      "endpoint_constraints": {
+        "parent_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_EFFECT",
+      "property_type_ref": "link",
+      "link_type_ref": "event_effect",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "event",
+        "child_ref": "effect"
+      },
+      "property_owner": "event",
+      "unresolved_impact": {
+        "from_role": "event",
+        "to_role": "effect"
+      },
+      "flow": {
+        "pattern_ref": "one_way"
+      },
+      "endpoint_constraints": {
+        "parent_ref": [
+          "property:event"
+        ],
+        "child_ref": [
+          "property:effect"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_CONDITION",
+      "property_type_ref": "link",
+      "link_type_ref": "event_condition",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "condition_source",
+        "child_ref": "event"
+      },
+      "property_owner": "event",
+      "unresolved_impact": {
+        "from_role": "condition_source",
+        "to_role": "event"
+      },
+      "endpoint_constraints": {
+        "child_ref": [
+          "property:event"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EFFECT_TARGET",
+      "property_type_ref": "link",
+      "link_type_ref": "effect_target",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "effect",
+        "child_ref": "effect_target"
+      },
+      "property_owner": "effect",
+      "unresolved_impact": {
+        "from_role": "effect",
+        "to_role": "effect_target"
+      },
+      "flow": {
+        "pattern_ref": "one_way"
+      },
+      "endpoint_constraints": {
+        "parent_ref": [
+          "property:effect"
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_BINDING_CONSUME",
+      "property_type_ref": "link",
+      "link_type_ref": "binding_consume",
+      "value_schema": {
+        "required": [
+          "link_type_ref",
+          "parent_ref",
+          "child_ref",
+          "properties"
+        ],
+        "optional": [
+          "required_link_ref"
+        ],
+        "fields": {
+          "link_type_ref": "string",
+          "parent_ref": "canonical_ref",
+          "child_ref": "canonical_ref",
+          "properties": "object",
+          "required_link_ref": "required_link_ref|null"
+        }
+      },
+      "semantic_roles": {
+        "parent_ref": "binding",
+        "child_ref": "binding_consumer"
+      },
+      "property_owner": "binding_consumer",
+      "flow": {
+        "pattern_ref": "static"
+      },
+      "endpoint_constraints": {
+        "parent_ref": [
+          "entity_nodetype:binding"
+        ],
+        "child_ref": [
+          "entity_nodetype:output"
+        ]
+      },
+      "scope_constraints": [
+        "Binding and consuming Output MUST belong to the same Abstraction semantic source.",
+        "Cross-Abstraction Binding consumption is invalid.",
+        "Binding consumption is non-spatial; geometry never determines or limits the relation."
+      ],
+      "transported_semantics": {
+        "type_signature": "derived from the Binding resolved canonical source endpoint and its governing Ruleset",
+        "copied_type_field_forbidden": true,
+        "binding_identity_exposed_outside_abstraction": false
+      },
+      "trace_semantics": {
+        "canonical": true,
+        "forward": "source endpoint -> canonical source Link -> Binding -> binding_consume -> Output -> downstream canonical route",
+        "backward": "downstream canonical route -> Output -> binding_consume -> Binding -> canonical source Link -> source endpoint",
+        "visual_trace_line_is_authority": false,
+        "visual_trace_line_is_persistent": false,
+        "visual_trace_line_creates_link": false
+      }
+    }
+  ],
+  "event_required_targets": {
+    "rule": "Event-related Required Link declarations may contain any number of independent mandatory targets.",
+    "all_required": true,
+    "same_link_type_allowed": true,
+    "same_visual_event_socket_may_aggregate": true,
+    "visual_aggregation_changes_canonical_multiplicity": false,
+    "one_event_link_satisfies_multiple_required_targets": false
+  },
+  "event_read": {
+    "parallel_reads": true,
+    "effect_barrier": "Event Effects become ready after all required reads for that Event have reached their Ruleset-defined ready condition.",
+    "ready_condition_by_flow": {
+      "one_way": "transfer_complete",
+      "request_reply": "reply_complete",
+      "continuous": "ruleset_defined",
+      "static": "relation_ready"
+    }
+  },
+  "derived_dependency": {
+    "rule": "Cross-owner Event use may derive a locked Entity-level dependency where the governing Event contract declares that use dependency-forming.",
+    "canonical_authority": "The specific causal/Event Link remains authority.",
+    "persist_as_canonical_dependency": false,
+    "locked": true,
+    "satisfies_required_link": false,
+    "multiple_causes_may_aggregate_visually": true
+  },
+  "unresolved": {
+    "rule": "Unresolved impact propagates only from unresolved origin through each Link Ruleset's explicit unresolved_impact direction.",
+    "no_bidirectional_default": true,
+    "no_geometry_or_color_inference": true,
+    "required_link_origin": "The requiring Entity is the unresolved origin when any concrete Required Link requirement is below min."
+  },
+  "readiness": {
+    "ready": "All active Property, Link, Required Link and flow requirements are satisfied.",
+    "unready": "One or more requirements are unresolved, missing or not yet satisfied.",
+    "unready_reasons": [
+      "missing_required_property",
+      "missing_required_link",
+      "unresolved_nodetype",
+      "unresolved_endpoint",
+      "unresolved_ruleset",
+      "unresolved_flow",
+      "cardinality_not_satisfied",
+      "event_read_not_ready",
+      "binding_source_unresolved",
+      "abstraction_required_input_unresolved"
+    ],
+    "invalid_examples": [
+      "required_link_ref does not resolve to the requiring Entity and effective Required Link id",
+      "required_link_ref points to a requirement whose Link type, self role or endpoint constraints do not match the Link",
+      "declared Link property_owner cannot be resolved through the Ruleset semantic_roles",
+      "binding_consume references a Binding or Output outside the same Abstraction semantic source",
+      "binding_consume parent_ref does not resolve to an Entity of NodeType binding",
+      "binding_consume child_ref does not resolve to an Entity of NodeType output"
+    ],
+    "principle": "Unready structure remains canonical, visible and editable. UNRESOLVED != INVALID."
+  },
+  "authoring": {
+    "direct_socket_link_creation": true,
+    "link_type_resolution": "Resolve valid Link Rulesets and endpoint roles from canonical context.",
+    "multiple_valid_link_types": "Require explicit Link-type choice.",
+    "required_link_binding": {
+      "zero_compatible_unsatisfied": "Create ordinary valid Link with no required_link_ref.",
+      "one_compatible_unsatisfied": "May auto-bind to the one concrete requirement instance.",
+      "multiple_compatible_unsatisfied": "Require explicit user choice of exactly one concrete requirement instance before commit."
+    },
+    "no_semantic_guessing": true,
+    "binding_consumption": {
+      "source": "binding",
+      "target": "output",
+      "link_type_ref": "binding_consume",
+      "selection_ui": "Output may provide searchable Binding selection restricted to the same Abstraction.",
+      "selection_value": "canonical Binding Entity id",
+      "free_text_reference": false,
+      "same_abstraction_only": true
+    },
+    "abstraction_required_input": {
+      "source": "projected concrete Required Link requirement instance",
+      "result": "direct canonical Link creation carrying value.required_link_ref",
+      "intermediate_input_entity": false,
+      "intermediate_boundary_link": false,
+      "multiple_compatible_requirements": "explicit user choice required"
+    }
+  },
+  "binding": {
+    "scope": {
+      "same_abstraction_only": true,
+      "top_level_workspace_use": false,
+      "cross_abstraction_lookup": false,
+      "cross_abstraction_consumption": false
+    },
+    "identity": {
+      "reference_authority": "Binding Entity canonical id",
+      "display_lookup_name": "Binding Entity.name",
+      "free_text_reference": false
+    },
+    "input": {
+      "cardinality": "exactly one resolved incoming canonical semantic source at a time",
+      "absence": "UNRESOLVED",
+      "typing": "derived from the resolved source endpoint and governing Ruleset",
+      "copied_signature_forbidden": true
+    },
+    "output_consumption": {
+      "consumer_nodetype_ref": "output",
+      "link_type_ref": "binding_consume",
+      "same_abstraction_only": true,
+      "multiplicity": "any number of Outputs may consume one Binding",
+      "transported_semantics": "derived from Binding resolved source semantics",
+      "binding_identity_visible_outside_abstraction": false
+    },
+    "trace": {
+      "canonical_path": "source endpoint -> source Link -> Binding -> binding_consume -> Output -> downstream route",
+      "forward_backward_traversal_uses_canonical_references": true,
+      "temporary_visual_lines": true,
+      "visual_lines_are_canonical_links": false,
+      "visual_lines_are_persistent": false,
+      "visual_lines_have_validation_effect": false,
+      "visual_lines_have_readiness_effect": false,
+      "visual_lines_determine_membership": false
+    }
+  },
+  "abstraction_input_projection": {
+    "source": "unsatisfied concrete Required Link requirement instance",
+    "identity": "required_link_ref = { entity_ref, required_link_id }",
+    "rendered_as": "derived inbound socket/item on the parent Abstraction Entity",
+    "semantic_type": "resolved from the Required Link declaration and governing Link Ruleset; never copied onto the projected socket",
+    "authoring": {
+      "drag_to_input": "Create the chosen valid canonical Link directly against the original internal requirement context and persist its value.required_link_ref.",
+      "multiple_compatible_required": "If multiple projected requirements accept the same Link type, the user explicitly selects the concrete Required Link requirement instance being satisfied."
+    },
+    "canonical_mutation": "only the newly authored canonical Link is created; the projected input itself is not canonical data",
+    "resolved_transition": "When the original Required Link minimum becomes satisfied, the corresponding unresolved input projection disappears.",
+    "no_boundary_input_link": true,
+    "no_input_entity_required": true
+  }
+}

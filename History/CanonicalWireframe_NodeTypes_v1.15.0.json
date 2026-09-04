@@ -1,0 +1,835 @@
+{
+  "id": "CW_NODETYPES",
+  "name": "CanonicalWireframe NodeTypes",
+  "version": "1.15.0",
+  "ccf_ref": "CANONICAL_CONTRACT_FORMAT",
+  "purpose": "Define CanonicalWireframe NodeTypes, Entity-local Property expectations, Required Links, abstraction interfaces and Binding semantics using the Canonical Contract Format resolved through the pinned immutable specification closure.",
+  "model": {
+    "ccf": "Defines canonical Entity and Property structure.",
+    "nodetypes": "Define what Property types an Entity owns or is expected to own and which canonical Link attachments are mandatory for readiness.",
+    "rulesets": "Interpret canonical Property values, Link semantics, endpoint roles, causality, flow, Link ownership/placement and unresolved impact direction.",
+    "projection": "Consumes resolved semantic/readiness state but never becomes canonical authority."
+  },
+  "rules": [
+    "Entity.entity_type_ref resolves a NodeType by id inside the NodeTypes registry pinned by the containing artifact's immutable specification_ref.",
+    "NodeTypes describe Entity-local Property expectations and Required Link declarations.",
+    "NodeTypes do not define Property value semantics.",
+    "NodeTypes do not define Link direction, Link Property placement, flow semantics, causality, rendering, animation, geometry or layout.",
+    "Additional Properties may exist when their Rulesets resolve them.",
+    "Required Links declare canonical Link attachments that must exist for readiness.",
+    "Every effective Required Link entry is mandatory; Required Links are evaluated as AND, never OR.",
+    "Multiple Required Link entries may use the same link_type_ref and MUST NOT be deduplicated by Link type.",
+    "A concrete Required Link requirement is identified by requiring Entity id plus Required Link id.",
+    "Only canonical Link Properties explicitly bound to that concrete requirement through value.required_link_ref satisfy it.",
+    "A canonical Link may satisfy at most one concrete Required Link requirement.",
+    "Derived/projected Links and unbound ordinary Links do not satisfy Required Links.",
+    "Missing required Properties or Required Links make the Entity UNRESOLVED/unready; they do not make otherwise well-formed canonical data INVALID.",
+    "UNRESOLVED != INVALID",
+    "Abstraction inputs created by unresolved requirements are direct projections of concrete Required Link requirement instances.",
+    "No canonical Input Entity or intermediate boundary Link is created merely to expose a Required Link.",
+    "A projected Abstraction input preserves the original requirement identity: requiring Entity id + Required Link id.",
+    "Required Link evaluation is scoped to an explicit applicable specification version/set.",
+    "A changed Required Link definition produces a new specification version and MUST NOT rewrite an earlier specification version.",
+    "Historical readiness is evaluated against the specification version applicable to the historical state.",
+    "Current readiness is evaluated only against the currently applicable specification version.",
+    "Existing required_link_ref values MUST NOT be silently rebound, migrated, substituted or interpreted as satisfying a different Required Link id.",
+    "A historical required_link_ref whose requirement is not effective in the current specification contributes zero to current readiness but does not by itself invalidate the underlying semantic Link.",
+    "Specification version is evaluation context and MUST NOT be copied into required_link_ref.",
+    "Required Link ids are semantically immutable within one specification lineage.",
+    "A Required Link id removed from a later specification version remains reserved and MUST NOT be reused for a different requirement.",
+    "A semantic Required Link change creates a new Required Link id in a new specification version.",
+    "A canonical state/snapshot used for reconstructable readiness MUST carry a root-level specification_ref to one immutable specification-set artifact.",
+    "specification_ref is snapshot/evaluation provenance and MUST NOT be stored inside required_link_ref.",
+    "Historical readiness MUST NOT be claimed as reconstructed when the historical state lacks a resolvable immutable specification_ref.",
+    "Missing historical specification provenance MUST NOT be repaired by substituting the current specification.",
+    "A specification_ref used as readiness provenance MUST have immutable resolution.",
+    "For a preserved canonical state/snapshot, the same specification_ref value MUST always resolve to the same specification-set content.",
+    "Mutable aliases, moving tags, current/latest pointers, mutable branches and equivalent moving references MUST NOT be used as specification provenance.",
+    "CW does not require a specific specification_ref syntax, but the chosen reference mechanism MUST guarantee immutable resolution.",
+    "The applicable NodeTypes registry MUST validate as part of the specification set before model readiness evaluation begins.",
+    "An invalid NodeTypes/Rulesets specification set is INVALID_SPECIFICATION, not an INVALID_MODEL.",
+    "No READY/UNREADY model result may be produced from an INVALID_SPECIFICATION.",
+    "Free-text prose never satisfies NodeType Properties, Required Links, cardinalities, or readiness requirements.",
+    "READY means contract-conformant under the applicable specification; it does not assert real-world correctness or human intent.",
+    "Validation rules are version-scoped to the artifact being validated.",
+    "A historical NodeTypes artifact MUST be validated using the validation contract applicable to its own declared version.",
+    "Later validation requirements MUST NOT be applied retroactively to an earlier artifact.",
+    "A field introduced as mandatory in a later schema does not make an earlier artifact invalid when that field was not required by the earlier schema.",
+    "Applying newer validation semantics to an older artifact requires an explicit migration that creates a new artifact.",
+    "If the historical validation contract cannot be resolved, the validator MUST NOT silently substitute the latest contract.",
+    "Interpretation provenance immutability is transitive across the full evaluation dependency closure.",
+    "A mutable validation-contract dispatch target is forbidden for historical or current deterministic validation.",
+    "Short local ids such as ruleset_ref/entity_type_ref remain local to the pinned immutable closure and are not global mutable aliases.",
+    "NodeType/type/inheritance resolution is specification-scoped and MUST NOT fall back to a mutable current registry.",
+    "Historical NodeType interpretation uses the historical artifact's pinned specification closure.",
+    "Canonical READY does not prove that external implementation code conforms to the modeled NodeType semantics.",
+    "NodeTypes artifact version, CCF format version and specification_ref MUST be mutually compatible.",
+    "A deterministic but contradictory version combination is INVALID_SPECIFICATION; no version authority silently overrides another."
+  ],
+  "nodetype_schema": {
+    "required": [
+      "id",
+      "name",
+      "required_property_types",
+      "owned_property_types"
+    ],
+    "optional": [
+      "extends",
+      "property_cardinality",
+      "required_links",
+      "description",
+      "constraints"
+    ],
+    "semantics": {
+      "required_property_types": "Minimum local Property types expected for readiness.",
+      "owned_property_types": "Property types structurally associated with this NodeType. This is not a closed allow-list.",
+      "extends": "Optional inheritance from other NodeTypes. Effective Required Links retain stable requirement ids through inheritance.",
+      "property_cardinality": "Optional readiness constraints for local Property counts.",
+      "required_links": "Independent mandatory canonical Link attachment requirements. Entries are conjunctive and retain stable ids."
+    },
+    "required_link_schema": {
+      "required": [
+        "id",
+        "link_type_ref",
+        "self_role",
+        "min"
+      ],
+      "optional": [
+        "max",
+        "other_endpoint",
+        "description"
+      ],
+      "other_endpoint_optional": [
+        "entity_nodetype_ref",
+        "property_type_ref"
+      ],
+      "semantics": {
+        "id": "Stable semantic requirement identity. Within one specification lineage, a Required Link id MUST NOT be reused for a different requirement meaning.",
+        "link_type_ref": "Required canonical Link specialization.",
+        "self_role": "Semantic role the requiring Entity must occupy under the governing Link Ruleset.",
+        "min": "Minimum number of distinct canonical Link Properties explicitly bound to this requirement instance.",
+        "max": "Optional maximum number of canonical Link Properties explicitly bound to this requirement instance.",
+        "other_endpoint": "Optional constraints on the opposite canonical endpoint."
+      },
+      "conjunction": "Every effective Required Link entry is mandatory.",
+      "duplicate_types": "Two entries with the same link_type_ref remain separate requirements.",
+      "concrete_identity": {
+        "entity_ref": "requiring Entity canonical id",
+        "required_link_id": "Required Link semantic identity"
+      },
+      "lineage_identity": {
+        "immutable_semantics": true,
+        "reuse_for_different_meaning": false,
+        "removal_allowed": true,
+        "replacement_rule": "A semantically changed requirement receives a new Required Link id in a new specification version; the previous id is never recycled."
+      }
+    }
+  },
+  "nodetypes": [
+    {
+      "id": "generic",
+      "name": "Generic",
+      "required_property_types": [],
+      "owned_property_types": [
+        "link"
+      ],
+      "description": "Minimal generic canonical node. Link ownership is available to all derived NodeTypes."
+    },
+    {
+      "id": "system",
+      "name": "System",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "event",
+        "effect",
+        "data",
+        "function",
+        "link"
+      ]
+    },
+    {
+      "id": "component",
+      "name": "Component",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "event",
+        "effect",
+        "data",
+        "function",
+        "link"
+      ]
+    },
+    {
+      "id": "input",
+      "name": "Input",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "link"
+      ],
+      "description": "Generic explicitly modeled inbound semantic node. It is not the canonical mechanism for Abstraction inputs created by Required Links.",
+      "constraints": [
+        "Input is an ordinary explicit canonical Entity when a model needs an inbound semantic object.",
+        "Input does not encode or copy transported semantic type/signature.",
+        "Abstraction inputs caused by unsatisfied requirements are projected directly from concrete Required Link requirement instances.",
+        "An Input Entity is not created merely to expose a Required Link through an Abstraction boundary.",
+        "Input has no automatic Abstraction-interface authority merely because its NodeType id is input."
+      ]
+    },
+    {
+      "id": "output",
+      "name": "Output",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "link"
+      ],
+      "description": "The one generic canonical outbound Abstraction boundary NodeType.",
+      "constraints": [
+        "Output is a real canonical Entity inside an Abstraction.",
+        "Output does not encode or copy transported semantic type/signature.",
+        "Transported semantics are derived from the explicit canonical internal attachment/binding or selected abstraction-local Binding identity.",
+        "Output creates no analogous inbound requirement.",
+        "Event boundaries use this same generic Output NodeType; no Event-specific Output NodeType exists.",
+        "An Output may consume an abstraction-local Binding only through the explicit canonical Binding-consumption relation defined by CW_RULESETS.",
+        "The consumed Binding is referenced by canonical Binding Entity identity, never by free-text Binding name.",
+        "An Output consuming a Binding derives transported semantic type/signature from that Binding's resolved source semantics.",
+        "The consumed Binding must belong to the same Abstraction semantic source as the Output.",
+        "Output semantics are independent from Required Link input projection; Abstraction inputs and outputs are not required to use symmetric canonical mechanisms.",
+        "Output is valid only inside exactly one Abstraction semantic source.",
+        "Top-level Workspace Output boundary use is forbidden.",
+        "An Output has exactly one resolved internal source relation at a time.",
+        "Its source is either one boundary_output relation from an internal canonical endpoint or one binding_consume relation from an Abstraction-local Binding.",
+        "Zero resolved source relations leaves Output UNRESOLVED; more than one active source relation is INVALID_MODEL.",
+        "The Output source and Output Entity belong to the same Abstraction semantic source.",
+        "Abstraction membership is resolved from canonical Abstraction source membership, never geometry."
+      ]
+    },
+    {
+      "id": "binding",
+      "name": "Binding",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "link"
+      ],
+      "description": "Abstraction-local named routing/clarification node.",
+      "constraints": [
+        "Binding is valid only inside exactly one Abstraction semantic source.",
+        "Top-level Workspace Binding use is forbidden.",
+        "Cross-Abstraction Binding lookup is forbidden.",
+        "Binding Entity.name is the machine-significant Binding symbol and must be unique among Binding Entities in the same Abstraction.",
+        "A resolved Binding has exactly one incoming canonical semantic source at a time; absence while authoring is UNRESOLVED.",
+        "Binding accepts only canonical Link types whose governing Ruleset permits the Binding Entity in the relevant endpoint role.",
+        "Binding defines no universal special Link type and bypasses no Ruleset.",
+        "Binding semantic type/signature is derived from its connected canonical source endpoint and governing Ruleset and is never independently copied.",
+        "Output consumers select a Binding by canonical Binding Entity identity, not by free-text name.",
+        "Any number of Output nodes inside the same Abstraction may select the same Binding.",
+        "Binding lookup is non-spatial within its containing Abstraction.",
+        "Binding identity does not become part of the parent-level Abstraction interface.",
+        "Binding trace visualization is transient projection only and creates no canonical Link.",
+        "Output consumers reference a Binding by canonical Binding Entity identity through the explicit canonical Binding-consumption relation defined by CW_RULESETS.",
+        "Free-text Binding references are forbidden.",
+        "Any number of Output nodes inside the same Abstraction may consume the same Binding.",
+        "Binding trace visualization is transient projection only and MUST NOT be used as traversal authority.",
+        "Forward/backward semantic traversal across a Binding follows canonical Binding-consumption references defined by CW_RULESETS.",
+        "Every canonical source endpoint feeding a Binding belongs to the same Abstraction semantic source as the Binding.",
+        "A Binding source MUST NOT resolve from a parent-level Entity, another Abstraction, or an external mutable lookup.",
+        "Binding source scope is validated independently of Binding consumer scope.",
+        "Exactly one canonical inbound Link may provide the resolved Binding source; zero is UNRESOLVED and more than one is INVALID_MODEL."
+      ]
+    },
+    {
+      "id": "file_input",
+      "name": "File",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "file"
+      ],
+      "owned_property_types": [
+        "file",
+        "link"
+      ],
+      "property_cardinality": {
+        "file": {
+          "min": 1,
+          "max": 1
+        }
+      },
+      "description": "Declares one external file that must be supplied to the implementation. The required filename is carried by the file Property."
+    },
+    {
+      "id": "file_output",
+      "name": "File Output",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "file"
+      ],
+      "owned_property_types": [
+        "file",
+        "link"
+      ],
+      "property_cardinality": {
+        "file": {
+          "min": 1,
+          "max": 1
+        }
+      },
+      "description": "Declares one externally materialized output file. The output filename is carried by the file Property."
+    },
+    {
+      "id": "api",
+      "name": "API",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "api"
+      ],
+      "owned_property_types": [
+        "api",
+        "function",
+        "data",
+        "event",
+        "link"
+      ],
+      "property_cardinality": {
+        "api": {
+          "min": 1,
+          "max": 1
+        }
+      },
+      "description": "API boundary or service node. Its single api Property defines API kind and canonical I/O surface Entity references.",
+      "constraints": [
+        "API input_refs and output_refs reference canonical Entity identities only.",
+        "API input_refs resolve only to declared inbound I/O surface NodeTypes permitted by RULESET_API.",
+        "API output_refs resolve only to declared outbound I/O surface NodeTypes permitted by RULESET_API.",
+        "API I/O target compatibility is checked in addition to reference resolution.",
+        "API I/O references do not accept arbitrary Properties merely because they are canonical identities."
+      ]
+    },
+    {
+      "id": "database",
+      "name": "Database",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "function",
+        "event",
+        "link"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "stream_input",
+      "name": "Stream Input",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "event",
+        "link"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      },
+      "description": "External or upstream continuous data input."
+    },
+    {
+      "id": "stream_output",
+      "name": "Stream Output",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "event",
+        "link"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      },
+      "description": "Continuous data output."
+    },
+    {
+      "id": "user_input",
+      "name": "User Input",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "data",
+        "event",
+        "link"
+      ],
+      "description": "Human-originated input surface. Concrete semantics are carried by Properties and Links."
+    },
+    {
+      "id": "user_output",
+      "name": "User Output",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [],
+      "owned_property_types": [
+        "data",
+        "event",
+        "effect",
+        "link"
+      ],
+      "description": "Human-facing output surface. Concrete semantics are carried by Properties and Links."
+    },
+    {
+      "id": "static_file",
+      "name": "Static File",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "link"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "derived_output",
+      "name": "Derived Output",
+      "extends": [
+        "generic"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "link"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      }
+    },
+    {
+      "id": "stream_source",
+      "name": "Stream Source",
+      "extends": [
+        "stream_input"
+      ],
+      "required_property_types": [
+        "data"
+      ],
+      "owned_property_types": [
+        "data",
+        "event",
+        "link"
+      ],
+      "property_cardinality": {
+        "data": {
+          "min": 1
+        }
+      },
+      "description": "Compatibility NodeType retained for existing CW models; semantically a stream_input specialization."
+    }
+  ],
+  "required_link_readiness": {
+    "ready": "Every effective Required Link requirement instance satisfies its own minimum through distinct canonical Link Properties explicitly bound using value.required_link_ref.",
+    "unready": "At least one concrete Required Link requirement instance is below its minimum.",
+    "requirement_identity": "requiring Entity id + Required Link id",
+    "same_link_type": "Multiple requirements of the same Link type remain independent.",
+    "one_link_one_requirement": true,
+    "derived_links_count": false,
+    "unbound_links_count": false,
+    "principle": "UNRESOLVED != INVALID",
+    "abstraction_input_projection_counts": false,
+    "external_link_satisfaction": "A valid external canonical Link carrying the concrete required_link_ref satisfies the original internal requirement.",
+    "evaluation_context": "explicit applicable specification version/set",
+    "historical": "Evaluate against the historical specification context; preserve valid historical satisfaction.",
+    "current": "Evaluate only current effective requirements; historical bindings to non-effective requirements contribute zero.",
+    "superseded_binding": "Preserved canonical binding; does not satisfy a new/superseding requirement and does not by itself invalidate the semantic Link.",
+    "silent_rebind_forbidden": true,
+    "silent_historical_rewrite_forbidden": true,
+    "reference_resolution_cases": {
+      "effective_and_matching": "eligible to satisfy the current requirement",
+      "not_effective_in_applicable_spec": "preserved canonical binding; readiness contribution 0; semantic Link is not invalid merely for this reason",
+      "effective_but_semantically_incompatible": "INVALID binding"
+    },
+    "specification_context_source": "canonical state/snapshot root specification_ref"
+  },
+  "readiness": {
+    "ready": "The Entity satisfies required Properties, Property cardinalities and every concrete Required Link requirement used by active evaluation.",
+    "unready": "One or more expected NodeType Properties, Property cardinalities or Required Link attachments are unresolved or missing.",
+    "principle": "UNRESOLVED != INVALID"
+  },
+  "namespace": "cw",
+  "resolution": {
+    "registry_ref": "CW_NODETYPES",
+    "rule": "Entity.entity_type_ref resolves a local NodeType id inside the explicitly active CW_NODETYPES registry. Local ids do not become globally unique merely by spelling.",
+    "unresolved_state": "unready",
+    "principle": "UNRESOLVED != INVALID"
+  },
+  "binding_model": {
+    "scope": "same_abstraction_only",
+    "consumer_nodetype_ref": "output",
+    "reference_authority": "canonical Binding Entity id",
+    "free_text_reference": false,
+    "transported_semantics": "derived from Binding resolved canonical source semantics",
+    "trace_projection_authority": false,
+    "semantic_traversal": "follows canonical Binding-consumption relation, never trace-line geometry",
+    "source_scope": "same_abstraction_only",
+    "source_endpoint_scope": "same_abstraction_only",
+    "source_cardinality": {
+      "min": 1,
+      "max": 1
+    },
+    "source_relation_selection": "A Binding source is an active canonical Link for which the Binding occupies child_ref and whose governing Link Ruleset permits a Binding Entity at child_ref.",
+    "source_search_scope": "Search all canonical Links in the containing Abstraction semantic source, not only Properties physically stored on the Binding.",
+    "source_endpoint_owner_resolution": "If the source endpoint is an Entity, that Entity is the source owner; if it is a Property, use the Property's canonical owning Entity.",
+    "zero_source_result": "UNRESOLVED",
+    "multiple_source_result": "INVALID_MODEL",
+    "cross_abstraction_source_result": "INVALID_MODEL"
+  },
+  "abstraction_input_model": {
+    "canonical_source": "concrete Required Link requirement instance",
+    "requirement_identity": {
+      "entity_ref": "requiring internal Entity canonical id",
+      "required_link_id": "effective Required Link id"
+    },
+    "external_projection": "derived input socket/item on the Abstraction Entity",
+    "canonical_boundary_entity_required": false,
+    "boundary_input_link_required": false,
+    "copied_type_or_signature": false,
+    "transported_semantics": "derived from the Required Link declaration, its governing Link Ruleset, semantic role and endpoint constraints",
+    "satisfaction": "An external canonical Link connected through the projected Abstraction input satisfies the original internal requirement by carrying the same value.required_link_ref.",
+    "identity_rule": "The external input representation does not receive an independent canonical identity; it represents the internal concrete Required Link requirement instance."
+  },
+  "specification_versioning": {
+    "principle": "NodeType and Required Link evolution changes the applicable specification context; it does not rewrite historical canonical claims.",
+    "versioned_artifact": true,
+    "mutation_rule": "Changing an effective Required Link definition produces a new specification version rather than retroactively changing an earlier specification version.",
+    "historical_evaluation": "Historical readiness MUST resolve against the NodeType specification version applicable to that historical canonical state.",
+    "current_evaluation": "Current readiness MUST resolve against the currently applicable NodeType specification version.",
+    "no_newer_substitution": "A newer NodeType specification version MUST NOT be substituted when reconstructing historical readiness.",
+    "requirement_identity": "Concrete Required Link identity remains requiring Entity id + Required Link id; specification version is evaluation context and is not added to required_link_ref.",
+    "no_implicit_migration": true,
+    "no_implicit_rebinding": true,
+    "lineage_rule": "Required Link ids are semantically immutable across all versions of the same specification lineage.",
+    "id_reuse_for_different_requirement": false,
+    "semantic_change_rule": "If a Required Link changes meaning, constraints, semantic role, link type, or other identity-defining semantics, define a new Required Link id in the new specification version.",
+    "removed_id_rule": "A removed Required Link id remains reserved in the specification lineage and MUST NOT later be assigned a different meaning.",
+    "provenance_requirement": "Every canonical state/snapshot whose readiness must be reconstructable MUST carry an explicit specification_ref that resolves exactly one immutable specification-set artifact.",
+    "specification_ref_location": "canonical state/snapshot root",
+    "specification_ref_semantics": "specification_ref identifies the specification set under which that canonical state is evaluated. It is evaluation provenance, not part of required_link_ref.",
+    "specification_ref_immutability": "For a preserved historical snapshot, specification_ref MUST NOT be silently changed. A state evaluated under a different specification set is a different evaluation context and must be represented by an explicitly updated/new state or snapshot.",
+    "specification_set_requirement": "The referenced specification-set artifact MUST pin the full transitive evaluation dependency closure. NodeTypes, Rulesets, inheritance, CCF/format contracts, validation contracts and any other interpretation dependencies are either embedded immutable content or immutable-resolution references.",
+    "missing_specification_ref": "If historical readiness reconstruction is requested and the historical canonical snapshot does not identify its applicable immutable specification set, historical readiness is UNRESOLVED/UNPROVABLE; the runtime MUST NOT guess or substitute the current specification.",
+    "specification_ref_resolution": {
+      "immutable_resolution_required": true,
+      "rule": "For the lifetime of a preserved canonical state/snapshot, the same specification_ref value MUST always resolve to the same specification-set content.",
+      "mutable_alias_forbidden": true,
+      "moving_target_forbidden": true,
+      "content_change_behind_same_ref_forbidden": true,
+      "allowed_identity_models": [
+        "immutable artifact identity plus immutable version/revision",
+        "content-addressed digest/hash",
+        "immutable registry revision identity"
+      ],
+      "forbidden_reference_classes": [
+        "latest",
+        "current",
+        "active",
+        "mutable branch",
+        "moving tag",
+        "mutable alias",
+        "any pointer whose target or content may change while the reference value stays the same"
+      ],
+      "reference_syntax_defined_here": false,
+      "syntax_note": "CW does not mandate one URI/hash syntax, but any chosen reference mechanism MUST guarantee immutable resolution."
+    },
+    "same_specification_ref_same_transitive_closure": true
+  },
+  "specification_registry_validation": {
+    "principle": "The NodeTypes registry is part of the applicable specification set and MUST be internally valid before any canonical model readiness evaluation uses it.",
+    "checks": [
+      "NodeType ids are unique within the registry",
+      "inheritance references resolve",
+      "inheritance is acyclic",
+      "effective Required Link ids obey lineage immutability rules",
+      "Required Link min/max constraints are internally consistent",
+      "required_link self_role values can be resolved by the applicable Rulesets registry",
+      "property_cardinality constraints are internally consistent",
+      "every required_property_types and owned_property_types entry resolves an applicable Property Ruleset or the canonical Link specialization",
+      "every Required Link link_type_ref resolves exactly one Link Ruleset",
+      "every Required Link self_role resolves inside that Link Ruleset semantic_roles",
+      "every Binding source-scope constraint is machine-checkable",
+      "every Output source contract references declared Link Rulesets",
+      "every reference-bearing Property Ruleset declares explicit reference target constraints or broad-by-design policy",
+      "every API input/output NodeType constraint resolves a declared NodeType"
+    ],
+    "failure_class": "INVALID_SPECIFICATION",
+    "model_evaluation_on_failure": false,
+    "readiness_result_on_failure": false,
+    "no_partial_fallback": true,
+    "no_self_heal": true,
+    "contract_selection": "Validate this registry using the validation contract selected by this artifact's own declared version.",
+    "latest_contract_substitution": false
+  },
+  "prose_boundary": {
+    "principle": "Free text may explain a model but is not machine-readable semantic authority.",
+    "prose_may": [
+      "describe",
+      "explain",
+      "document rationale",
+      "provide human context"
+    ],
+    "prose_must_not": [
+      "satisfy required_property_types",
+      "satisfy Required Links",
+      "alter property_cardinality",
+      "alter NodeType inheritance",
+      "alter readiness",
+      "override a Ruleset",
+      "create hidden machine-enforced constraints"
+    ],
+    "formalization_rule": "Any constraint that must affect validation or readiness MUST be represented by an explicit structured canonical field, Property, Link, NodeType declaration, or Ruleset."
+  },
+  "readiness_claim_boundary": {
+    "ready_means": "The Entity/model satisfies the machine-readable requirements of the applicable valid specification context.",
+    "ready_does_not_mean": [
+      "the architecture matches the real world",
+      "the architecture is useful",
+      "the architecture is optimal",
+      "the implementation exists",
+      "the implementation behaves as modeled",
+      "human intent was captured correctly"
+    ],
+    "no_intent_guessing": true
+  },
+  "validation_contract_versioning": {
+    "principle": "Validation rules are version-scoped. A NodeTypes artifact is validated against the validation contract applicable to that artifact's own declared format/schema version.",
+    "artifact_version_source": "The artifact's own declared format/schema/version identity selects the applicable validation contract.",
+    "retroactive_application_forbidden": true,
+    "newer_rules_on_older_artifact": false,
+    "historical_validity_preserved": true,
+    "migration_required_for_new_rules": "To subject an older artifact to newer validation requirements, perform an explicit migration that produces a new artifact governed by the newer contract.",
+    "missing_field_rule": {
+      "not_required_in_artifact_version": "Absence is not an error merely because a later validation contract requires the field.",
+      "required_in_artifact_version": "Absence is INVALID_SPECIFICATION."
+    },
+    "validator_dispatch": "A validator MUST resolve exactly one immutable validation-contract content from the artifact's version-scoped dispatch identity before validating the artifact.",
+    "unsupported_historical_contract": "If the required historical validation contract cannot be resolved, the implementation MUST NOT substitute the latest contract or invent a semantic result.",
+    "immutable_contract_resolution_required": true,
+    "same_dispatch_identity_same_contract_content": true,
+    "mutable_validation_contract_alias_forbidden": true
+  },
+  "reference_classes": {
+    "local_semantic_ref": {
+      "meaning": "An identity resolved only inside an already pinned immutable canonical/specification artifact or registry closure. It is not an external locator.",
+      "examples": [
+        "entity_type_ref",
+        "ruleset_ref",
+        "Required Link required_link_id",
+        "NodeType extends ids",
+        "canonical Entity/Property ids"
+      ],
+      "immutable_external_resolution_required": false,
+      "rule": "Local semantic refs are safe only because the containing artifact/registry closure is immutable and uniquely selected. They MUST NOT silently escape to a mutable external lookup namespace."
+    },
+    "interpretation_provenance_ref": {
+      "meaning": "A reference whose resolved content can change validation, interpretation, inheritance, readiness or historical reconstruction.",
+      "examples": [
+        "specification_ref",
+        "external validation-contract reference when used",
+        "external CCF/format-contract reference when used",
+        "external NodeTypes/Rulesets registry dependency when not embedded"
+      ],
+      "immutable_external_resolution_required": true,
+      "rule": "The same reference value MUST always resolve to the same content."
+    },
+    "runtime_or_domain_ref": {
+      "meaning": "A domain/runtime reference whose mutability is governed by its own semantic contract and which is not automatically evaluation provenance.",
+      "examples": [
+        "external resource target_ref",
+        "runtime endpoint or resource identifiers"
+      ],
+      "immutable_external_resolution_required": "only when another contract elevates it into interpretation provenance"
+    }
+  },
+  "evaluation_dependency_closure": {
+    "principle": "Immutable specification provenance applies to the full transitive interpretation/evaluation dependency closure, not only to the root specification_ref.",
+    "root": "canonical state/snapshot specification_ref",
+    "same_root_same_closure": true,
+    "closure_members": [
+      "specification-set artifact",
+      "NodeTypes registry content used by evaluation",
+      "Rulesets registry content used by evaluation",
+      "inheritance definitions used by evaluation",
+      "CCF/format/schema contract content used to interpret the artifacts",
+      "validation contract content used to validate the artifacts",
+      "any other external contract whose resolved content can change model validity or readiness"
+    ],
+    "dependency_rule": "Every closure member MUST either be embedded in an immutable parent artifact or be reached through an immutable-resolution interpretation_provenance_ref.",
+    "transitive_rule": "If a closure member itself references another interpretation dependency, the same rule applies recursively.",
+    "mutable_alias_anywhere_in_closure": "INVALID_PROVENANCE",
+    "forbidden": [
+      "immutable root manifest containing a mutable NodeTypes pointer",
+      "immutable root manifest containing a mutable Rulesets pointer",
+      "immutable root manifest selecting a validation contract through a moving alias",
+      "CCF/format semantics resolved through latest/current/active",
+      "any transitive interpretation dependency changing while the root provenance reference stays unchanged"
+    ],
+    "not_applied_automatically_to": "runtime/domain references that do not participate in interpretation, validation or readiness"
+  },
+  "validation_contract_resolution": {
+    "principle": "Version-scoped validation is deterministic only if validation-contract resolution itself is immutable.",
+    "dispatch_key": "The artifact's declared validation/format identity and version as defined by its format lineage.",
+    "same_dispatch_key_same_contract_content": true,
+    "contract_identity_semantically_immutable": true,
+    "contract_identity_reuse_for_different_content": false,
+    "mutable_dispatch_registry_forbidden": true,
+    "moving_alias_forbidden": true,
+    "latest_current_active_forbidden": true,
+    "if_explicit_validation_contract_ref_is_used": "It is an interpretation_provenance_ref and MUST have immutable resolution.",
+    "historical_rule": "A historical artifact's dispatch key MUST always select the same historical validation-contract content.",
+    "unsupported_contract": "IMPLEMENTATION_FAILURE; no latest-version fallback"
+  },
+  "ccf_ref_semantics": {
+    "field": "ccf_ref",
+    "current_value": "CANONICAL_CONTRACT_FORMAT",
+    "class": "interpretation dependency",
+    "rule": "ccf_ref is not permission to resolve a mutable 'current CCF'. Its applicable CCF/format contract must be part of the pinned immutable evaluation dependency closure.",
+    "local_key_allowed": true,
+    "local_key_rule": "A short value such as CANONICAL_CONTRACT_FORMAT MAY be used as a local semantic key only when the immutable specification set uniquely binds that key to immutable CCF/format-contract content.",
+    "external_resolution": "MUST be immutable-resolution"
+  },
+  "registry_ref_semantics": {
+    "field": "resolution.registry_ref",
+    "current_value": "CW_NODETYPES",
+    "class": "local_semantic_ref within pinned specification set",
+    "rule": "registry_ref identifies this registry inside the pinned immutable specification set; it is not an external mutable registry locator."
+  },
+  "immutable_resolution_bootstrap": {
+    "principle": "Immutable-resolution requirements recurse through interpretation dependencies until reaching embedded immutable content or an immutable identity mechanism whose same-key/same-content property is guaranteed externally.",
+    "no_infinite_meta_chain_required": true,
+    "acceptable_roots": [
+      "content-addressed identity",
+      "immutable artifact revision identity enforced by storage",
+      "immutable version-to-contract mapping enforced by the format/validator host"
+    ],
+    "host_obligation": "The host may provide the final immutable identity mechanism, but it MUST satisfy same identity -> same content and MUST NOT expose mutable aliases as provenance."
+  },
+  "semantic_reference_resolution": {
+    "authority": "CCF semantic-reference-resolution contract",
+    "entity_type_ref": "Entity.entity_type_ref resolves only against the NodeTypes registry pinned in that artifact's immutable specification closure.",
+    "extends": "NodeType inheritance ids resolve only inside the same pinned NodeTypes/specification closure.",
+    "required_link_ruleset_refs": "Required Link link_type_ref/self_role interpretation uses the Rulesets registry in the same pinned specification closure.",
+    "historical": "Historical Entity NodeTypes and inheritance are interpreted using the historical artifact's specification_ref.",
+    "current_registry_fallback": false,
+    "silent_rebind": false
+  },
+  "model_implementation_correspondence": {
+    "READY_scope": "NodeType and Required Link readiness concerns only modeled machine-readable semantics.",
+    "does_not_prove": [
+      "implementation correspondence",
+      "runtime type behavior",
+      "hidden middleware behavior",
+      "runtime exceptions",
+      "unstated code constraints"
+    ],
+    "formalization": "Any such constraint that must affect readiness must be represented by structured canonical semantics governed by Rulesets."
+  },
+  "version_identity_coherence": {
+    "authority": "CCF version-identity-coherence contract",
+    "rule": "CW NodeTypes artifacts MUST be interpreted only when their artifact version, CCF format version and pinned specification_ref resolve to one compatible immutable interpretation context.",
+    "format_specification_compatibility_required": true,
+    "conflict_result": "INVALID_SPECIFICATION",
+    "precedence_fallback": false,
+    "latest_wins": false
+  },
+  "output_source_contract": {
+    "scope": "same_abstraction_only",
+    "allowed_source_link_types": [
+      "boundary_output",
+      "binding_consume"
+    ],
+    "cardinality_across_allowed_source_types": {
+      "min": 1,
+      "max": 1
+    },
+    "zero_source_result": "UNRESOLVED",
+    "multiple_source_result": "INVALID_MODEL",
+    "direct_source": "boundary_output parent_ref is the internal canonical semantic endpoint and child_ref is the Output Entity.",
+    "binding_source": "binding_consume parent_ref is the Binding Entity and child_ref is the Output Entity.",
+    "transported_semantics": "derived from the one resolved source; never copied as a second authority",
+    "membership": "source and Output must resolve inside the same Abstraction semantic source"
+  },
+  "api_io_contract": {
+    "property_type_ref": "api",
+    "input_refs": {
+      "kind": "Entity",
+      "allowed_nodetype_refs": [
+        "input",
+        "user_input",
+        "file_input",
+        "stream_input"
+      ],
+      "nodetype_matching": "exact_or_inherits_from"
+    },
+    "output_refs": {
+      "kind": "Entity",
+      "allowed_nodetype_refs": [
+        "output",
+        "user_output",
+        "file_output",
+        "stream_output",
+        "derived_output"
+      ],
+      "nodetype_matching": "exact_or_inherits_from"
+    },
+    "rule": "The NodeType-side declaration mirrors RULESET_API compatibility constraints; RULESET_API remains Property semantic authority."
+  }
+}

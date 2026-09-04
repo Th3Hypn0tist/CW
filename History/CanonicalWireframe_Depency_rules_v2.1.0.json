@@ -1,0 +1,301 @@
+{
+  "id": "CW_RULESETS",
+  "name": "CanonicalWireframe Rulesets",
+  "version": "2.1.0",
+  "ccf_ref": "CCF_2_0",
+  "nodetypes_ref": "CW_NODETYPES",
+  "purpose": "Define how CanonicalWireframe interprets CCF Entities, Properties, Links, Events, Effects and flow.",
+  "model": {
+    "ccf": "Defines canonical Entity and Property structure.",
+    "nodetypes": "Define Entity-local Property expectations.",
+    "rulesets": "Define interpretation, semantic roles, relation behavior, causality, flow and readiness."
+  },
+  "principles": [
+    "Canonical structure remains authoritative.",
+    "Rulesets interpret canonical structure without replacing it.",
+    "Flow semantics belong to Rulesets.",
+    "NodeTypes may be used as explicit context when resolving a Ruleset.",
+    "Projection and animation are derived from resolved Ruleset semantics.",
+    "No flow semantics are inferred from filenames, extensions, names, paths, geometry or visual appearance.",
+    "Unresolved Ruleset requirements produce unready state, not invalid canonical data.",
+    "UNRESOLVED != INVALID"
+  ],
+  "flow_patterns": [
+    {
+      "id": "static",
+      "name": "Static",
+      "legs": [],
+      "meaning": "The relation is visible and meaningful but has no transport animation."
+    },
+    {
+      "id": "one_way",
+      "name": "One Way",
+      "legs": [
+        {
+          "phase": "transfer",
+          "direction": "parent_ref_to_child_ref"
+        }
+      ]
+    },
+    {
+      "id": "request_reply",
+      "name": "Request Reply",
+      "legs": [
+        {
+          "phase": "request",
+          "direction": "child_ref_to_parent_ref"
+        },
+        {
+          "phase": "reply",
+          "direction": "parent_ref_to_child_ref"
+        }
+      ]
+    },
+    {
+      "id": "continuous",
+      "name": "Continuous",
+      "legs": [
+        {
+          "phase": "stream",
+          "direction": "parent_ref_to_child_ref",
+          "continuous": true
+        }
+      ]
+    }
+  ],
+  "property_rulesets": [
+    {
+      "id": "RULESET_TYPE",
+      "property_type_ref": "type"
+    },
+    {
+      "id": "RULESET_MOUNT",
+      "property_type_ref": "mount"
+    },
+    {
+      "id": "RULESET_EVENT",
+      "property_type_ref": "event"
+    },
+    {
+      "id": "RULESET_EFFECT",
+      "property_type_ref": "effect"
+    },
+    {
+      "id": "RULESET_DATA",
+      "property_type_ref": "data"
+    },
+    {
+      "id": "RULESET_FUNCTION",
+      "property_type_ref": "function"
+    }
+  ],
+  "link_rulesets": [
+    {
+      "id": "RULESET_LINK_DEPENDENCY",
+      "link_type_ref": "dependency",
+      "semantic_roles": {
+        "parent_ref": "dependency_target",
+        "child_ref": "dependent"
+      }
+    },
+    {
+      "id": "RULESET_LINK_OWNERSHIP",
+      "link_type_ref": "ownership",
+      "semantic_roles": {
+        "parent_ref": "owner",
+        "child_ref": "owned"
+      }
+    },
+    {
+      "id": "RULESET_LINK_AUTHORITY",
+      "link_type_ref": "authority",
+      "semantic_roles": {
+        "parent_ref": "authority",
+        "child_ref": "governed"
+      }
+    },
+    {
+      "id": "RULESET_LINK_CONTAINMENT",
+      "link_type_ref": "containment",
+      "semantic_roles": {
+        "parent_ref": "container",
+        "child_ref": "contained"
+      }
+    },
+    {
+      "id": "RULESET_LINK_ARCHITECTURE_PARENT",
+      "link_type_ref": "architecture_parent",
+      "semantic_roles": {
+        "parent_ref": "architecture_parent",
+        "child_ref": "architecture_child"
+      }
+    },
+    {
+      "id": "RULESET_LINK_RELATION",
+      "link_type_ref": "relation",
+      "semantic_roles": {
+        "parent_ref": "relation_parent",
+        "child_ref": "relation_child"
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_CAUSE",
+      "link_type_ref": "event_cause",
+      "semantic_roles": {
+        "parent_ref": "cause_source",
+        "child_ref": "event"
+      },
+      "flow": {
+        "pattern_ref": "static"
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_READ",
+      "link_type_ref": "event_read",
+      "semantic_roles": {
+        "parent_ref": "observed_source",
+        "child_ref": "event"
+      },
+      "flow": {
+        "resolver": "parent_owner_nodetype",
+        "cases": [
+          {
+            "parent_owner_nodetype_ref": "static_file",
+            "pattern_ref": "one_way"
+          },
+          {
+            "parent_owner_nodetype_ref": "database",
+            "pattern_ref": "request_reply"
+          },
+          {
+            "parent_owner_nodetype_ref": "api",
+            "pattern_ref": "request_reply"
+          },
+          {
+            "parent_owner_nodetype_ref": "stream_source",
+            "pattern_ref": "continuous"
+          }
+        ]
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_INPUT",
+      "link_type_ref": "event_input",
+      "semantic_roles": {
+        "parent_ref": "input_source",
+        "child_ref": "event"
+      },
+      "flow": {
+        "pattern_ref": "one_way"
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_OUTPUT",
+      "link_type_ref": "event_output",
+      "semantic_roles": {
+        "parent_ref": "event",
+        "child_ref": "output_target"
+      },
+      "flow": {
+        "pattern_ref": "one_way"
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_EFFECT",
+      "link_type_ref": "event_effect",
+      "semantic_roles": {
+        "parent_ref": "event",
+        "child_ref": "effect"
+      },
+      "flow": {
+        "pattern_ref": "one_way"
+      }
+    },
+    {
+      "id": "RULESET_LINK_EVENT_CONDITION",
+      "link_type_ref": "event_condition",
+      "semantic_roles": {
+        "parent_ref": "condition_source",
+        "child_ref": "event"
+      }
+    },
+    {
+      "id": "RULESET_LINK_EFFECT_TARGET",
+      "link_type_ref": "effect_target",
+      "semantic_roles": {
+        "parent_ref": "effect",
+        "child_ref": "effect_target"
+      },
+      "flow": {
+        "pattern_ref": "one_way"
+      }
+    }
+  ],
+  "event_read": {
+    "parallel_reads": true,
+    "effect_barrier": "Event Effects become ready after all required reads for that Event have reached their Ruleset-defined ready condition.",
+    "ready_condition_by_flow": {
+      "one_way": "transfer_complete",
+      "request_reply": "reply_complete",
+      "continuous": "ruleset_defined",
+      "static": "relation_ready"
+    }
+  },
+  "projection": {
+    "static": "Show the relation without transport animation.",
+    "one_way": "Animate parent_ref toward child_ref.",
+    "request_reply": "Animate request from child_ref toward parent_ref, then reply from parent_ref toward child_ref.",
+    "continuous": "Animate continuous parent_ref toward child_ref flow."
+  },
+  "readiness": {
+    "ready": "All requirements evaluated by the active Ruleset are satisfied.",
+    "unready": "One or more Ruleset requirements are unresolved, missing or not yet satisfied.",
+    "unready_reasons": [
+      "missing_required_property",
+      "unresolved_nodetype",
+      "unresolved_endpoint",
+      "unresolved_ruleset",
+      "unresolved_flow",
+      "cardinality_not_satisfied",
+      "event_read_not_ready"
+    ],
+    "principle": "Unready structure remains canonical, visible and editable."
+  },
+  "example": {
+    "id": "ULTRALIGHT_CMS_GET_PAGE",
+    "relations": [
+      {
+        "from": "CMS_ROOT.GET_PAGE",
+        "to": "RENDERER.GET_PAGE",
+        "ruleset_ref": "RULESET_LINK_EVENT_CAUSE",
+        "flow": "static"
+      },
+      {
+        "from": "JSON_SOURCE",
+        "to": "RENDERER.GET_PAGE",
+        "source_nodetype_ref": "static_file",
+        "ruleset_ref": "RULESET_LINK_EVENT_READ",
+        "flow": "one_way"
+      },
+      {
+        "from": "CSS_TEMPLATE",
+        "to": "RENDERER.GET_PAGE",
+        "source_nodetype_ref": "static_file",
+        "ruleset_ref": "RULESET_LINK_EVENT_READ",
+        "flow": "one_way"
+      },
+      {
+        "from": "RENDERER.GET_PAGE",
+        "to": "RENDER_PAGE",
+        "ruleset_ref": "RULESET_LINK_EVENT_EFFECT",
+        "flow": "one_way"
+      },
+      {
+        "from": "RENDER_PAGE",
+        "to": "HTML_OUTPUT",
+        "ruleset_ref": "RULESET_LINK_EFFECT_TARGET",
+        "flow": "one_way"
+      }
+    ]
+  }
+}
