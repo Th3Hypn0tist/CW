@@ -1,6 +1,10 @@
 # AIGM-CW
 
+> **One model. Many topologies. No duplicate truth.**
+
 AIGM Canonical Wireframe (CW) defines a machine-readable canonical architecture model built around the Canonical Contract Format (CCF), CW NodeTypes, and CW Rulesets.
+
+CW models one canonical structure and exposes its explicit topologies as projections over the same modeled identities. A projection may reorganize, filter, or navigate the model, but it does not create a parallel source of truth.
 
 ## Validation tools
 
