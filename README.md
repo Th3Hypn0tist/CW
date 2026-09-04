@@ -46,11 +46,11 @@ or **one directory**:
 python linter/cw_validate.py ./artifact-directory/
 ```
 
-When a directory is supplied, all `*.json` files below that directory are loaded recursively as one validation set. Canonical references may resolve across those files.
+When a directory is supplied, JSON files are discovered recursively as one validation set. CW contract candidates are identified from their content; unrelated JSON files are ignored with a warning. Canonical references may resolve across the selected CW documents.
 
 **Filenames, extensions beyond JSON discovery, directory names, paths, and directory structure do not provide semantic meaning.** Canonical identity and semantics are resolved from the JSON content itself.
 
-By default the validator resolves the active standard from the repository root relative to the validator:
+By default the validator discovers an unambiguous active standard by searching from its own directory upward:
 
 ```text
 Canonical_Contract_Format_v*.json

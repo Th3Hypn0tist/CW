@@ -7,12 +7,13 @@ Input may be either:
     python linter/cw_validate.py artifact.json
     python linter/cw_validate.py path/to/artifact-directory
 
-A directory is treated as one validation set. All *.json files below the directory
-are loaded recursively and canonical references may resolve across those files.
+A directory is treated as one validation set. JSON files are discovered recursively;
+CW contract candidates are selected from content, unrelated JSON files are ignored with
+a warning, and canonical references may resolve across the selected CW documents.
 Filenames and directory structure never provide semantic meaning.
 
-By default the validator resolves the CW standard from the repository root relative
-to this script:
+By default the validator discovers an unambiguous CW standard set by searching
+from the validator directory upward:
 
     ../Canonical_Contract_Format_v*.json
     ../CanonicalWireframe_NodeTypes_v*.json
@@ -39,7 +40,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
-VALIDATOR_VERSION = "1.0.0"
+VALIDATOR_VERSION = "1.1.0"
 
 
 class DuplicateKeyError(ValueError):
@@ -74,7 +75,6 @@ class Standard:
 class Context:
     def __init__(self) -> None:
         self.findings: List[Finding] = []
-        self.unready_reasons: List[str] = []
 
     def add(self, severity: str, code: str, file: Path | str, path: str, message: str) -> None:
         self.findings.append(Finding(severity, code, str(file), path or "$", message))
@@ -87,7 +87,6 @@ class Context:
 
     def unready(self, code: str, file: Path | str, path: str, message: str) -> None:
         self.add("UNREADY", code, file, path, message)
-        self.unready_reasons.append(message)
 
 
 def reject_duplicate_keys(pairs: Sequence[Tuple[str, Any]]) -> Dict[str, Any]:
@@ -146,6 +145,22 @@ def load_standard(spec_dir: Path) -> Standard:
     )
 
 
+def find_default_spec_dir() -> Path:
+    script_dir = Path(__file__).resolve().parent
+    candidates = [script_dir, *script_dir.parents]
+    failures: List[str] = []
+    for candidate in candidates:
+        try:
+            load_standard(candidate)
+            return candidate
+        except Exception as exc:
+            failures.append(f"{candidate}: {exc}")
+    raise RuntimeError(
+        "could not discover an unambiguous CW specification set from validator location upward; "
+        "use --spec-dir explicitly"
+    )
+
+
 def lint_standard(spec_dir: Path) -> Tuple[bool, str]:
     """Run the sibling standard self-linter when available."""
     lint_path = Path(__file__).resolve().with_name("cw_spec_lint.py")
@@ -167,12 +182,23 @@ def lint_standard(spec_dir: Path) -> Tuple[bool, str]:
         return False, f"CW standard self-lint could not execute: {exc}"
 
 
+def is_cw_contract_candidate(data: Mapping[str, Any]) -> bool:
+    """Content-based directory discovery; filenames and paths remain non-semantic."""
+    fmt = data.get("format")
+    if isinstance(fmt, dict) and "contract_format" in fmt:
+        return True
+    # Also keep structurally CW-looking documents so malformed format metadata
+    # is reported by validation instead of being silently skipped.
+    return all(key in data for key in ("identity", "entities", "scope", "constraints"))
+
+
 def load_input(input_path: Path, ctx: Context) -> List[ContractDocument]:
     if not input_path.exists():
         raise RuntimeError(f"input does not exist: {input_path}")
 
     paths: List[Path]
-    if input_path.is_file():
+    explicit_single = input_path.is_file()
+    if explicit_single:
         if input_path.suffix.lower() != ".json":
             raise RuntimeError("single-file input must be a .json file")
         paths = [input_path]
@@ -186,13 +212,25 @@ def load_input(input_path: Path, ctx: Context) -> List[ContractDocument]:
     docs: List[ContractDocument] = []
     for path in paths:
         try:
-            docs.append(ContractDocument(path, read_json(path)))
+            data = read_json(path)
+            if not explicit_single and not is_cw_contract_candidate(data):
+                ctx.warn(
+                    "NON_CW_JSON_IGNORED",
+                    path,
+                    "$",
+                    "JSON file does not identify or structurally resemble a CW canonical contract; ignored during directory discovery",
+                )
+                continue
+            docs.append(ContractDocument(path, data))
         except DuplicateKeyError as exc:
             ctx.error("JSON_DUPLICATE_KEY", path, "$", str(exc))
         except json.JSONDecodeError as exc:
             ctx.error("JSON_PARSE_ERROR", path, "$", f"{exc.msg} at line {exc.lineno}, column {exc.colno}")
         except Exception as exc:
             ctx.error("JSON_LOAD_ERROR", path, "$", str(exc))
+
+    if input_path.is_dir() and not docs and not any(f.severity == "ERROR" for f in ctx.findings):
+        raise RuntimeError("input directory contains no CW canonical contract documents")
     return docs
 
 
@@ -407,16 +445,43 @@ def collect_canonical_objects(docs: Sequence[ContractDocument], ctx: Context) ->
     return objects, owners
 
 
+def split_type_union(declaration: str) -> List[str]:
+    parts: List[str] = []
+    depth = 0
+    start = 0
+    for i, char in enumerate(declaration):
+        if char == "<":
+            depth += 1
+        elif char == ">":
+            depth = max(0, depth - 1)
+        elif char == "|" and depth == 0:
+            parts.append(declaration[start:i].strip())
+            start = i + 1
+    parts.append(declaration[start:].strip())
+    return [part for part in parts if part]
+
+
 def type_matches(value: Any, declaration: Any) -> bool:
     if not isinstance(declaration, str):
         return True
+    declaration = declaration.strip()
+    union = split_type_union(declaration)
+    if len(union) > 1:
+        return any(type_matches(value, branch) for branch in union)
+    if declaration == "null":
+        return value is None
     if declaration in {"string", "external_ref", "canonical_ref", "canonical_entity_ref", "canonical_property_ref", "canonical_or_external_ref", "interpretation_provenance_ref", "local_logic_primitive_set_ref"}:
         return isinstance(value, str) and bool(value)
     if declaration == "boolean":
         return isinstance(value, bool)
     if declaration in {"integer", "non_negative_integer"}:
         return isinstance(value, int) and not isinstance(value, bool) and (declaration != "non_negative_integer" or value >= 0)
-    if declaration.startswith("array<"):
+    if declaration == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if declaration.startswith("array<") and declaration.endswith(">"):
+        inner = declaration[6:-1].strip()
+        return isinstance(value, list) and all(type_matches(item, inner) for item in value)
+    if declaration == "array":
         return isinstance(value, list)
     if declaration.startswith("object") or declaration in {"map", "properties"}:
         return isinstance(value, dict)
@@ -443,7 +508,7 @@ def validate_value_schema(prop: Dict[str, Any], rule: Dict[str, Any], doc: Contr
             ctx.error("PROPERTY_VALUE_TYPE_MISMATCH", doc.path, f"{path}.value.{field}", f"value does not match declared type {fields[field]!r}")
 
 
-def endpoint_constraint_matches(constraint: str, target_kind: str, target: Dict[str, Any], owner_entity: Optional[Dict[str, Any]]) -> bool:
+def endpoint_constraint_matches(constraint: str, target_kind: str, target: Dict[str, Any]) -> bool:
     if constraint.startswith("entity_nodetype:"):
         return target_kind == "Entity" and target.get("entity_type_ref") == constraint.split(":", 1)[1]
     if constraint.startswith("property:"):
@@ -481,12 +546,52 @@ def validate_reference_policy(
             ctx.error("REFERENCE_NODETYPE_INCOMPATIBLE", file, rp, f"{ref!r} entity_type_ref={target.get('entity_type_ref')!r}, allowed={allowed_nts}")
 
 
+def build_link_index(
+    objects: Mapping[str, Tuple[str, ContractDocument, Dict[str, Any]]]
+) -> Dict[Tuple[str, str, str], List[Dict[str, Any]]]:
+    """Index Links by (link_type_ref, endpoint_name, endpoint_ref)."""
+    index: Dict[Tuple[str, str, str], List[Dict[str, Any]]] = {}
+    for _obj_id, (kind, _doc, candidate) in objects.items():
+        if kind != "Property" or candidate.get("property_type_ref") != "link":
+            continue
+        value = candidate.get("value")
+        if not isinstance(value, dict):
+            continue
+        link_type = value.get("link_type_ref")
+        if not isinstance(link_type, str):
+            continue
+        for endpoint in ("parent_ref", "child_ref"):
+            ref = value.get(endpoint)
+            if isinstance(ref, str) and ref:
+                index.setdefault((link_type, endpoint, ref), []).append(candidate)
+    return index
+
+
+def canonical_owner_for_ref(
+    ref: Any,
+    objects: Mapping[str, Tuple[str, ContractDocument, Dict[str, Any]]],
+    owners: Mapping[str, str],
+) -> Optional[str]:
+    if not isinstance(ref, str):
+        return None
+    resolved = objects.get(ref)
+    if resolved is None:
+        return None
+    kind, _doc, _target = resolved
+    if kind == "Entity":
+        return ref
+    if kind == "Property":
+        return owners.get(ref)
+    return None
+
+
 def validate_entities_and_properties(
     docs: Sequence[ContractDocument],
     standard: Standard,
     idx: Mapping[str, Any],
     objects: Mapping[str, Tuple[str, ContractDocument, Dict[str, Any]]],
     owners: Mapping[str, str],
+    link_index: Mapping[Tuple[str, str, str], Sequence[Dict[str, Any]]],
     ctx: Context,
 ) -> None:
     nodetypes: Mapping[str, Dict[str, Any]] = idx["nodetypes"]
@@ -574,7 +679,7 @@ def validate_entities_and_properties(
                     if isinstance(max_v, int) and count > max_v:
                         ctx.error("PROPERTY_CARDINALITY_MAX_EXCEEDED", doc.path, ep, f"Entity {entity.get('id')!r} has {count} {ptype!r} Properties, maximum is {max_v}")
 
-                validate_required_links(entity, effective["required_links"], doc, ep, objects, owners, idx, ctx)
+                validate_required_links(entity, effective["required_links"], doc, ep, objects, owners, idx, link_index, ctx)
 
 
 def validate_link(
@@ -602,8 +707,30 @@ def validate_link(
         constraints = constraints_obj.get(endpoint) if isinstance(constraints_obj, dict) else None
         if isinstance(constraints, list) and constraints:
             kind, _target_doc, target = resolved
-            if not any(isinstance(c, str) and endpoint_constraint_matches(c, kind, target, None) for c in constraints):
+            if not any(isinstance(c, str) and endpoint_constraint_matches(c, kind, target) for c in constraints):
                 ctx.error("LINK_ENDPOINT_INCOMPATIBLE", doc.path, f"{path}.value.{endpoint}", f"endpoint {ref!r} does not satisfy {constraints}")
+
+    # Link Property placement is canonical semantics. property_owner names a
+    # semantic role; the Link Property must be owned by the Entity owning the
+    # endpoint that carries that role (or by that Entity endpoint directly).
+    semantic_roles = rule.get("semantic_roles") if isinstance(rule.get("semantic_roles"), dict) else {}
+    property_owner_role = rule.get("property_owner")
+    if isinstance(property_owner_role, str):
+        owner_endpoint = next(
+            (endpoint for endpoint, role in semantic_roles.items() if role == property_owner_role),
+            None,
+        )
+        if owner_endpoint in {"parent_ref", "child_ref"}:
+            expected_owner = canonical_owner_for_ref(value.get(owner_endpoint), objects, owners)
+            prop_id = prop.get("id")
+            actual_owner = owners.get(prop_id) if isinstance(prop_id, str) else None
+            if expected_owner is not None and actual_owner != expected_owner:
+                ctx.error(
+                    "LINK_PROPERTY_OWNER_MISMATCH",
+                    doc.path,
+                    path,
+                    f"Link Property owner {actual_owner!r} does not match Ruleset property_owner role {property_owner_role!r} resolved through {owner_endpoint} to Entity {expected_owner!r}",
+                )
 
 
 def validate_required_links(
@@ -614,6 +741,7 @@ def validate_required_links(
     objects: Mapping[str, Tuple[str, ContractDocument, Dict[str, Any]]],
     owners: Mapping[str, str],
     idx: Mapping[str, Any],
+    link_index: Mapping[Tuple[str, str, str], Sequence[Dict[str, Any]]],
     ctx: Context,
 ) -> None:
     entity_id = entity.get("id")
@@ -635,13 +763,10 @@ def validate_required_links(
             ctx.error("REQUIRED_LINK_SELF_ROLE_UNRESOLVED", doc.path, path, f"Required Link {req_id!r} self_role {self_role!r} does not resolve")
             continue
 
-        for _obj_id, (kind, _ldoc, candidate) in objects.items():
-            if kind != "Property" or candidate.get("property_type_ref") != "link":
-                continue
+        candidates = link_index.get((ltype, endpoint_for_role, entity_id), []) if isinstance(ltype, str) and isinstance(entity_id, str) else []
+        for candidate in candidates:
             value = candidate.get("value")
-            if not isinstance(value, dict) or value.get("link_type_ref") != ltype:
-                continue
-            if value.get(endpoint_for_role) != entity_id:
+            if not isinstance(value, dict):
                 continue
             required_ref = value.get("required_link_ref")
             if not isinstance(required_ref, dict):
@@ -719,10 +844,10 @@ def main() -> int:
     args = parser.parse_args()
 
     input_path = args.input.resolve()
-    spec_dir = (args.spec_dir.resolve() if args.spec_dir else Path(__file__).resolve().parent.parent)
     ctx = Context()
 
     try:
+        spec_dir = args.spec_dir.resolve() if args.spec_dir else find_default_spec_dir()
         standard = load_standard(spec_dir)
     except Exception as exc:
         if args.json:
@@ -749,7 +874,8 @@ def main() -> int:
         for doc in docs:
             validate_contract_shape(doc, standard, ctx)
         objects, owners = collect_canonical_objects(docs, ctx)
-        validate_entities_and_properties(docs, standard, idx, objects, owners, ctx)
+        link_index = build_link_index(objects)
+        validate_entities_and_properties(docs, standard, idx, objects, owners, link_index, ctx)
         validate_top_level_references(docs, standard, objects, ctx)
 
         result = outcome(ctx)
