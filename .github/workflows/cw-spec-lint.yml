@@ -44,12 +44,14 @@ jobs:
 
       - name: Emit machine-readable report
         if: always()
-        run: python linter/cw_spec_lint.py --json > cw-spec-lint-report.json || true
+        run: |
+          mkdir -p .artifacts
+          python linter/cw_spec_lint.py --json > .artifacts/cw-spec-lint-report.json || true
 
       - name: Upload lint report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cw-spec-lint-report
-          path: cw-spec-lint-report.json
+          path: .artifacts/cw-spec-lint-report.json
           if-no-files-found: error
