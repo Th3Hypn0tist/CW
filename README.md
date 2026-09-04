@@ -1,3 +1,100 @@
+# AIGM-CW
+
+AIGM Canonical Wireframe (CW) defines a machine-readable canonical architecture model built around the Canonical Contract Format (CCF), CW NodeTypes, and CW Rulesets.
+
+## Validation tools
+
+CW ships with two deliberately separate validation tools under [`linter/`](linter/):
+
+### `cw_spec_lint.py` — validate the standard itself
+
+`cw_spec_lint.py` checks the internal integrity of the active CW specification set:
+
+- Canonical Contract Format (CCF)
+- CW NodeTypes
+- CW Dependency Rules / Rulesets
+
+It answers:
+
+> Does the CW standard set remain internally coherent with its own declared integrity requirements?
+
+Run locally from the repository root:
+
+```bash
+python linter/cw_spec_lint.py --coverage
+```
+
+Machine-readable output:
+
+```bash
+python linter/cw_spec_lint.py --json
+```
+
+### `cw_validate.py` — validate any CW artifact
+
+`cw_validate.py` validates an arbitrary CW artifact against the active locked CW standard.
+
+Input may be either **one JSON file**:
+
+```bash
+python linter/cw_validate.py artifact.json
+```
+
+or **one directory**:
+
+```bash
+python linter/cw_validate.py ./artifact-directory/
+```
+
+When a directory is supplied, JSON files are discovered recursively as one validation set. CW contract candidates are identified from their content; unrelated JSON files are ignored with a warning. Canonical references may resolve across the selected CW documents.
+
+**Filenames, extensions beyond JSON discovery, directory names, paths, and directory structure do not provide semantic meaning.** Canonical identity and semantics are resolved from the JSON content itself.
+
+By default the validator discovers an unambiguous active standard by searching from its own directory upward:
+
+```text
+Canonical_Contract_Format_v*.json
+CanonicalWireframe_NodeTypes_v*.json
+CanonicalWireframe_Dependency_Rules_v*.json
+```
+
+To validate explicitly against another specification directory:
+
+```bash
+python linter/cw_validate.py artifact.json --spec-dir /path/to/specs
+```
+
+The validator checks the selected standard with `cw_spec_lint.py` before artifact validation unless that behavior is explicitly disabled by the validator options.
+
+The canonical result classes are:
+
+```text
+INVALID_SPECIFICATION
+INVALID_MODEL
+UNREADY
+READY
+IMPLEMENTATION_FAILURE
+```
+
+Exit codes:
+
+```text
+0  READY or UNREADY — canonical model is valid
+1  INVALID_MODEL or INVALID_SPECIFICATION
+2  IMPLEMENTATION_FAILURE
+```
+
+The distinction is intentional:
+
+```text
+cw_spec_lint.py   CW standard -> specification integrity
+cw_validate.py    CW artifact -> conformance against CW standard
+```
+
+See [`linter/README.md`](linter/README.md) for detailed local usage.
+
+---
+
 ## Licensing
 
 AIGM-CW follows an **Open Standard, Not Open Use** model.
