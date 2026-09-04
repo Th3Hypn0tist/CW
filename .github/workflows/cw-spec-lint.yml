@@ -1,0 +1,58 @@
+name: CW Specification Integrity
+
+on:
+  pull_request:
+    paths:
+      - 'Canonical_Contract_Format_v*.json'
+      - 'CanonicalWireframe_NodeTypes_v*.json'
+      - 'CanonicalWireframe_Dependency_Rules_v*.json'
+      - 'linter/**'
+      - '.github/workflows/cw-spec-lint.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'Canonical_Contract_Format_v*.json'
+      - 'CanonicalWireframe_NodeTypes_v*.json'
+      - 'CanonicalWireframe_Dependency_Rules_v*.json'
+      - 'linter/**'
+      - '.github/workflows/cw-spec-lint.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  specification-integrity:
+    name: CW specification integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Compile linter
+        run: python -m py_compile linter/cw_spec_lint.py
+
+      - name: Validate locked CW specification set
+        run: python linter/cw_spec_lint.py --coverage
+
+      # Keep generated reports outside the root *.json specification scan.
+      - name: Emit machine-readable report
+        if: always()
+        run: |
+          mkdir -p .artifacts
+          python linter/cw_spec_lint.py --json > .artifacts/cw-spec-lint-report.json || true
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cw-spec-lint-report
+          path: .artifacts/cw-spec-lint-report.json
+          if-no-files-found: error
