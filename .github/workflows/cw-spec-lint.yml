@@ -42,6 +42,7 @@ jobs:
       - name: Validate locked CW specification set
         run: python linter/cw_spec_lint.py --coverage
 
+      # Keep generated reports outside the root *.json specification scan.
       - name: Emit machine-readable report
         if: always()
         run: |
