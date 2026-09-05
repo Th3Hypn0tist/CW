@@ -145,18 +145,18 @@ def load_standard(spec_dir: Path) -> Standard:
     )
 
 
-def find_default_spec_dir() -> Path:
+def find_default_standard() -> Tuple[Path, Standard]:
     script_dir = Path(__file__).resolve().parent
     candidates = [script_dir, *script_dir.parents]
-    failures: List[str] = []
     for candidate in candidates:
         try:
-            load_standard(candidate)
-            return candidate
-        except Exception as exc:
-            failures.append(f"{candidate}: {exc}")
+            return candidate, load_standard(candidate)
+        except Exception:
+            pass
+        if (candidate / ".git").exists():
+            break
     raise RuntimeError(
-        "could not discover an unambiguous CW specification set from validator location upward; "
+        "could not discover an unambiguous CW specification set from validator location up to the repository root; "
         "use --spec-dir explicitly"
     )
 
@@ -838,7 +838,7 @@ def print_human(input_path: Path, spec_dir: Path, standard: Standard, docs: Sequ
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate one CW JSON artifact or a directory artifact set against the local CW standard.")
     parser.add_argument("input", type=Path, help="CW .json file or directory containing CW JSON documents")
-    parser.add_argument("--spec-dir", type=Path, default=None, help="override CW specification directory; default is repository root relative to this script")
+    parser.add_argument("--spec-dir", type=Path, default=None, help="override CW specification directory; default searches upward from this validator to the repository root")
     parser.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     parser.add_argument("--skip-spec-lint", action="store_true", help="skip cw_spec_lint.py self-integrity check of the CW standard")
     args = parser.parse_args()
@@ -847,8 +847,11 @@ def main() -> int:
     ctx = Context()
 
     try:
-        spec_dir = args.spec_dir.resolve() if args.spec_dir else find_default_spec_dir()
-        standard = load_standard(spec_dir)
+        if args.spec_dir:
+            spec_dir = args.spec_dir.resolve()
+            standard = load_standard(spec_dir)
+        else:
+            spec_dir, standard = find_default_standard()
     except Exception as exc:
         if args.json:
             print(json.dumps({"validator_version": VALIDATOR_VERSION, "result": "IMPLEMENTATION_FAILURE", "message": str(exc)}, indent=2))
