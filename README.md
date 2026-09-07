@@ -6,6 +6,14 @@ AIGM Canonical Wireframe (CW) defines a machine-readable canonical architecture 
 
 CW models one canonical structure and exposes its explicit topologies as projections over the same modeled identities. A projection may reorganize, filter, or navigate the model, but it does not create a parallel source of truth.
 
+## CW Constitution
+
+The architectural invariants of CW are defined in the [CW Constitution](docs/CW_CONSTITUTION.md).
+
+Its governing principle is:
+
+> **One truth. Many topologies. No duplicate truth.**
+
 ## Validation tools
 
 CW ships with two deliberately separate validation tools under [`linter/`](linter/):
