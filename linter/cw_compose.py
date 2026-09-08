@@ -40,11 +40,21 @@ def compose_documents(
     """
     loaded: dict[Path, dict[str, Any]] = {}
     roots: list[tuple[Path, dict[str, Any]]] = []
+    entity_shards: list[Path] = []
     for path in paths:
         document = read_document(path)
+        if not isinstance(document, dict):
+            raise CWCompositionError(f"{path}: CW/JSON serialization root must be an object")
         loaded[path.resolve()] = document
         if isinstance(document.get("format"), dict):
             roots.append((path, document))
+        elif _entity_shard(document):
+            entity_shards.append(path)
+
+    if len(paths) == 1 and not roots:
+        if entity_shards:
+            raise CWCompositionError(f"{paths[0]}: standalone Node shard requires a composition root")
+        raise CWCompositionError(f"{paths[0]}: no Canonical Contract root found")
 
     result: list[tuple[Path, dict[str, Any]]] = []
     for root_path, root in roots:
