@@ -6,8 +6,8 @@ This directory mirrors the canonical StructureTree roots and contains one starte
 CW/
 ├── FILE/
 │   ├── code.cw
-│   └── NODETYPES/
-│       └── ...all non-family NodeType templates...
+│   └── NodeTemplates/
+│       └── ...all non-family Node templates...
 ├── ABS/
 │   └── abs.cw
 ├── DOC/
@@ -25,7 +25,9 @@ Canonical identity families:
 #CTRCT -> contract
 ```
 
-The files under `FILE/NODETYPES/` are collected there only so every currently declared NodeType has a copyable starter. Directory placement does not infer semantic identity or NodeType; the explicit `id` and `entity_type_ref` remain authoritative.
+`FILE/NodeTemplates/` is a template catalog containing copyable starter Nodes for the currently declared non-family NodeTypes. The directory name does not define NodeType semantics; `NodeTypes` remains the specification concept and each template carries its explicit `entity_type_ref`.
+
+Directory placement does not infer semantic identity or NodeType. Explicit canonical identity and `entity_type_ref` remain authoritative.
 
 `topology_entity.abstract.cw` represents the abstract `topology_entity` NodeType and is not intended as a normal concrete Node.
 
