@@ -23,8 +23,8 @@ def _normalize_artifact_ref(value: Any) -> str:
     path = PurePosixPath(normalized)
     if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
         raise CWCompositionError(f"invalid CW shard artifact_ref: {value!r}")
-    if path.suffix not in {".cw", ".json"}:
-        raise CWCompositionError(f"CW shard artifact_ref must use .cw or .json serialization: {value!r}")
+    if path.suffix.lower() != ".cw":
+        raise CWCompositionError(f"CW shard artifact_ref must use .cw serialization: {value!r}")
     return str(path)
 
 
@@ -34,9 +34,10 @@ def compose_documents(
 ) -> list[tuple[Path, dict[str, Any]]]:
     """Load full contract documents and compose explicitly sharded CW roots.
 
-    A sharded root opts into composition by declaring a `shards` array. Every
-    declared shard is a direct canonical Entity object. Paths locate serialized
-    content only; identity and NodeType come from the Entity itself.
+    Monolithic CW may be serialized as .cw or .json. A sharded root opts into
+    composition by declaring a `shards` array and MUST use .cw for the root and
+    every direct Entity shard. Paths locate serialized content only; identity and
+    NodeType come from the Entity itself.
     """
     loaded: dict[Path, dict[str, Any]] = {}
     roots: list[tuple[Path, dict[str, Any]]] = []
@@ -62,6 +63,8 @@ def compose_documents(
         if shards is None:
             result.append((root_path, root))
             continue
+        if root_path.suffix.lower() != ".cw":
+            raise CWCompositionError(f"{root_path}: .json CW is monolithic-only; sharded root must use .cw")
         if not isinstance(shards, list):
             raise CWCompositionError(f"{root_path}: shards must be an array")
         root_entities = root.get("entities")
@@ -92,6 +95,8 @@ def compose_documents(
             shard = loaded.get(shard_path)
             if shard is None:
                 raise CWCompositionError(f"{root_path}: declared shard not discovered: {artifact_ref}")
+            if shard_path.suffix.lower() != ".cw":
+                raise CWCompositionError(f"{root_path}: declared shard must use .cw serialization: {artifact_ref}")
             if not _entity_shard(shard):
                 raise CWCompositionError(f"{root_path}: shard must contain one direct canonical Entity: {artifact_ref}")
             if shard.get("id") != entity_ref:
