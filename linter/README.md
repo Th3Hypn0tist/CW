@@ -14,6 +14,8 @@ cw_validate.py
 
 Both tools are local-first, use only the Python standard library, and resolve the CW specification directory relative to their own location by default.
 
+The `linter` directory is also an importable Python package. Shared specification discovery/classification lives in `cw_spec_common.py`; executables and external tooling reuse that code rather than maintaining parallel specification-discovery truth. Both direct script execution and package imports are supported.
+
 ## Expected layout
 
 ```text
@@ -22,6 +24,8 @@ CW/
 ├── CanonicalWireframe_NodeTypes_v*.json
 ├── CanonicalWireframe_Dependency_Rules_v*.json
 └── linter/
+    ├── __init__.py
+    ├── cw_spec_common.py
     ├── cw_spec_lint.py
     ├── cw_validate.py
     └── README.md

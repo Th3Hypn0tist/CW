@@ -50,13 +50,14 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
-LINTER_VERSION = "1.0.0"
+try:
+    from .cw_spec_common import SPEC_IDS, classify_spec as classify_core_spec
+except ImportError:  # direct script execution
+    from cw_spec_common import SPEC_IDS, classify_spec as classify_core_spec
 
-EXPECTED_IDS = {
-    "ccf": "CANONICAL_CONTRACT_FORMAT",
-    "nodetypes": "CW_NODETYPES",
-    "rulesets": "CW_RULESETS",
-}
+LINTER_VERSION = "1.1.0"
+
+EXPECTED_IDS = SPEC_IDS
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 RESULT_TOKEN_RE = re.compile(
     r"\b(?:INVALID_[A-Z][A-Z0-9_]*|IMPLEMENTATION_FAILURE|UNREADY|READY|CONFLICT)\b"
@@ -199,19 +200,7 @@ def load_json(path: Path, ctx: LintContext) -> Optional[Any]:
 
 
 def classify(data: Any) -> str:
-    if not isinstance(data, dict):
-        return "other"
-    if data.get("type") == "canonical_contract_format" or data.get("id") == "CANONICAL_CONTRACT_FORMAT":
-        return "ccf"
-    if data.get("id") == "CW_NODETYPES" or (
-        isinstance(data.get("nodetypes"), list) and isinstance(data.get("nodetype_schema"), dict)
-    ):
-        return "nodetypes"
-    if data.get("id") == "CW_RULESETS" or (
-        isinstance(data.get("property_rulesets"), list) and isinstance(data.get("link_rulesets"), list)
-    ):
-        return "rulesets"
-    return "other"
+    return classify_core_spec(data) or "other"
 
 
 def discover(scan_dir: Path, ctx: LintContext) -> List[Artifact]:
@@ -1213,6 +1202,90 @@ def attach_validator_operation_coverage(ccf: Artifact, coverage: Coverage) -> No
     )
 
 
+
+def check_core_topology_contract(
+    nodetypes: Artifact,
+    rulesets: Artifact,
+    idx: Indexes,
+    ctx: LintContext,
+) -> None:
+    """Validate the structured One Truth / Many Topologies contract.
+
+    This validates references between already-declared NodeTypes and Link Rulesets;
+    it does not create topology semantics in the linter itself.
+    """
+    model = nodetypes.data.get("core_topology_model")
+    links = rulesets.data.get("core_topology_links")
+    if not isinstance(model, dict):
+        ctx.error("CORE_TOPOLOGY_MODEL_MISSING", nodetypes.path, "$.core_topology_model", "structured core topology model is required")
+        return
+    if not isinstance(links, dict):
+        ctx.error("CORE_TOPOLOGY_LINKS_MISSING", rulesets.path, "$.core_topology_links", "structured core topology link model is required")
+        return
+
+    expected_nodetypes = {"topology_entity", "file", "abs", "doc", "ctrct"}
+    for nt_ref in sorted(expected_nodetypes):
+        if nt_ref not in idx.nodetypes:
+            ctx.error("CORE_TOPOLOGY_NODETYPE_UNRESOLVED", nodetypes.path, "$.core_topology_model", f"NodeType {nt_ref!r} does not resolve")
+
+    if model.get("shared_nodetype_ref") != "topology_entity":
+        ctx.error("CORE_TOPOLOGY_SHARED_TYPE_INVALID", nodetypes.path, "$.core_topology_model.shared_nodetype_ref", "must resolve topology_entity")
+    if model.get("master_implementation_nodetype_ref") != "file":
+        ctx.error("CORE_TOPOLOGY_MASTER_INVALID", nodetypes.path, "$.core_topology_model.master_implementation_nodetype_ref", "must resolve file")
+    if model.get("type_authority") != "Entity.entity_type_ref":
+        ctx.error("CORE_TOPOLOGY_TYPE_AUTHORITY_INVALID", nodetypes.path, "$.core_topology_model.type_authority", "NodeType authority must be Entity.entity_type_ref")
+    if model.get("prefix_inference_forbidden") is not True:
+        ctx.error("CORE_TOPOLOGY_PREFIX_INFERENCE_INVALID", nodetypes.path, "$.core_topology_model.prefix_inference_forbidden", "prefix inference must be forbidden")
+
+    families = model.get("canonical_identity_families")
+    if families != ["#FILE", "#ABS", "#DOC", "#CTRCT"]:
+        ctx.error("CORE_TOPOLOGY_FAMILIES_INVALID", nodetypes.path, "$.core_topology_model.canonical_identity_families", "must declare #FILE, #ABS, #DOC, #CTRCT in canonical order")
+
+    serialization = model.get("serialization")
+    if not isinstance(serialization, dict):
+        ctx.error("CORE_TOPOLOGY_SERIALIZATION_MISSING", nodetypes.path, "$.core_topology_model.serialization", "serialization contract must be structured")
+    else:
+        for field in ("monolithic_allowed", "sharded_allowed", "semantic_equivalence_required"):
+            if serialization.get(field) is not True:
+                ctx.error("CORE_TOPOLOGY_SERIALIZATION_INVALID", nodetypes.path, f"$.core_topology_model.serialization.{field}", f"{field} must be true")
+        if serialization.get("doc_extension_fixed") is not False:
+            ctx.error("CORE_TOPOLOGY_DOC_EXTENSION_INVALID", nodetypes.path, "$.core_topology_model.serialization.doc_extension_fixed", "DOC representation extension must remain open")
+        if serialization.get("path_semantic_authority") is not False:
+            ctx.error("CORE_TOPOLOGY_PATH_AUTHORITY_INVALID", nodetypes.path, "$.core_topology_model.serialization.path_semantic_authority", "paths must not be semantic authority")
+
+    expected_links = {
+        "abstraction_member": ({"file", "abs"}, "abs", "abstraction"),
+        "documentation_target": ({"file", "abs"}, "doc", "document"),
+        "contract_target": ({"file", "abs"}, "ctrct", "contract"),
+    }
+    structured_links = links.get("links")
+    if not isinstance(structured_links, dict):
+        ctx.error("CORE_TOPOLOGY_LINK_MAP_MISSING", rulesets.path, "$.core_topology_links.links", "topology link map must be structured")
+        return
+    if links.get("closed_link_vocabulary") is not False:
+        ctx.error("CORE_TOPOLOGY_LINK_VOCABULARY_CLOSED", rulesets.path, "$.core_topology_links.closed_link_vocabulary", "core Link vocabulary must remain open")
+
+    for link_type, (source_refs, target_ref, owner_role) in expected_links.items():
+        decl = structured_links.get(link_type)
+        if not isinstance(decl, dict):
+            ctx.error("CORE_TOPOLOGY_LINK_DECL_MISSING", rulesets.path, f"$.core_topology_links.links.{link_type}", f"missing structured declaration for {link_type}")
+            continue
+        if set(decl.get("source_nodetype_refs", [])) != source_refs:
+            ctx.error("CORE_TOPOLOGY_LINK_SOURCE_INVALID", rulesets.path, f"$.core_topology_links.links.{link_type}.source_nodetype_refs", f"unexpected source NodeTypes for {link_type}")
+        if decl.get("target_nodetype_ref") != target_ref:
+            ctx.error("CORE_TOPOLOGY_LINK_TARGET_INVALID", rulesets.path, f"$.core_topology_links.links.{link_type}.target_nodetype_ref", f"unexpected target NodeType for {link_type}")
+        if decl.get("owner_role") != owner_role:
+            ctx.error("CORE_TOPOLOGY_LINK_OWNER_INVALID", rulesets.path, f"$.core_topology_links.links.{link_type}.owner_role", f"unexpected owner role for {link_type}")
+
+        matching = idx.link_types.get(link_type, [])
+        if len(matching) != 1:
+            ctx.error("CORE_TOPOLOGY_LINK_RULESET_RESOLUTION", rulesets.path, f"$.core_topology_links.links.{link_type}", f"expected exactly one Link Ruleset for {link_type}, got {len(matching)}")
+            continue
+        rule = matching[0]
+        if rule.get("property_owner") != owner_role:
+            ctx.error("CORE_TOPOLOGY_LINK_RULESET_OWNER_MISMATCH", rulesets.path, f"$.link_rulesets[{rule.get('id', link_type)}].property_owner", f"structured owner_role and governing Ruleset disagree for {link_type}")
+
+
 def lint(scan_dir: Path) -> Tuple[LintContext, List[Artifact], Coverage]:
     ctx = LintContext()
     artifacts = discover(scan_dir, ctx)
@@ -1227,6 +1300,7 @@ def lint(scan_dir: Path) -> Tuple[LintContext, List[Artifact], Coverage]:
 
     check_cross_refs(ccf, nodetypes, rulesets, artifacts, ctx)
     idx = build_indexes(nodetypes, rulesets, ctx)
+    check_core_topology_contract(nodetypes, rulesets, idx, ctx)
 
     check_nodetype_inheritance(nodetypes, idx, ctx)
     check_nodetype_properties_and_required_links(nodetypes, idx, ctx)

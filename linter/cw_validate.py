@@ -33,14 +33,20 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
-VALIDATOR_VERSION = "1.1.0"
+try:
+    from .cw_spec_common import classify_spec as classify_core_spec
+    from . import cw_spec_lint
+except ImportError:  # direct script execution
+    from cw_spec_common import classify_spec as classify_core_spec
+    import cw_spec_lint
+
+VALIDATOR_VERSION = "1.2.0"
 
 
 class DuplicateKeyError(ValueError):
@@ -107,13 +113,7 @@ def read_json(path: Path) -> Dict[str, Any]:
 
 
 def classify_spec(data: Mapping[str, Any]) -> Optional[str]:
-    if data.get("id") == "CANONICAL_CONTRACT_FORMAT" or data.get("type") == "canonical_contract_format":
-        return "ccf"
-    if data.get("id") == "CW_NODETYPES":
-        return "nodetypes"
-    if data.get("id") == "CW_RULESETS":
-        return "rulesets"
-    return None
+    return classify_core_spec(data)
 
 
 def load_standard(spec_dir: Path) -> Standard:
@@ -162,18 +162,9 @@ def find_default_standard() -> Tuple[Path, Standard]:
 
 
 def lint_standard(spec_dir: Path) -> Tuple[bool, str]:
-    """Run the sibling standard self-linter when available."""
-    lint_path = Path(__file__).resolve().with_name("cw_spec_lint.py")
-    if not lint_path.exists():
-        return True, "cw_spec_lint.py not present; standard self-lint skipped"
+    """Run the shared CW specification linter as an imported module."""
     try:
-        spec = importlib.util.spec_from_file_location("cw_spec_lint", lint_path)
-        if spec is None or spec.loader is None:
-            raise RuntimeError("could not import cw_spec_lint.py")
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = module
-        spec.loader.exec_module(module)
-        lint_ctx, _artifacts, _coverage = module.lint(spec_dir)
+        lint_ctx, _artifacts, _coverage = cw_spec_lint.lint(spec_dir)
         errors = [f for f in lint_ctx.findings if f.severity == "ERROR"]
         if errors:
             return False, f"CW standard self-lint failed with {len(errors)} error(s)"
