@@ -5,11 +5,13 @@ from dataclasses import asdict,dataclass
 from pathlib import Path
 try:
  from .cw_spec_common import read_json,resolve_bundle
+ from .cw_compose import compose_documents
  from . import cw_spec_lint
 except ImportError:
  from cw_spec_common import read_json,resolve_bundle
+ from cw_compose import compose_documents
  import cw_spec_lint
-VER='2.0.1'
+VER='2.1.0'
 @dataclass
 class F: severity:str; code:str; file:str; path:str; message:str
 class C:
@@ -82,10 +84,7 @@ def main()->int:
   if any(z.severity=='ERROR' for z in lc.f):print('RESULT: INVALID_SPECIFICATION',file=sys.stderr);return 1
  c=C()
  try:
-  paths=artifact_paths(x.input);docs=[]
-  for p in paths:
-   d=read_json(p)
-   if x.input.is_file() or isinstance(d.get('format'),dict):docs.append((p,d))
+  paths=artifact_paths(x.input);docs=compose_documents(paths,read_json)
   nts={z['id']:z for z in dl(b.nodetypes.get('nodetypes')) if isinstance(z.get('id'),str)}
   prs={z['id']:z for z in dl(b.rulesets.get('property_rulesets')) if isinstance(z.get('id'),str)}
   lrs={z['id']:z for z in dl(b.rulesets.get('link_rulesets')) if isinstance(z.get('id'),str)}
