@@ -14,6 +14,21 @@ monolithic CW <-> normalized canonical model <-> sharded CW
 
 A lossless composition of a sharded CW representation MUST produce the same normalized canonical model as its semantically equivalent monolithic representation.
 
+## Serialization extensions
+
+A monolithic CW model MAY be serialized as either:
+
+```text
+model.cw
+model.json
+```
+
+The `.json` form exists for interoperability with tools and AI services that only permit JSON file extensions. It does not define different semantics and MUST contain the same monolithic Canonical Contract content that could be stored in `.cw`.
+
+The `.json` extension is monolithic-only. A `.json` CW artifact MUST NOT declare external `shards`.
+
+A sharded CW representation uses `.cw` exclusively for both the composition root and Node shards. This keeps the native multi-artifact representation unambiguous while preserving `.json` as a compatibility envelope for single-file exchange.
+
 ## Directory form
 
 A sharded CW directory has one root artifact and zero or more Node shards.
@@ -36,7 +51,7 @@ The directory names above are topology/navigation conventions only. A loader MUS
 
 ## Root artifact
 
-`model.cw` is the composition root.
+`model.cw` is the composition root for sharded CW.
 
 Before composition, its `entities` collection represents the monolithic Entity slot and MUST be empty when external Node shards are used. The root MAY carry representation-only shard metadata used to locate shards.
 
@@ -44,9 +59,11 @@ After composition, the loader materializes the normalized model by replacing the
 
 A root artifact MUST NOT duplicate a canonical Entity definition that is also supplied by a shard.
 
+A monolithic `.json` artifact is not a composition root and MUST NOT reference external shards.
+
 ## Node shard
 
-A Node shard is a JSON-serialized canonical Entity object, for example:
+A Node shard is a JSON-serialized canonical Entity object stored in a `.cw` artifact, for example:
 
 ```json
 {
@@ -67,22 +84,24 @@ The Entity `entity_type_ref` is NodeType authority. The shard directory is not N
 
 ## Discovery
 
-Directory discovery considers `.cw` and `.json` serialization files deterministically.
+Input discovery may consider `.cw` and `.json` serialization files deterministically, but their permitted representation roles differ:
 
-The loader classifies content by explicit structure, not extension or path:
+- `.json` MAY contain one complete monolithic Canonical Contract model;
+- `.json` MUST NOT be used as a sharded composition root or Node shard;
+- `.cw` MAY contain a monolithic Canonical Contract model;
+- `model.cw` MAY be a sharded composition root;
+- declared Node shards MUST use `.cw`.
 
-- a composition root is an object with a Canonical Contract `format` block and model-level contract fields;
-- a Node shard is an object with canonical Entity fields such as `id`, `name`, `entity_type_ref`, `status`, and `properties` and without a Canonical Contract root `format` block;
-- other JSON/CW files are not silently interpreted as model members.
+The loader classifies canonical content by explicit structure, not by using the extension as semantic authority. Extension constrains only the permitted serialization topology.
 
-If classification is ambiguous, composition fails. The loader MUST NOT guess from filename, directory, extension, or naming convention.
+If classification is ambiguous, composition fails. The loader MUST NOT guess identity, NodeType, relation meaning, ownership, or specification from filename, directory, extension, or naming convention.
 
 ## Deterministic composition
 
 For one sharded model, composition MUST:
 
-1. resolve exactly one composition root;
-2. discover the Node shards declared by the representation or, when declaration is intentionally omitted, only by an explicitly defined deterministic loader policy;
+1. resolve exactly one `.cw` composition root;
+2. discover the `.cw` Node shards declared by the representation;
 3. parse every selected shard as one canonical Entity object;
 4. reject duplicate canonical Entity ids;
 5. preserve each Entity object without semantic rewriting;
@@ -105,6 +124,9 @@ A loader MAY require a caller-provided specification selection before final sema
 Composition fails before semantic readiness evaluation when any of the following occurs:
 
 - no unique root can be resolved where a root is required;
+- a `.json` artifact declares external shards;
+- a sharded root does not use `.cw`;
+- a declared shard does not use `.cw`;
 - a declared shard is missing;
 - a selected shard is not an Entity object;
 - a shard contains more than one Entity definition;
@@ -118,10 +140,11 @@ Composition fails before semantic readiness evaluation when any of the following
 Given canonical model `M`:
 
 ```text
-M -> monolithic serialization -> normalize = M
-M -> sharded serialization -> compose -> normalize = M
+M -> monolithic .cw serialization -> normalize = M
+M -> monolithic .json serialization -> normalize = M
+M -> sharded .cw serialization -> compose -> normalize = M
 ```
 
-Both paths MUST preserve the same active canonical identities, Properties, Links, Required Links, Function logic, references, gaps, and model-level contract semantics.
+All paths MUST preserve the same active canonical identities, Properties, Links, Required Links, Function logic, references, gaps, and model-level contract semantics.
 
 Whitespace, JSON key order, shard file order, and physical shard placement may differ when they are not explicitly canonical semantics.
