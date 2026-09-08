@@ -28,6 +28,16 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Disable workflow mutation in migration script
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('linter/_migrate_tooling_imports.py')
+          t = p.read_text(encoding='utf-8')
+          t = t.replace('    migrate_workflow()\n', '')
+          p.write_text(t, encoding='utf-8')
+          PY
+
       - name: Apply tooling migration
         run: python linter/_migrate_tooling_imports.py
 
@@ -43,10 +53,10 @@ jobs:
       - name: Verify validator imports shared linter
         run: python -c "from pathlib import Path; from linter import cw_validate; ok,msg=cw_validate.lint_standard(Path('.')); print(msg); raise SystemExit(0 if ok else 1)"
 
-      - name: Remove one-shot migration machinery
+      - name: Remove generated caches and migration script
         run: |
+          rm -rf linter/__pycache__
           rm linter/_migrate_tooling_imports.py
-          rm .github/workflows/_migrate-linter-tooling.yml
 
       - name: Commit tooling cleanup
         run: |
