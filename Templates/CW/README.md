@@ -1,13 +1,11 @@
-# CW sharded Node templates
+# CW sharded structure template
 
-This directory mirrors the canonical StructureTree roots and contains one starter Node shard for every NodeType in `CanonicalWireframe_NodeTypes_v1.17.0.json`.
+This directory is the minimal sharded CW template.
 
 ```text
 CW/
 ├── FILE/
-│   ├── code.cw
-│   └── NodeTemplates/
-│       └── ...all non-family Node templates...
+│   └── code.cw
 ├── ABS/
 │   └── abs.cw
 ├── DOC/
@@ -16,21 +14,17 @@ CW/
     └── contract.cw
 ```
 
-Canonical identity families:
+Every current canonical StructureTree root has one minimal Node template.
 
 ```text
-#FILE  -> code
-#ABS   -> abs
-#DOC   -> doc
-#CTRCT -> contract
+#FILE  -> FILE/
+#ABS   -> ABS/
+#DOC   -> DOC/
+#CTRCT -> CTRCT/
 ```
 
-`FILE/NodeTemplates/` is a template catalog containing copyable starter Nodes for the currently declared non-family NodeTypes. The directory name does not define NodeType semantics; `NodeTypes` remains the specification concept and each template carries its explicit `entity_type_ref`.
+This directory demonstrates shard placement and hierarchy. It is not the reusable Node template catalog; those templates live under `Templates/Nodes/`.
 
-Directory placement does not infer semantic identity or NodeType. Explicit canonical identity and `entity_type_ref` remain authoritative.
+Directory placement is navigation/topology, not semantic inference authority. Canonical identity and NodeType remain explicit in Node content.
 
-`topology_entity.abstract.cw` represents the abstract `topology_entity` NodeType and is not intended as a normal concrete Node.
-
-Each `.cw` file in this directory is a Node shard, not a standalone CCF contract. Copy the Node into a canonical CW model or use it as the starting point for a sharded CW workspace once the selected loader defines shard composition.
-
-NodeTypes define what is available to present. Rulesets define how it is read. StructureTree provides hierarchical navigation. Links provide relational navigation.
+The monolithic starter remains at `Templates/CanonicalWireframe_Template.cw`.
