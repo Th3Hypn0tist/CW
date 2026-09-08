@@ -1,0 +1,25 @@
+{
+  "type": "cw_specification_set",
+  "id": "CW_CORE",
+  "name": "CW Core Specification Set",
+  "version": "1.0.0",
+  "immutable": true,
+  "ccf": {
+    "path": "../Canonical_Contract_Format_v2.4.3.json",
+    "git_blob_sha": "849eeb1bf4adcee9f866766d1931e57e8d6c02d9"
+  },
+  "nodetypes": {
+    "path": "../CanonicalWireframe_NodeTypes_v1.17.0.json",
+    "git_blob_sha": "30c3e72560a3eebffa44e412e447f9e3a0bdca28"
+  },
+  "rulesets": {
+    "path": "../CanonicalWireframe_Dependency_Rules_v3.13.0.json",
+    "git_blob_sha": "4525aec48487e746cfaf03285b1f1a02c4aa11b5"
+  },
+  "purpose": "Pin one immutable CCF + NodeTypes + Rulesets interpretation bundle. Alternate compatible bundles may select different NodeTypes and Rulesets while consuming the same CW canonical import format.",
+  "rules": [
+    "The bundle selects interpretation authority explicitly; filenames and latest/current discovery are not semantic authority.",
+    "Importers produce CW canonical data only. Specification selection happens after import.",
+    "Changing the selected specification set changes an evaluation context and MUST NOT silently rewrite the canonical model."
+  ]
+}

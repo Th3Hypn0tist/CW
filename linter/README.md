@@ -1,125 +1,142 @@
 # CW Linters and Validators
 
-CW intentionally contains two different validation tools.
-
-They answer different questions:
+CW has two separate validation tools:
 
 ```text
 cw_spec_lint.py
-    Does the CW standard set itself remain internally coherent?
+    Is the selected specification set internally coherent?
 
 cw_validate.py
-    Does this CW artifact conform to the local locked CW standard?
+    Does this CW canonical artifact conform to the selected specification set?
 ```
 
-Both tools are local-first, use only the Python standard library, and resolve the CW specification directory relative to their own location by default.
+Both tools are local-first and use only the Python standard library.
 
-The `linter` directory is also an importable Python package. Shared specification discovery/classification lives in `cw_spec_common.py`; executables and external tooling reuse that code rather than maintaining parallel specification-discovery truth. Both direct script execution and package imports are supported.
+The key boundary is:
 
-## Expected layout
+> **Importers produce CW only. NodeTypes and Rulesets are selected after import.**
+
+The validator does not contain a fixed code, UML, business, or other domain vocabulary. A compatible NodeTypes/Rulesets pair can be added or replaced without changing the CW import format or the validator implementation.
+
+## Specification sets
+
+A specification set binds exactly these roles:
 
 ```text
-CW/
-├── Canonical_Contract_Format_v*.json
-├── CanonicalWireframe_NodeTypes_v*.json
-├── CanonicalWireframe_Dependency_Rules_v*.json
-└── linter/
-    ├── __init__.py
-    ├── cw_spec_common.py
-    ├── cw_spec_lint.py
-    ├── cw_validate.py
-    └── README.md
+CCF
+NodeTypes
+Rulesets
 ```
 
----
+The repository default is pinned by:
 
-## 1. CW specification integrity linter
+```text
+spec_sets/CW_CORE.json
+```
 
-`cw_spec_lint.py` validates the **CW specification set itself**: CCF, NodeTypes, and Dependency Rules / Rulesets.
+The manifest may pin each file with its Git blob SHA. This makes the selected interpretation content explicit and immutable.
 
-From the repository root:
+### Default
 
 ```bash
 python linter/cw_spec_lint.py --coverage
+python linter/cw_validate.py artifact.json
 ```
 
-Machine-readable output:
+Both commands search upward from the tool location and prefer `spec_sets/CW_CORE.json`.
+
+### Explicit specification-set manifest
 
 ```bash
-python linter/cw_spec_lint.py --json
+python linter/cw_spec_lint.py --spec-set /path/to/UML_SPEC_SET.json --coverage
+python linter/cw_validate.py artifact.json --spec-set /path/to/UML_SPEC_SET.json
 ```
 
-The default specification directory is always the parent of the `linter` directory:
-
-```text
-../
-```
-
-The caller's current working directory does not determine which specification files are validated.
-
-To test another specification set explicitly:
+### Explicit three-file selection
 
 ```bash
-python linter/cw_spec_lint.py --dir /path/to/specs --coverage
+python linter/cw_spec_lint.py \
+  --ccf Canonical_Contract_Format.json \
+  --nodetypes UML_NodeTypes.json \
+  --rulesets UML_Rulesets.json
+
+python linter/cw_validate.py artifact.json \
+  --ccf Canonical_Contract_Format.json \
+  --nodetypes UML_NodeTypes.json \
+  --rulesets UML_Rulesets.json
 ```
 
-### Specification-linter exit codes
+### Legacy directory selection
+
+A directory containing exactly one CCF, one NodeTypes artifact and one Rulesets artifact is still supported:
+
+```bash
+python linter/cw_spec_lint.py --dir /path/to/specs
+python linter/cw_validate.py artifact.json --spec-dir /path/to/specs
+```
+
+Directory discovery is compatibility behavior, not semantic authority. Ambiguous directories fail rather than using a latest-version rule.
+
+## `RULESET_NODE`
+
+`RULESET_NODE` governs the Node root itself.
 
 ```text
-0  PASS — no specification lint errors
-1  FAIL — specification integrity errors found
+NodeType
+    defines what semantic sections the Node has available to present
+
+RULESET_NODE.section_readers
+    defines how those sections are read from canonical CW data
+```
+
+The linter checks this contract generically. It does not hardcode the concrete section vocabulary.
+
+For the CW Core set, a code Node exposes sections such as Functions, Events and Required Links. ABS, DOC and Contract Nodes do not inherit those code-only sections.
+
+## Links
+
+Links are the universal relational navigation mechanism.
+
+The selected Rulesets may provide one open generic Link Ruleset. With that rule selected by `Property.ruleset_ref`, an explicit relation value can be read and preserved without requiring a dedicated Ruleset for every possible relation label.
+
+Specialized Link Rulesets remain valid when additional semantics are required, for example Event causality or Function calls.
+
+This means:
+
+```text
+StructureTree = hierarchical navigation
+Links         = relational navigation
+```
+
+Both navigate the same canonical identities.
+
+## UML or another domain
+
+A UML specification is not a different import format. A producer still emits CW canonical data.
+
+A UML test therefore becomes:
+
+```text
+source
+  -> importer
+  -> CW canonical model
+  -> UML specification set
+  -> cw_spec_lint / cw_validate
+```
+
+A UML NodeTypes registry may declare UML NodeTypes and available sections, while its Rulesets define how those sections are read. The same validation executable is used unchanged.
+
+## Specification-linter result
+
+```text
+0  PASS
+1  specification integrity failure
 2  operational failure
 ```
 
-This tool deliberately does **not** claim to be the complete canonical model/runtime validator described by `CCF.validator.required_operations`.
+`--json` emits machine-readable output. `--coverage` reports the generic validation surface and confirms that concrete NodeType/domain Link vocabularies are not hardcoded.
 
----
-
-## 2. CW artifact validator
-
-`cw_validate.py` validates arbitrary CW artifacts against the local locked CW standard.
-
-The input may be either **one JSON file** or **one directory**.
-
-### Validate one JSON artifact
-
-```bash
-python linter/cw_validate.py ./artifact.json
-```
-
-### Validate a directory artifact set
-
-```bash
-python linter/cw_validate.py ./artifact-directory/
-```
-
-Directory input is treated as one validation set. All `*.json` files below the directory are loaded recursively, and canonical references may resolve across those files.
-
-**Filenames, directory names, file extensions beyond JSON discovery, and directory structure never provide canonical semantics.** Identity and semantic resolution come from explicit structured CW data.
-
-Machine-readable output:
-
-```bash
-python linter/cw_validate.py ./artifact-directory/ --json
-```
-
-To validate against another explicitly supplied CW specification directory:
-
-```bash
-python linter/cw_validate.py ./artifact.json --spec-dir /path/to/specs
-```
-
-By default `cw_validate.py` first runs `cw_spec_lint.py` against the selected CW standard. An invalid standard therefore cannot silently be used as validation authority.
-
-For isolated debugging only, that pre-check may be skipped explicitly:
-
-```bash
-python linter/cw_validate.py ./artifact.json --skip-spec-lint
-```
-
-### Artifact-validator result classes
-
-The validator reports canonical result classes rather than a generic boolean:
+## Artifact-validator results
 
 ```text
 INVALID_SPECIFICATION
@@ -129,42 +146,30 @@ READY
 IMPLEMENTATION_FAILURE
 ```
 
-At the command-line level:
+CLI exit codes:
 
 ```text
-0  READY or UNREADY — canonical model is structurally valid
+0  READY or UNREADY
 1  INVALID_MODEL or INVALID_SPECIFICATION
 2  IMPLEMENTATION_FAILURE
 ```
 
-`UNREADY` is not treated as invalid. It means the model is valid but one or more explicitly modeled requirements or references remain unresolved.
+`UNREADY != INVALID_MODEL`.
 
-### Current validation surface
+The validator first self-lints the selected specification set unless `--skip-spec-lint` is supplied for isolated debugging.
 
-The artifact validator currently checks, among other things:
+## Canonical boundaries
 
-- CCF contract shape and required top-level fields;
-- contract format and format version against the selected local CCF contract;
-- canonical Entity and Property identity uniqueness across a multi-file input set;
-- Entity required fields;
-- NodeType resolution and inherited NodeType requirements;
-- required Property types and Property cardinalities;
-- Property type to Ruleset resolution;
-- `ruleset_ref` agreement with the governing Property/Link Ruleset;
-- Property `value_schema` required fields and basic declared value types;
-- Link type resolution;
-- Link endpoint resolution and explicit endpoint constraints;
-- Ruleset reference-compatibility constraints;
-- explicit Required Link satisfaction through `required_link_ref`;
-- top-level reference resolution against the artifact set or local CW standard;
-- unresolved canonical references as `UNREADY` rather than guessed semantics.
+The tools do not infer semantics from filenames, paths, directory placement, renderer geometry, colors, names, source-code proximity, or a “latest” registry.
 
-The validator does not infer semantics from names, paths, geometry, source-code proximity, visual placement, or other non-canonical signals.
+The authority chain is:
 
----
+```text
+CW canonical data
+  + explicitly selected specification set
+    -> NodeTypes: what exists to present
+    -> Rulesets: how it is read
+  -> derived StructureTree / Links / renderer projections
+```
 
-## Local-first rule
-
-Both executables work without GitHub Actions and without third-party Python packages.
-
-CI may invoke the same executables, but CI is only an execution environment. It is not part of CW validation semantics.
+No projection becomes a second source of truth.

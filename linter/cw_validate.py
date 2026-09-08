@@ -1,909 +1,177 @@
 #!/usr/bin/env python3
-"""
-Validate arbitrary CanonicalWireframe artifacts against the local locked CW standard.
-
-Input may be either:
-
-    python linter/cw_validate.py artifact.json
-    python linter/cw_validate.py path/to/artifact-directory
-
-A directory is treated as one validation set. JSON files are discovered recursively;
-CW contract candidates are selected from content, unrelated JSON files are ignored with
-a warning, and canonical references may resolve across the selected CW documents.
-Filenames and directory structure never provide semantic meaning.
-
-By default the validator discovers an unambiguous CW standard set by searching
-from the validator directory upward:
-
-    ../Canonical_Contract_Format_v*.json
-    ../CanonicalWireframe_NodeTypes_v*.json
-    ../CanonicalWireframe_Dependency_Rules_v*.json
-
-Use --spec-dir only to explicitly validate against another specification directory.
-
-This tool validates CW artifacts. `cw_spec_lint.py` is separate and validates the
-CW standard set itself.
-
-Exit codes:
-    0 = READY or UNREADY (canonical model is valid)
-    1 = INVALID_MODEL or INVALID_SPECIFICATION
-    2 = IMPLEMENTATION_FAILURE
-"""
-
 from __future__ import annotations
-
-import argparse
-import json
-import sys
-from dataclasses import asdict, dataclass
+import argparse,json,sys
+from dataclasses import asdict,dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
-
 try:
-    from .cw_spec_common import classify_spec as classify_core_spec
-    from . import cw_spec_lint
-except ImportError:  # direct script execution
-    from cw_spec_common import classify_spec as classify_core_spec
-    import cw_spec_lint
-
-VALIDATOR_VERSION = "1.2.0"
-
-
-class DuplicateKeyError(ValueError):
-    pass
-
-
+ from .cw_spec_common import read_json,resolve_bundle
+ from . import cw_spec_lint
+except ImportError:
+ from cw_spec_common import read_json,resolve_bundle
+ import cw_spec_lint
+VER='2.0.0'
 @dataclass
-class Finding:
-    severity: str
-    code: str
-    file: str
-    path: str
-    message: str
-
-
-@dataclass
-class ContractDocument:
-    path: Path
-    data: Dict[str, Any]
-
-
-@dataclass
-class Standard:
-    ccf_path: Path
-    ccf: Dict[str, Any]
-    nodetypes_path: Path
-    nodetypes: Dict[str, Any]
-    rulesets_path: Path
-    rulesets: Dict[str, Any]
-
-
-class Context:
-    def __init__(self) -> None:
-        self.findings: List[Finding] = []
-
-    def add(self, severity: str, code: str, file: Path | str, path: str, message: str) -> None:
-        self.findings.append(Finding(severity, code, str(file), path or "$", message))
-
-    def error(self, code: str, file: Path | str, path: str, message: str) -> None:
-        self.add("ERROR", code, file, path, message)
-
-    def warn(self, code: str, file: Path | str, path: str, message: str) -> None:
-        self.add("WARNING", code, file, path, message)
-
-    def unready(self, code: str, file: Path | str, path: str, message: str) -> None:
-        self.add("UNREADY", code, file, path, message)
-
-
-def reject_duplicate_keys(pairs: Sequence[Tuple[str, Any]]) -> Dict[str, Any]:
-    out: Dict[str, Any] = {}
-    for key, value in pairs:
-        if key in out:
-            raise DuplicateKeyError(f"duplicate JSON key: {key!r}")
-        out[key] = value
-    return out
-
-
-def read_json(path: Path) -> Dict[str, Any]:
-    text = path.read_text(encoding="utf-8")
-    data = json.loads(text, object_pairs_hook=reject_duplicate_keys)
-    if not isinstance(data, dict):
-        raise ValueError("top-level JSON value must be an object")
-    return data
-
-
-def classify_spec(data: Mapping[str, Any]) -> Optional[str]:
-    return classify_core_spec(data)
-
-
-def load_standard(spec_dir: Path) -> Standard:
-    found: Dict[str, List[Tuple[Path, Dict[str, Any]]]] = {"ccf": [], "nodetypes": [], "rulesets": []}
-    for path in sorted(spec_dir.glob("*.json")):
-        try:
-            data = read_json(path)
-        except Exception:
-            continue
-        kind = classify_spec(data)
-        if kind:
-            found[kind].append((path, data))
-
-    missing = [kind for kind, values in found.items() if not values]
-    ambiguous = [kind for kind, values in found.items() if len(values) > 1]
-    if missing:
-        raise RuntimeError(f"missing specification artifact(s): {', '.join(missing)}")
-    if ambiguous:
-        detail = "; ".join(f"{kind}={len(found[kind])}" for kind in ambiguous)
-        raise RuntimeError(f"ambiguous specification artifacts: {detail}")
-
-    return Standard(
-        ccf_path=found["ccf"][0][0],
-        ccf=found["ccf"][0][1],
-        nodetypes_path=found["nodetypes"][0][0],
-        nodetypes=found["nodetypes"][0][1],
-        rulesets_path=found["rulesets"][0][0],
-        rulesets=found["rulesets"][0][1],
-    )
-
-
-def find_default_standard() -> Tuple[Path, Standard]:
-    script_dir = Path(__file__).resolve().parent
-    candidates = [script_dir, *script_dir.parents]
-    for candidate in candidates:
-        try:
-            return candidate, load_standard(candidate)
-        except Exception:
-            pass
-        if (candidate / ".git").exists():
-            break
-    raise RuntimeError(
-        "could not discover an unambiguous CW specification set from validator location up to the repository root; "
-        "use --spec-dir explicitly"
-    )
-
-
-def lint_standard(spec_dir: Path) -> Tuple[bool, str]:
-    """Run the shared CW specification linter as an imported module."""
-    try:
-        lint_ctx, _artifacts, _coverage = cw_spec_lint.lint(spec_dir)
-        errors = [f for f in lint_ctx.findings if f.severity == "ERROR"]
-        if errors:
-            return False, f"CW standard self-lint failed with {len(errors)} error(s)"
-        return True, "CW standard self-lint passed"
-    except Exception as exc:
-        return False, f"CW standard self-lint could not execute: {exc}"
-
-
-def is_cw_contract_candidate(data: Mapping[str, Any]) -> bool:
-    """Content-based directory discovery; filenames and paths remain non-semantic."""
-    fmt = data.get("format")
-    if isinstance(fmt, dict) and "contract_format" in fmt:
-        return True
-    # Also keep structurally CW-looking documents so malformed format metadata
-    # is reported by validation instead of being silently skipped.
-    return all(key in data for key in ("identity", "entities", "scope", "constraints"))
-
-
-def load_input(input_path: Path, ctx: Context) -> List[ContractDocument]:
-    if not input_path.exists():
-        raise RuntimeError(f"input does not exist: {input_path}")
-
-    paths: List[Path]
-    explicit_single = input_path.is_file()
-    if explicit_single:
-        if input_path.suffix.lower() != ".json":
-            raise RuntimeError("single-file input must be a .json file")
-        paths = [input_path]
-    elif input_path.is_dir():
-        paths = sorted(p for p in input_path.rglob("*.json") if p.is_file())
-        if not paths:
-            raise RuntimeError("input directory contains no .json files")
-    else:
-        raise RuntimeError("input must be a JSON file or directory")
-
-    docs: List[ContractDocument] = []
-    for path in paths:
-        try:
-            data = read_json(path)
-            if not explicit_single and not is_cw_contract_candidate(data):
-                ctx.warn(
-                    "NON_CW_JSON_IGNORED",
-                    path,
-                    "$",
-                    "JSON file does not identify or structurally resemble a CW canonical contract; ignored during directory discovery",
-                )
-                continue
-            docs.append(ContractDocument(path, data))
-        except DuplicateKeyError as exc:
-            ctx.error("JSON_DUPLICATE_KEY", path, "$", str(exc))
-        except json.JSONDecodeError as exc:
-            ctx.error("JSON_PARSE_ERROR", path, "$", f"{exc.msg} at line {exc.lineno}, column {exc.colno}")
-        except Exception as exc:
-            ctx.error("JSON_LOAD_ERROR", path, "$", str(exc))
-
-    if input_path.is_dir() and not docs and not any(f.severity == "ERROR" for f in ctx.findings):
-        raise RuntimeError("input directory contains no CW canonical contract documents")
-    return docs
-
-
-def as_dict_list(value: Any) -> List[Dict[str, Any]]:
-    return [x for x in value if isinstance(x, dict)] if isinstance(value, list) else []
-
-
-def index_standard(standard: Standard) -> Dict[str, Any]:
-    nodetypes = {x["id"]: x for x in as_dict_list(standard.nodetypes.get("nodetypes")) if isinstance(x.get("id"), str)}
-    prop_rules_by_id = {x["id"]: x for x in as_dict_list(standard.rulesets.get("property_rulesets")) if isinstance(x.get("id"), str)}
-    prop_rules_by_type: Dict[str, List[Dict[str, Any]]] = {}
-    for rule in prop_rules_by_id.values():
-        ref = rule.get("property_type_ref")
-        if isinstance(ref, str):
-            prop_rules_by_type.setdefault(ref, []).append(rule)
-
-    link_rules_by_id = {x["id"]: x for x in as_dict_list(standard.rulesets.get("link_rulesets")) if isinstance(x.get("id"), str)}
-    link_rules_by_type: Dict[str, List[Dict[str, Any]]] = {}
-    for rule in link_rules_by_id.values():
-        ref = rule.get("link_type_ref")
-        if isinstance(ref, str):
-            link_rules_by_type.setdefault(ref, []).append(rule)
-
-    return {
-        "nodetypes": nodetypes,
-        "prop_rules_by_id": prop_rules_by_id,
-        "prop_rules_by_type": prop_rules_by_type,
-        "link_rules_by_id": link_rules_by_id,
-        "link_rules_by_type": link_rules_by_type,
-    }
-
-
-def effective_nodetype(nt_id: str, nodetypes: Mapping[str, Dict[str, Any]], cache: Dict[str, Dict[str, Any]], stack: Optional[Set[str]] = None) -> Dict[str, Any]:
-    if nt_id in cache:
-        return cache[nt_id]
-    if nt_id not in nodetypes:
-        raise KeyError(nt_id)
-    stack = set() if stack is None else set(stack)
-    if nt_id in stack:
-        raise RuntimeError(f"NodeType inheritance cycle at {nt_id}")
-    stack.add(nt_id)
-
-    source = nodetypes[nt_id]
-    required_props: List[str] = []
-    owned_props: List[str] = []
-    required_links: List[Dict[str, Any]] = []
-    cardinality: Dict[str, Dict[str, Any]] = {}
-
-    for parent in source.get("extends", []) if isinstance(source.get("extends"), list) else []:
-        if not isinstance(parent, str):
-            continue
-        inherited = effective_nodetype(parent, nodetypes, cache, stack)
-        for x in inherited["required_property_types"]:
-            if x not in required_props:
-                required_props.append(x)
-        for x in inherited["owned_property_types"]:
-            if x not in owned_props:
-                owned_props.append(x)
-        for req in inherited["required_links"]:
-            required_links.append(dict(req))
-        cardinality.update({k: dict(v) for k, v in inherited["property_cardinality"].items()})
-
-    for x in source.get("required_property_types", []) if isinstance(source.get("required_property_types"), list) else []:
-        if isinstance(x, str) and x not in required_props:
-            required_props.append(x)
-    for x in source.get("owned_property_types", []) if isinstance(source.get("owned_property_types"), list) else []:
-        if isinstance(x, str) and x not in owned_props:
-            owned_props.append(x)
-    for req in source.get("required_links", []) if isinstance(source.get("required_links"), list) else []:
-        if isinstance(req, dict):
-            required_links.append(dict(req))
-    if isinstance(source.get("property_cardinality"), dict):
-        cardinality.update({k: dict(v) for k, v in source["property_cardinality"].items() if isinstance(v, dict)})
-
-    result = {
-        "required_property_types": required_props,
-        "owned_property_types": owned_props,
-        "required_links": required_links,
-        "property_cardinality": cardinality,
-    }
-    cache[nt_id] = result
-    return result
-
-
-def validate_contract_shape(doc: ContractDocument, standard: Standard, ctx: Context) -> None:
-    shape = standard.ccf.get("contract_shape")
-    if not isinstance(shape, dict):
-        raise RuntimeError("CCF contract_shape missing")
-
-    required = shape.get("required", [])
-    optional = shape.get("optional", [])
-    allowed = set(x for x in required + optional if isinstance(x, str))
-    for field in required if isinstance(required, list) else []:
-        if field not in doc.data:
-            ctx.error("CONTRACT_REQUIRED_FIELD_MISSING", doc.path, f"$.{field}", f"missing required CCF field {field!r}")
-
-    # Unknown top-level extension fields are not rejected automatically because CCF
-    # explicitly supports non-core extension points. Core fields are still validated.
-
-    fmt = doc.data.get("format")
-    fmt_contract = shape.get("format")
-    if not isinstance(fmt, dict):
-        ctx.error("FORMAT_INVALID", doc.path, "$.format", "format must be an object")
-    elif isinstance(fmt_contract, dict):
-        for field in fmt_contract.get("required", []) if isinstance(fmt_contract.get("required"), list) else []:
-            if field not in fmt:
-                ctx.error("FORMAT_REQUIRED_FIELD_MISSING", doc.path, f"$.format.{field}", f"missing format field {field!r}")
-        expected_cf = fmt_contract.get("contract_format")
-        expected_fv = fmt_contract.get("format_version")
-        if expected_cf is not None and fmt.get("contract_format") != expected_cf:
-            ctx.error("CONTRACT_FORMAT_MISMATCH", doc.path, "$.format.contract_format", f"expected {expected_cf!r}, got {fmt.get('contract_format')!r}")
-        if expected_fv is not None and fmt.get("format_version") != expected_fv:
-            ctx.error("FORMAT_VERSION_MISMATCH", doc.path, "$.format.format_version", f"local validator contract is {expected_fv!r}, got {fmt.get('format_version')!r}")
-
-    identity = doc.data.get("identity")
-    identity_contract = shape.get("identity")
-    if not isinstance(identity, dict):
-        ctx.error("IDENTITY_INVALID", doc.path, "$.identity", "identity must be an object")
-    elif isinstance(identity_contract, dict):
-        for field in identity_contract.get("required", []) if isinstance(identity_contract.get("required"), list) else []:
-            if not isinstance(identity.get(field), str) or not identity.get(field):
-                ctx.error("IDENTITY_REQUIRED_FIELD_INVALID", doc.path, f"$.identity.{field}", f"identity.{field} must be a non-empty string")
-
-    scope = doc.data.get("scope")
-    if not isinstance(scope, dict):
-        ctx.error("SCOPE_INVALID", doc.path, "$.scope", "scope must be an object")
-    else:
-        for field in ("owns", "does_not_own"):
-            if not isinstance(scope.get(field), list):
-                ctx.error("SCOPE_FIELD_INVALID", doc.path, f"$.scope.{field}", f"scope.{field} must be an array")
-
-    constraints = doc.data.get("constraints")
-    if not isinstance(constraints, dict) or not isinstance(constraints.get("invariants"), list):
-        ctx.error("CONSTRAINTS_INVALID", doc.path, "$.constraints.invariants", "constraints.invariants must be an array")
-    else:
-        for i, invariant in enumerate(constraints["invariants"]):
-            if not isinstance(invariant, dict):
-                ctx.error("INVARIANT_INVALID", doc.path, f"$.constraints.invariants[{i}]", "invariant must be an object")
-                continue
-            for field in ("id", "rule"):
-                if not isinstance(invariant.get(field), str) or not invariant.get(field):
-                    ctx.error("INVARIANT_FIELD_INVALID", doc.path, f"$.constraints.invariants[{i}].{field}", f"{field} must be non-empty")
-
-    references = doc.data.get("references")
-    if not isinstance(references, list):
-        ctx.error("REFERENCES_INVALID", doc.path, "$.references", "references must be an array")
-    else:
-        for i, ref in enumerate(references):
-            if not isinstance(ref, dict):
-                ctx.error("REFERENCE_INVALID", doc.path, f"$.references[{i}]", "reference must be an object")
-                continue
-            for field in ("id", "target_ref", "purpose"):
-                if not isinstance(ref.get(field), str) or not ref.get(field):
-                    ctx.error("REFERENCE_FIELD_INVALID", doc.path, f"$.references[{i}].{field}", f"{field} must be non-empty")
-
-    gaps = doc.data.get("gaps")
-    if not isinstance(gaps, list):
-        ctx.error("GAPS_INVALID", doc.path, "$.gaps", "gaps must be an array")
-
-    prose = doc.data.get("prose")
-    if not isinstance(prose, dict):
-        ctx.error("PROSE_INVALID", doc.path, "$.prose", "prose must be an object")
-    else:
-        for field in ("summary", "notes"):
-            if not isinstance(prose.get(field), str):
-                ctx.error("PROSE_FIELD_INVALID", doc.path, f"$.prose.{field}", f"prose.{field} must be a string")
-
-    if "specification_ref" not in doc.data:
-        ctx.error("SPECIFICATION_REF_MISSING", doc.path, "$.specification_ref", "canonical interpretation provenance is required")
-
-
-def collect_canonical_objects(docs: Sequence[ContractDocument], ctx: Context) -> Tuple[Dict[str, Tuple[str, ContractDocument, Dict[str, Any]]], Dict[str, str]]:
-    objects: Dict[str, Tuple[str, ContractDocument, Dict[str, Any]]] = {}
-    owners: Dict[str, str] = {}
-
-    for doc in docs:
-        entities = doc.data.get("entities")
-        if not isinstance(entities, list):
-            ctx.error("ENTITIES_INVALID", doc.path, "$.entities", "entities must be an array")
-            continue
-        for ei, entity in enumerate(entities):
-            ep = f"$.entities[{ei}]"
-            if not isinstance(entity, dict):
-                ctx.error("ENTITY_INVALID", doc.path, ep, "entity must be an object")
-                continue
-            entity_id = entity.get("id")
-            if not isinstance(entity_id, str) or not entity_id:
-                ctx.error("ENTITY_ID_INVALID", doc.path, f"{ep}.id", "entity id must be non-empty")
-                continue
-            if entity_id in objects:
-                ctx.error("CANONICAL_ID_DUPLICATE", doc.path, f"{ep}.id", f"canonical id {entity_id!r} already exists")
-            else:
-                objects[entity_id] = ("Entity", doc, entity)
-            props = entity.get("properties")
-            if not isinstance(props, list):
-                ctx.error("ENTITY_PROPERTIES_INVALID", doc.path, f"{ep}.properties", "properties must be an array")
-                continue
-            for pi, prop in enumerate(props):
-                pp = f"{ep}.properties[{pi}]"
-                if not isinstance(prop, dict):
-                    ctx.error("PROPERTY_INVALID", doc.path, pp, "property must be an object")
-                    continue
-                prop_id = prop.get("id")
-                if not isinstance(prop_id, str) or not prop_id:
-                    ctx.error("PROPERTY_ID_INVALID", doc.path, f"{pp}.id", "property id must be non-empty")
-                    continue
-                if prop_id in objects:
-                    ctx.error("CANONICAL_ID_DUPLICATE", doc.path, f"{pp}.id", f"canonical id {prop_id!r} already exists")
-                else:
-                    objects[prop_id] = ("Property", doc, prop)
-                    owners[prop_id] = entity_id
-    return objects, owners
-
-
-def split_type_union(declaration: str) -> List[str]:
-    parts: List[str] = []
-    depth = 0
-    start = 0
-    for i, char in enumerate(declaration):
-        if char == "<":
-            depth += 1
-        elif char == ">":
-            depth = max(0, depth - 1)
-        elif char == "|" and depth == 0:
-            parts.append(declaration[start:i].strip())
-            start = i + 1
-    parts.append(declaration[start:].strip())
-    return [part for part in parts if part]
-
-
-def type_matches(value: Any, declaration: Any) -> bool:
-    if not isinstance(declaration, str):
-        return True
-    declaration = declaration.strip()
-    union = split_type_union(declaration)
-    if len(union) > 1:
-        return any(type_matches(value, branch) for branch in union)
-    if declaration == "null":
-        return value is None
-    if declaration in {"string", "external_ref", "canonical_ref", "canonical_entity_ref", "canonical_property_ref", "canonical_or_external_ref", "interpretation_provenance_ref", "local_logic_primitive_set_ref"}:
-        return isinstance(value, str) and bool(value)
-    if declaration == "boolean":
-        return isinstance(value, bool)
-    if declaration in {"integer", "non_negative_integer"}:
-        return isinstance(value, int) and not isinstance(value, bool) and (declaration != "non_negative_integer" or value >= 0)
-    if declaration == "number":
-        return isinstance(value, (int, float)) and not isinstance(value, bool)
-    if declaration.startswith("array<") and declaration.endswith(">"):
-        inner = declaration[6:-1].strip()
-        return isinstance(value, list) and all(type_matches(item, inner) for item in value)
-    if declaration == "array":
-        return isinstance(value, list)
-    if declaration.startswith("object") or declaration in {"map", "properties"}:
-        return isinstance(value, dict)
-    # Named semantic value forms are validated by their governing rules, not guessed here.
-    return True
-
-
-def validate_value_schema(prop: Dict[str, Any], rule: Dict[str, Any], doc: ContractDocument, path: str, ctx: Context) -> None:
-    schema = rule.get("value_schema")
-    value = prop.get("value")
-    if not isinstance(value, dict):
-        ctx.error("PROPERTY_VALUE_INVALID", doc.path, f"{path}.value", "Property.value must be an object")
-        return
-    if not isinstance(schema, dict):
-        return
-    required = schema.get("required", []) if isinstance(schema.get("required"), list) else []
-    optional = schema.get("optional", []) if isinstance(schema.get("optional"), list) else []
-    fields = schema.get("fields") if isinstance(schema.get("fields"), dict) else {}
-    for field in required:
-        if field not in value:
-            ctx.error("PROPERTY_VALUE_FIELD_MISSING", doc.path, f"{path}.value.{field}", f"required by {rule.get('id')}")
-    for field in set(required) | set(optional):
-        if field in value and field in fields and not type_matches(value[field], fields[field]):
-            ctx.error("PROPERTY_VALUE_TYPE_MISMATCH", doc.path, f"{path}.value.{field}", f"value does not match declared type {fields[field]!r}")
-
-
-def endpoint_constraint_matches(constraint: str, target_kind: str, target: Dict[str, Any]) -> bool:
-    if constraint.startswith("entity_nodetype:"):
-        return target_kind == "Entity" and target.get("entity_type_ref") == constraint.split(":", 1)[1]
-    if constraint.startswith("property:"):
-        return target_kind == "Property" and target.get("property_type_ref") == constraint.split(":", 1)[1]
-    return False
-
-
-def validate_reference_policy(
-    ref_value: Any,
-    policy: Mapping[str, Any],
-    objects: Mapping[str, Tuple[str, ContractDocument, Dict[str, Any]]],
-    file: Path,
-    path: str,
-    ctx: Context,
-) -> None:
-    refs = ref_value if isinstance(ref_value, list) else [ref_value]
-    for i, ref in enumerate(refs):
-        rp = f"{path}[{i}]" if isinstance(ref_value, list) else path
-        if not isinstance(ref, str) or not ref:
-            ctx.error("CANONICAL_REFERENCE_INVALID", file, rp, "reference must be a non-empty canonical id")
-            continue
-        resolved = objects.get(ref)
-        if resolved is None:
-            ctx.unready("CANONICAL_REFERENCE_UNRESOLVED", file, rp, f"canonical reference {ref!r} is unresolved in the input set")
-            continue
-        kind, _doc, target = resolved
-        allowed_kinds = policy.get("allowed_canonical_kinds")
-        if isinstance(allowed_kinds, list) and kind not in allowed_kinds:
-            ctx.error("REFERENCE_KIND_INCOMPATIBLE", file, rp, f"{ref!r} resolves to {kind}, allowed={allowed_kinds}")
-        allowed_types = policy.get("allowed_property_type_refs")
-        if kind == "Property" and isinstance(allowed_types, list) and target.get("property_type_ref") not in allowed_types:
-            ctx.error("REFERENCE_PROPERTY_TYPE_INCOMPATIBLE", file, rp, f"{ref!r} property_type_ref={target.get('property_type_ref')!r}, allowed={allowed_types}")
-        allowed_nts = policy.get("allowed_nodetype_refs")
-        if kind == "Entity" and isinstance(allowed_nts, list) and target.get("entity_type_ref") not in allowed_nts:
-            ctx.error("REFERENCE_NODETYPE_INCOMPATIBLE", file, rp, f"{ref!r} entity_type_ref={target.get('entity_type_ref')!r}, allowed={allowed_nts}")
-
-
-def build_link_index(
-    objects: Mapping[str, Tuple[str, ContractDocument, Dict[str, Any]]]
-) -> Dict[Tuple[str, str, str], List[Dict[str, Any]]]:
-    """Index Links by (link_type_ref, endpoint_name, endpoint_ref)."""
-    index: Dict[Tuple[str, str, str], List[Dict[str, Any]]] = {}
-    for _obj_id, (kind, _doc, candidate) in objects.items():
-        if kind != "Property" or candidate.get("property_type_ref") != "link":
-            continue
-        value = candidate.get("value")
-        if not isinstance(value, dict):
-            continue
-        link_type = value.get("link_type_ref")
-        if not isinstance(link_type, str):
-            continue
-        for endpoint in ("parent_ref", "child_ref"):
-            ref = value.get(endpoint)
-            if isinstance(ref, str) and ref:
-                index.setdefault((link_type, endpoint, ref), []).append(candidate)
-    return index
-
-
-def canonical_owner_for_ref(
-    ref: Any,
-    objects: Mapping[str, Tuple[str, ContractDocument, Dict[str, Any]]],
-    owners: Mapping[str, str],
-) -> Optional[str]:
-    if not isinstance(ref, str):
-        return None
-    resolved = objects.get(ref)
-    if resolved is None:
-        return None
-    kind, _doc, _target = resolved
-    if kind == "Entity":
-        return ref
-    if kind == "Property":
-        return owners.get(ref)
-    return None
-
-
-def validate_entities_and_properties(
-    docs: Sequence[ContractDocument],
-    standard: Standard,
-    idx: Mapping[str, Any],
-    objects: Mapping[str, Tuple[str, ContractDocument, Dict[str, Any]]],
-    owners: Mapping[str, str],
-    link_index: Mapping[Tuple[str, str, str], Sequence[Dict[str, Any]]],
-    ctx: Context,
-) -> None:
-    nodetypes: Mapping[str, Dict[str, Any]] = idx["nodetypes"]
-    cache: Dict[str, Dict[str, Any]] = {}
-
-    for doc in docs:
-        entities = doc.data.get("entities")
-        if not isinstance(entities, list):
-            continue
-        for ei, entity in enumerate(entities):
-            if not isinstance(entity, dict):
-                continue
-            ep = f"$.entities[{ei}]"
-            for field in ("id", "name", "entity_type_ref", "status", "properties"):
-                if field not in entity:
-                    ctx.error("ENTITY_REQUIRED_FIELD_MISSING", doc.path, f"{ep}.{field}", f"missing Entity field {field!r}")
-            nt_id = entity.get("entity_type_ref")
-            if not isinstance(nt_id, str) or nt_id not in nodetypes:
-                ctx.error("NODETYPE_UNRESOLVED", doc.path, f"{ep}.entity_type_ref", f"NodeType {nt_id!r} does not resolve")
-                effective = None
-            else:
-                try:
-                    effective = effective_nodetype(nt_id, nodetypes, cache)
-                except Exception as exc:
-                    raise RuntimeError(f"cannot resolve NodeType {nt_id}: {exc}") from exc
-
-            props = entity.get("properties") if isinstance(entity.get("properties"), list) else []
-            property_counts: Dict[str, int] = {}
-            for pi, prop in enumerate(props):
-                if not isinstance(prop, dict):
-                    continue
-                pp = f"{ep}.properties[{pi}]"
-                for field in ("id", "property_type_ref", "ruleset_ref", "status", "value"):
-                    if field not in prop:
-                        ctx.error("PROPERTY_REQUIRED_FIELD_MISSING", doc.path, f"{pp}.{field}", f"missing Property field {field!r}")
-                ptype = prop.get("property_type_ref")
-                if isinstance(ptype, str):
-                    property_counts[ptype] = property_counts.get(ptype, 0) + 1
-
-                ruleset_ref = prop.get("ruleset_ref")
-                rule: Optional[Dict[str, Any]] = None
-                if ptype == "link":
-                    if not isinstance(prop.get("value"), dict):
-                        ctx.error("LINK_VALUE_INVALID", doc.path, f"{pp}.value", "Link value must be an object")
-                        continue
-                    link_type = prop["value"].get("link_type_ref")
-                    matches = idx["link_rules_by_type"].get(link_type, []) if isinstance(link_type, str) else []
-                    if len(matches) != 1:
-                        ctx.error("LINK_TYPE_UNRESOLVED_OR_AMBIGUOUS", doc.path, f"{pp}.value.link_type_ref", f"link_type_ref {link_type!r} resolves to {len(matches)} Link Rulesets")
-                    else:
-                        rule = matches[0]
-                        if ruleset_ref != rule.get("id"):
-                            ctx.error("LINK_RULESET_REF_MISMATCH", doc.path, f"{pp}.ruleset_ref", f"expected {rule.get('id')!r} for link_type_ref {link_type!r}, got {ruleset_ref!r}")
-                else:
-                    matches = idx["prop_rules_by_type"].get(ptype, []) if isinstance(ptype, str) else []
-                    if len(matches) != 1:
-                        ctx.error("PROPERTY_TYPE_UNRESOLVED_OR_AMBIGUOUS", doc.path, f"{pp}.property_type_ref", f"property_type_ref {ptype!r} resolves to {len(matches)} Property Rulesets")
-                    else:
-                        rule = matches[0]
-                        if ruleset_ref != rule.get("id"):
-                            ctx.error("PROPERTY_RULESET_REF_MISMATCH", doc.path, f"{pp}.ruleset_ref", f"expected {rule.get('id')!r}, got {ruleset_ref!r}")
-
-                if rule is not None:
-                    validate_value_schema(prop, rule, doc, pp, ctx)
-                    constraints = rule.get("reference_constraints")
-                    value = prop.get("value")
-                    if isinstance(constraints, dict) and isinstance(value, dict):
-                        for field, policy in constraints.items():
-                            if field in value and isinstance(policy, dict):
-                                validate_reference_policy(value[field], policy, objects, doc.path, f"{pp}.value.{field}", ctx)
-
-                if ptype == "link" and rule is not None and isinstance(prop.get("value"), dict):
-                    validate_link(prop, rule, doc, pp, objects, owners, ctx)
-
-            if effective is not None:
-                for ptype in effective["required_property_types"]:
-                    if property_counts.get(ptype, 0) < 1:
-                        ctx.unready("REQUIRED_PROPERTY_MISSING", doc.path, ep, f"Entity {entity.get('id')!r} NodeType {nt_id!r} requires Property type {ptype!r}")
-                for ptype, limits in effective["property_cardinality"].items():
-                    count = property_counts.get(ptype, 0)
-                    min_v = limits.get("min") if isinstance(limits, dict) else None
-                    max_v = limits.get("max") if isinstance(limits, dict) else None
-                    if isinstance(min_v, int) and count < min_v:
-                        ctx.unready("PROPERTY_CARDINALITY_MIN_UNSATISFIED", doc.path, ep, f"Entity {entity.get('id')!r} has {count} {ptype!r} Properties, minimum is {min_v}")
-                    if isinstance(max_v, int) and count > max_v:
-                        ctx.error("PROPERTY_CARDINALITY_MAX_EXCEEDED", doc.path, ep, f"Entity {entity.get('id')!r} has {count} {ptype!r} Properties, maximum is {max_v}")
-
-                validate_required_links(entity, effective["required_links"], doc, ep, objects, owners, idx, link_index, ctx)
-
-
-def validate_link(
-    prop: Dict[str, Any],
-    rule: Dict[str, Any],
-    doc: ContractDocument,
-    path: str,
-    objects: Mapping[str, Tuple[str, ContractDocument, Dict[str, Any]]],
-    owners: Mapping[str, str],
-    ctx: Context,
-) -> None:
-    value = prop.get("value")
-    if not isinstance(value, dict):
-        return
-    for endpoint in ("parent_ref", "child_ref"):
-        ref = value.get(endpoint)
-        if not isinstance(ref, str) or not ref:
-            ctx.error("LINK_ENDPOINT_INVALID", doc.path, f"{path}.value.{endpoint}", f"{endpoint} must be a canonical reference")
-            continue
-        resolved = objects.get(ref)
-        if resolved is None:
-            ctx.unready("LINK_ENDPOINT_UNRESOLVED", doc.path, f"{path}.value.{endpoint}", f"Link endpoint {ref!r} is unresolved")
-            continue
-        constraints_obj = rule.get("endpoint_constraints")
-        constraints = constraints_obj.get(endpoint) if isinstance(constraints_obj, dict) else None
-        if isinstance(constraints, list) and constraints:
-            kind, _target_doc, target = resolved
-            if not any(isinstance(c, str) and endpoint_constraint_matches(c, kind, target) for c in constraints):
-                ctx.error("LINK_ENDPOINT_INCOMPATIBLE", doc.path, f"{path}.value.{endpoint}", f"endpoint {ref!r} does not satisfy {constraints}")
-
-    # Link Property placement is canonical semantics. property_owner names a
-    # semantic role; the Link Property must be owned by the Entity owning the
-    # endpoint that carries that role (or by that Entity endpoint directly).
-    semantic_roles = rule.get("semantic_roles") if isinstance(rule.get("semantic_roles"), dict) else {}
-    property_owner_role = rule.get("property_owner")
-    if isinstance(property_owner_role, str):
-        owner_endpoint = next(
-            (endpoint for endpoint, role in semantic_roles.items() if role == property_owner_role),
-            None,
-        )
-        if owner_endpoint in {"parent_ref", "child_ref"}:
-            expected_owner = canonical_owner_for_ref(value.get(owner_endpoint), objects, owners)
-            prop_id = prop.get("id")
-            actual_owner = owners.get(prop_id) if isinstance(prop_id, str) else None
-            if expected_owner is not None and actual_owner != expected_owner:
-                ctx.error(
-                    "LINK_PROPERTY_OWNER_MISMATCH",
-                    doc.path,
-                    path,
-                    f"Link Property owner {actual_owner!r} does not match Ruleset property_owner role {property_owner_role!r} resolved through {owner_endpoint} to Entity {expected_owner!r}",
-                )
-
-
-def validate_required_links(
-    entity: Dict[str, Any],
-    requirements: Sequence[Dict[str, Any]],
-    doc: ContractDocument,
-    path: str,
-    objects: Mapping[str, Tuple[str, ContractDocument, Dict[str, Any]]],
-    owners: Mapping[str, str],
-    idx: Mapping[str, Any],
-    link_index: Mapping[Tuple[str, str, str], Sequence[Dict[str, Any]]],
-    ctx: Context,
-) -> None:
-    entity_id = entity.get("id")
-    for req in requirements:
-        req_id = req.get("id")
-        ltype = req.get("link_type_ref")
-        self_role = req.get("self_role")
-        minimum = req.get("min", 0)
-        maximum = req.get("max")
-        matches = 0
-        governing = idx["link_rules_by_type"].get(ltype, []) if isinstance(ltype, str) else []
-        if len(governing) != 1:
-            ctx.error("REQUIRED_LINK_RULESET_UNRESOLVED", doc.path, path, f"Required Link {req_id!r} link_type_ref {ltype!r} does not resolve exactly one Link Ruleset")
-            continue
-        rule = governing[0]
-        semantic_roles = rule.get("semantic_roles") if isinstance(rule.get("semantic_roles"), dict) else {}
-        endpoint_for_role = next((endpoint for endpoint, role in semantic_roles.items() if role == self_role), None)
-        if endpoint_for_role not in {"parent_ref", "child_ref"}:
-            ctx.error("REQUIRED_LINK_SELF_ROLE_UNRESOLVED", doc.path, path, f"Required Link {req_id!r} self_role {self_role!r} does not resolve")
-            continue
-
-        candidates = link_index.get((ltype, endpoint_for_role, entity_id), []) if isinstance(ltype, str) and isinstance(entity_id, str) else []
-        for candidate in candidates:
-            value = candidate.get("value")
-            if not isinstance(value, dict):
-                continue
-            required_ref = value.get("required_link_ref")
-            if not isinstance(required_ref, dict):
-                continue
-            if required_ref.get("entity_ref") == entity_id and required_ref.get("required_link_id") == req_id:
-                matches += 1
-
-        if isinstance(minimum, int) and matches < minimum:
-            ctx.unready("REQUIRED_LINK_UNSATISFIED", doc.path, path, f"Entity {entity_id!r} Required Link {req_id!r} has {matches} satisfying Links; minimum is {minimum}")
-        if isinstance(maximum, int) and matches > maximum:
-            ctx.error("REQUIRED_LINK_MAX_EXCEEDED", doc.path, path, f"Entity {entity_id!r} Required Link {req_id!r} has {matches} satisfying Links; maximum is {maximum}")
-
-
-def validate_top_level_references(
-    docs: Sequence[ContractDocument],
-    standard: Standard,
-    objects: Mapping[str, Tuple[str, ContractDocument, Dict[str, Any]]],
-    ctx: Context,
-) -> None:
-    known_spec_ids = {"CANONICAL_CONTRACT_FORMAT", "CW_NODETYPES", "CW_RULESETS"}
-    for doc in docs:
-        refs = doc.data.get("references")
-        if not isinstance(refs, list):
-            continue
-        for i, ref in enumerate(refs):
-            if not isinstance(ref, dict):
-                continue
-            target = ref.get("target_ref")
-            if not isinstance(target, str):
-                continue
-            if target not in objects and target not in known_spec_ids:
-                ctx.unready("TOP_LEVEL_REFERENCE_UNRESOLVED", doc.path, f"$.references[{i}].target_ref", f"target_ref {target!r} does not resolve in input set or local CW standard")
-
-
-def outcome(ctx: Context) -> str:
-    if any(f.severity == "ERROR" for f in ctx.findings):
-        return "INVALID_MODEL"
-    if any(f.severity == "UNREADY" for f in ctx.findings):
-        return "UNREADY"
-    return "READY"
-
-
-def print_human(input_path: Path, spec_dir: Path, standard: Standard, docs: Sequence[ContractDocument], ctx: Context, result: str) -> None:
-    print(f"CW artifact validator v{VALIDATOR_VERSION}")
-    print(f"input: {input_path}")
-    print(f"spec:  {spec_dir}")
-    print(
-        "standard: "
-        f"CCF {standard.ccf.get('version')} / "
-        f"NodeTypes {standard.nodetypes.get('version')} / "
-        f"Rulesets {standard.rulesets.get('version')}"
-    )
-    print(f"documents: {len(docs)}")
-    print()
-
-    rank = {"ERROR": 0, "UNREADY": 1, "WARNING": 2}
-    for finding in sorted(ctx.findings, key=lambda f: (rank.get(f.severity, 9), f.file, f.path, f.code)):
-        print(f"{finding.severity:7} {finding.code}")
-        print(f"        {Path(finding.file).name} {finding.path}")
-        print(f"        {finding.message}")
-
-    errors = sum(f.severity == "ERROR" for f in ctx.findings)
-    unresolved = sum(f.severity == "UNREADY" for f in ctx.findings)
-    warnings = sum(f.severity == "WARNING" for f in ctx.findings)
-    print()
-    print(f"RESULT: {result} ({errors} error(s), {unresolved} unresolved requirement(s), {warnings} warning(s))")
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate one CW JSON artifact or a directory artifact set against the local CW standard.")
-    parser.add_argument("input", type=Path, help="CW .json file or directory containing CW JSON documents")
-    parser.add_argument("--spec-dir", type=Path, default=None, help="override CW specification directory; default searches upward from this validator to the repository root")
-    parser.add_argument("--json", action="store_true", help="emit machine-readable JSON")
-    parser.add_argument("--skip-spec-lint", action="store_true", help="skip cw_spec_lint.py self-integrity check of the CW standard")
-    args = parser.parse_args()
-
-    input_path = args.input.resolve()
-    ctx = Context()
-
-    try:
-        if args.spec_dir:
-            spec_dir = args.spec_dir.resolve()
-            standard = load_standard(spec_dir)
-        else:
-            spec_dir, standard = find_default_standard()
-    except Exception as exc:
-        if args.json:
-            print(json.dumps({"validator_version": VALIDATOR_VERSION, "result": "IMPLEMENTATION_FAILURE", "message": str(exc)}, indent=2))
-        else:
-            print(f"RESULT: IMPLEMENTATION_FAILURE\n{exc}", file=sys.stderr)
-        return 2
-
-    if not args.skip_spec_lint:
-        ok, message = lint_standard(spec_dir)
-        if not ok:
-            if args.json:
-                print(json.dumps({"validator_version": VALIDATOR_VERSION, "result": "INVALID_SPECIFICATION", "message": message}, indent=2))
-            else:
-                print(f"RESULT: INVALID_SPECIFICATION\n{message}", file=sys.stderr)
-            return 1
-
-    try:
-        docs = load_input(input_path, ctx)
-        if not docs and not ctx.findings:
-            raise RuntimeError("no CW JSON documents loaded")
-        idx = index_standard(standard)
-
-        for doc in docs:
-            validate_contract_shape(doc, standard, ctx)
-        objects, owners = collect_canonical_objects(docs, ctx)
-        link_index = build_link_index(objects)
-        validate_entities_and_properties(docs, standard, idx, objects, owners, link_index, ctx)
-        validate_top_level_references(docs, standard, objects, ctx)
-
-        result = outcome(ctx)
-        if args.json:
-            payload = {
-                "validator_version": VALIDATOR_VERSION,
-                "result": result,
-                "input": str(input_path),
-                "spec_dir": str(spec_dir),
-                "standard": {
-                    "ccf": standard.ccf.get("version"),
-                    "nodetypes": standard.nodetypes.get("version"),
-                    "rulesets": standard.rulesets.get("version"),
-                },
-                "documents": [str(doc.path) for doc in docs],
-                "findings": [asdict(f) for f in ctx.findings],
-                "summary": {
-                    "errors": sum(f.severity == "ERROR" for f in ctx.findings),
-                    "unready": sum(f.severity == "UNREADY" for f in ctx.findings),
-                    "warnings": sum(f.severity == "WARNING" for f in ctx.findings),
-                },
-            }
-            print(json.dumps(payload, ensure_ascii=False, indent=2))
-        else:
-            print_human(input_path, spec_dir, standard, docs, ctx, result)
-
-        return 1 if result == "INVALID_MODEL" else 0
-    except Exception as exc:
-        if args.json:
-            print(json.dumps({"validator_version": VALIDATOR_VERSION, "result": "IMPLEMENTATION_FAILURE", "message": str(exc)}, indent=2))
-        else:
-            print(f"RESULT: IMPLEMENTATION_FAILURE\n{exc}", file=sys.stderr)
-        return 2
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+class F: severity:str; code:str; file:str; path:str; message:str
+class C:
+ def __init__(s):s.f=[]
+ def a(s,v,c,p,x,m):s.f.append(F(v,c,str(p),x,m))
+ def e(s,c,p,x,m):s.a('ERROR',c,p,x,m)
+ def u(s,c,p,x,m):s.a('UNREADY',c,p,x,m)
+def dl(v):return [x for x in v if isinstance(x,dict)] if isinstance(v,list) else []
+def split(d):
+ out=[];dep=0;start=0
+ for i,ch in enumerate(d):
+  dep+=ch=='<';dep-=ch=='>'
+  if ch=='|' and dep==0:out.append(d[start:i]);start=i+1
+ out.append(d[start:]);return [x.strip() for x in out]
+def tm(v,d):
+ if not isinstance(d,str):return True
+ ps=split(d)
+ if len(ps)>1:return any(tm(v,x) for x in ps)
+ if d=='null':return v is None
+ if d=='string' or d.endswith('_ref'):return isinstance(v,str) and bool(v)
+ if d in {'logic_value','logic_statement','logic_representation','required_link_ref'}:return isinstance(v,dict)
+ if d=='endpoint_constraint':return isinstance(v,(str,dict))
+ if d=='non_negative_integer':return isinstance(v,int) and not isinstance(v,bool) and v>=0
+ if d=='integer':return isinstance(v,int) and not isinstance(v,bool)
+ if d=='boolean':return isinstance(v,bool)
+ if d=='object':return isinstance(v,dict)
+ if d.startswith('array<') and d.endswith('>'):return isinstance(v,list) and all(tm(x,d[6:-1]) for x in v)
+ return True
+def schema(v,s,c,file,path,name):
+ if not isinstance(s,dict):return
+ if not isinstance(v,dict):c.e('VALUE_NOT_OBJECT',file,path,name+' must be object');return
+ fields=s.get('fields',{}) if isinstance(s.get('fields'),dict) else {}
+ for f in s.get('required',[]) if isinstance(s.get('required'),list) else []:
+  if f not in v:c.e('VALUE_REQUIRED_FIELD_MISSING',file,path+'.'+f,f'{name} requires {f!r}')
+ for f,d in fields.items():
+  if f in v and not tm(v[f],d):c.e('VALUE_TYPE_MISMATCH',file,path+'.'+f,f'expected {d!r}')
+def sections(n,nts,cache,stack=None):
+ if n in cache:return cache[n]
+ stack=list(stack or [])
+ if n in stack:raise ValueError('cycle')
+ stack.append(n);out=[]
+ for p in nts[n].get('extends',[]):
+  for x in sections(p,nts,cache,stack):
+   if x not in out:out.append(x)
+ for x in nts[n].get('sections',[]):
+  if x not in out:out.append(x)
+ cache[n]=out;return out
+def inherits(nt,want,nts):
+ if nt==want:return True
+ seen=set();st=[nt]
+ while st:
+  x=st.pop()
+  if x in seen or x not in nts:continue
+  seen.add(x)
+  for p in nts[x].get('extends',[]):
+   if p==want:return True
+   st.append(p)
+ return False
+def main()->int:
+ a=argparse.ArgumentParser();a.add_argument('input',type=Path);a.add_argument('--spec-set',type=Path);a.add_argument('--ccf',type=Path);a.add_argument('--nodetypes',type=Path);a.add_argument('--rulesets',type=Path);a.add_argument('--spec-dir',type=Path);a.add_argument('--skip-spec-lint',action='store_true');a.add_argument('--json',action='store_true');x=a.parse_args()
+ try:b=resolve_bundle(spec_set=x.spec_set,ccf=x.ccf,nodetypes=x.nodetypes,rulesets=x.rulesets,spec_dir=x.spec_dir,default_start=Path(__file__).parent)
+ except Exception as e:print(f'RESULT: IMPLEMENTATION_FAILURE\n{e}',file=sys.stderr);return 2
+ if not x.skip_spec_lint:
+  lc=cw_spec_lint.lint_bundle(b)
+  if any(z.severity=='ERROR' for z in lc.f):print('RESULT: INVALID_SPECIFICATION',file=sys.stderr);return 1
+ c=C()
+ try:
+  paths=[x.input] if x.input.is_file() else sorted(x.input.rglob('*.json'));docs=[]
+  for p in paths:
+   d=read_json(p)
+   if x.input.is_file() or isinstance(d.get('format'),dict):docs.append((p,d))
+  nts={z['id']:z for z in dl(b.nodetypes.get('nodetypes')) if isinstance(z.get('id'),str)}
+  prs={z['id']:z for z in dl(b.rulesets.get('property_rulesets')) if isinstance(z.get('id'),str)}
+  lrs={z['id']:z for z in dl(b.rulesets.get('link_rulesets')) if isinstance(z.get('id'),str)}
+  nr=b.rulesets.get('node_ruleset',{});readers=nr.get('section_readers',{}) if isinstance(nr,dict) else {}
+  psets={z['id']:z for z in dl(b.rulesets.get('logic_primitive_sets')) if isinstance(z.get('id'),str)}
+  shape=b.ccf.get('contract_shape',{});objs={};owners={}
+  for p,d in docs:
+   for f in shape.get('required',[]) if isinstance(shape,dict) else []:
+    if f not in d:c.e('CONTRACT_REQUIRED_FIELD_MISSING',p,'$.'+f,f'missing {f!r}')
+   for ei,e in enumerate(d.get('entities',[]) if isinstance(d.get('entities'),list) else []):
+    if not isinstance(e,dict):continue
+    eid=e.get('id')
+    if isinstance(eid,str):
+     if eid in objs:c.e('CANONICAL_ID_DUPLICATE',p,f'$.entities[{ei}].id',eid)
+     objs[eid]=('Entity',e,p);owners[eid]=eid
+    for pi,q in enumerate(e.get('properties',[]) if isinstance(e.get('properties'),list) else []):
+     if not isinstance(q,dict):continue
+     qid=q.get('id')
+     if isinstance(qid,str):
+      if qid in objs:c.e('CANONICAL_ID_DUPLICATE',p,f'$.entities[{ei}].properties[{pi}].id',qid)
+      objs[qid]=('Property',q,p);owners[qid]=eid
+  cache={};links=[]
+  for p,d in docs:
+   for ei,e in enumerate(d.get('entities',[]) if isinstance(d.get('entities'),list) else []):
+    if not isinstance(e,dict):continue
+    ep=f'$.entities[{ei}]';nt=e.get('entity_type_ref')
+    if nt not in nts:c.e('NODETYPE_UNRESOLVED',p,ep+'.entity_type_ref',repr(nt));ss=[]
+    else:ss=sections(nt,nts,cache)
+    for s in ss:
+     r=readers.get(s)
+     if isinstance(r,dict) and r.get('kind')=='entity_field' and r.get('required') is True and r.get('field') not in e:c.u('NODE_SECTION_REQUIRED_FIELD_MISSING',p,ep+'.'+str(r.get('field')),s)
+    for pi,q in enumerate(e.get('properties',[]) if isinstance(e.get('properties'),list) else []):
+     if not isinstance(q,dict):continue
+     pp=f'{ep}.properties[{pi}]';pt=q.get('property_type_ref');rr=q.get('ruleset_ref');rule=lrs.get(rr) if pt=='link' else prs.get(rr)
+     if rule is None:c.e('RULESET_REF_UNRESOLVED',p,pp+'.ruleset_ref',repr(rr));continue
+     if pt!='link' and rule.get('property_type_ref')!=pt:c.e('RULESET_TYPE_MISMATCH',p,pp+'.ruleset_ref',str(pt))
+     schema(q.get('value'),rule.get('value_schema'),c,p,pp+'.value',str(rr));v=q.get('value')
+     if not isinstance(v,dict):continue
+     for fld,pol in (rule.get('reference_constraints',{}) if isinstance(rule.get('reference_constraints'),dict) else {}).items():
+      vals=v.get(fld);vals=vals if isinstance(vals,list) else [vals]
+      for j,ref in enumerate(vals):
+       if ref is None:continue
+       obj=objs.get(ref)
+       if obj is None:c.u('CANONICAL_REFERENCE_UNRESOLVED',p,pp+f'.value.{fld}[{j}]',repr(ref));continue
+       kind,t,_=obj;ak=pol.get('allowed_canonical_kinds') if isinstance(pol,dict) else None
+       if isinstance(ak,list) and kind not in ak:c.e('REFERENCE_KIND_INCOMPATIBLE',p,pp+'.value.'+fld,kind)
+       ap=pol.get('allowed_property_type_refs') if isinstance(pol,dict) else None
+       if kind=='Property' and isinstance(ap,list) and t.get('property_type_ref') not in ap:c.e('REFERENCE_PROPERTY_INCOMPATIBLE',p,pp+'.value.'+fld,str(t.get('property_type_ref')))
+       an=pol.get('allowed_nodetype_refs') if isinstance(pol,dict) else None
+       if kind=='Entity' and isinstance(an,list):
+        tn=t.get('entity_type_ref');ok=isinstance(tn,str) and any(inherits(tn,z,nts) for z in an)
+        if not ok:c.e('REFERENCE_NODETYPE_INCOMPATIBLE',p,pp+'.value.'+fld,str(tn))
+     if pt=='link':
+      links.append(q);rel=v.get('link_type_ref')
+      if rule.get('relation_policy','fixed')!='open' and rel!=rule.get('link_type_ref'):c.e('LINK_RELATION_RULESET_MISMATCH',p,pp+'.value.link_type_ref',str(rel))
+      for side in ('parent_ref','child_ref'):
+       ref=v.get(side);obj=objs.get(ref)
+       if obj is None:c.u('LINK_ENDPOINT_UNRESOLVED',p,pp+'.value.'+side,repr(ref));continue
+       cs=rule.get('endpoint_constraints',{}).get(side,[]) if isinstance(rule.get('endpoint_constraints'),dict) else []
+       if cs:
+        kind,t,_=obj;ok=False
+        for z in cs:
+         if z.startswith('property:') and kind=='Property' and t.get('property_type_ref')==z.split(':',1)[1]:ok=True
+         if z.startswith('entity_nodetype:') and kind=='Entity' and isinstance(t.get('entity_type_ref'),str) and inherits(t['entity_type_ref'],z.split(':',1)[1],nts):ok=True
+        if not ok:c.e('LINK_ENDPOINT_INCOMPATIBLE',p,pp+'.value.'+side,str(cs))
+     if pt=='function' and isinstance(v.get('logic'),dict):
+      lg=v['logic'];schema(lg,rule.get('logic_schema'),c,p,pp+'.value.logic',str(rr))
+      if psets.get(lg.get('primitive_set_ref')) is None:c.e('LOGIC_PRIMITIVE_SET_UNRESOLVED',p,pp+'.value.logic.primitive_set_ref',repr(lg.get('primitive_set_ref')))
+  byreq={}
+  for q in links:
+   v=q.get('value',{});r=v.get('required_link_ref') if isinstance(v,dict) else None
+   if isinstance(r,dict):byreq.setdefault((r.get('entity_ref'),r.get('required_link_id')),[]).append(q)
+  for p,d in docs:
+   for ei,e in enumerate(d.get('entities',[]) if isinstance(d.get('entities'),list) else []):
+    if not isinstance(e,dict) or e.get('entity_type_ref') not in nts:continue
+    if 'required_links' not in sections(e['entity_type_ref'],nts,cache):continue
+    for ri,r in enumerate(e.get('required_links',[]) if isinstance(e.get('required_links'),list) else []):
+     rp=f'$.entities[{ei}].required_links[{ri}]';schema(r,nr.get('required_link_schema'),c,p,rp,'Required Link')
+     if not isinstance(r,dict):continue
+     hits=[]
+     for q in byreq.get((e.get('id'),r.get('id')),[]):
+      v=q.get('value',{});side=r.get('self_endpoint')
+      if v.get('link_type_ref')==r.get('link_type_ref') and side in {'parent_ref','child_ref'} and v.get(side)==e.get('id'):hits.append(q)
+     if isinstance(r.get('min'),int) and len(hits)<r['min']:c.u('REQUIRED_LINK_UNSATISFIED',p,rp,f'{len(hits)} < {r["min"]}')
+     if isinstance(r.get('max'),int) and len(hits)>r['max']:c.e('REQUIRED_LINK_MAX_EXCEEDED',p,rp,f'{len(hits)} > {r["max"]}')
+  res='INVALID_MODEL' if any(z.severity=='ERROR' for z in c.f) else ('UNREADY' if any(z.severity=='UNREADY' for z in c.f) else 'READY')
+ except Exception as e:print(f'RESULT: IMPLEMENTATION_FAILURE\n{e}',file=sys.stderr);return 2
+ if x.json:print(json.dumps({'validator_version':VER,'result':res,'findings':[asdict(z) for z in c.f]},indent=2))
+ else:
+  print(f'CW artifact validator v{VER}\nCCF {b.ccf.get("version")} / NodeTypes {b.nodetypes.get("version")} / Rulesets {b.rulesets.get("version")}')
+  for z in c.f:print(f'{z.severity} {z.code} {Path(z.file).name} {z.path}: {z.message}')
+  print('\nRESULT:',res)
+ return 1 if res=='INVALID_MODEL' else 0
+if __name__=='__main__':raise SystemExit(main())
