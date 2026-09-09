@@ -31,6 +31,8 @@ validate CIC + CW tooling
 
 The written CIC output remains specification-unbound. Temporary validation binding is evaluation context only and is never silently persisted by CIC.
 
+Source and output trees must be disjoint. CIC rejects the same directory, an output that contains the source, and an output located anywhere inside the source tree. This prevents a subsequent import from ingesting an earlier generated CW snapshot as source input.
+
 ## Node version
 
 ```text
@@ -58,9 +60,23 @@ An unchanged Node preserves its previous timestamp/hash during `--force` update.
 
 MD5 is a fast version checksum. It is not security, authenticity, trust, or semantic identity authority.
 
-## Local commands
+## Local release gate
 
 From the CW repository root:
+
+```bash
+python -m tools.CIC release-check
+```
+
+This is the authoritative local pre-sync gate. It:
+
+1. compiles the CIC and CW validation tools,
+2. validates the selected immutable specification closure,
+3. runs the complete import -> semantic validation -> stamp -> reverse-verify selftest,
+4. runs the CIC regression suite,
+5. rejects `api_legacy.py`, `structuretree.py`, and imports of their old package paths.
+
+The lower-level commands remain available:
 
 ```bash
 python -m tools.CIC validate-tools
@@ -70,6 +86,12 @@ python -m tools.CIC import <source-folder> <cw-folder> --force
 ```
 
 The default validation context is the locked `spec_sets/CW_CORE_v1.1.0.json` bundle (CCF 2.4.3 / NodeTypes 1.18.0 / Rulesets 3.14.0). An explicit `--spec-set` may be supplied when intentionally evaluating another immutable bundle.
+
+## Synchronization contract
+
+`CW/tools/CIC/` is the source copied to consumer repositories. A synchronized consumer may expose it as top-level `CIC/`; the package bootstrap deliberately supports both locations without maintaining two implementations.
+
+The synchronization mechanism itself is outside CIC and outside this contract. A consumer copy does not become an authority merely because it is locally modified.
 
 ## SSOT rule
 
