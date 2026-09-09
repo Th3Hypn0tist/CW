@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .logic_runtime import LogicRuntimeError, execute_logic
-from .modules.python_primitives import compile_python_function
+from CIC.logic_runtime import LogicRuntimeError, execute_logic
+from CIC.modules.python_primitives import compile_python_function
 
 
 @dataclass(frozen=True)
@@ -25,23 +25,90 @@ class FunctionEquivalenceResult:
     unresolved: tuple[dict[str, Any], ...]
 
 
-def compare_python_fixture(source: str, function_name: str, vectors: list[dict[str, Any]], *, primitive_body_override=None) -> FunctionEquivalenceResult:
+def _source_function(source: str, function_name: str):
+    namespace: dict[str, Any] = {
+        "__builtins__": {},
+        "bool": bool,
+        "int": int,
+        "str": str,
+        "float": float,
+    }
+    exec(compile(source, "<cic-equivalence-fixture>", "exec"), namespace, namespace)
+    function = namespace.get(function_name)
+    if not callable(function):
+        raise ValueError(f"fixture did not define callable {function_name!r}")
+    return function
+
+
+def _run_source(function, args: dict[str, Any]) -> tuple[Any, str | None]:
+    try:
+        return function(**dict(args)), None
+    except Exception as exc:  # fixture observation, not importer execution
+        return None, f"{exc.__class__.__name__}:{exc}"
+
+
+def _run_primitives(body: list[dict[str, Any]], args: dict[str, Any]) -> tuple[Any, str | None]:
+    try:
+        result = execute_logic(body, locals=args)
+        return result.value if result.returned else None, None
+    except LogicRuntimeError as exc:
+        return None, f"{exc.__class__.__name__}:{exc}"
+    except Exception as exc:
+        return None, f"{exc.__class__.__name__}:{exc}"
+
+
+def compare_python_fixture(
+    source: str,
+    function_name: str,
+    vectors: list[dict[str, Any]],
+    *,
+    primitive_body_override: list[dict[str, Any]] | None = None,
+) -> FunctionEquivalenceResult:
+    """Differentially execute explicit test fixture source vs compiled primitives.
+
+    This function is intentionally not used by CIC import/scan paths. Arbitrary
+    user/repository source is never executed by normal static import analysis.
+    `primitive_body_override` exists only for negative-control tests proving that
+    semantic mutation is reported as MISMATCH.
+    """
     compilation = compile_python_function(source, function_name)
     if compilation.decomposition_state != "complete":
         status = "PARTIALLY_DECOMPOSED" if compilation.decomposition_state == "partial" else "NOT_DECOMPOSED"
-        return FunctionEquivalenceResult(status, compilation.decomposition_state, (), compilation.unresolved)
-    namespace: dict[str, Any] = {"__builtins__": {}, "bool": bool, "int": int, "str": str, "float": float}
-    exec(compile(source, "<cic-equivalence-fixture>", "exec"), namespace, namespace)
-    function = namespace.get(function_name)
-    if not callable(function): raise ValueError(f"fixture did not define callable {function_name!r}")
-    expected = set(compilation.parameters); body = list(compilation.body) if primitive_body_override is None else list(primitive_body_override); observations=[]
+        return FunctionEquivalenceResult(
+            status=status,
+            decomposition_state=compilation.decomposition_state,
+            observations=(),
+            unresolved=compilation.unresolved,
+        )
+
+    function = _source_function(source, function_name)
+    expected_params = set(compilation.parameters)
+    primitive_body = list(compilation.body) if primitive_body_override is None else list(primitive_body_override)
+    observations: list[FunctionObservation] = []
     for vector in vectors:
-        if set(vector) != expected: raise ValueError(f"equivalence vector keys must match parameters: {sorted(expected)}")
-        try: source_result=function(**dict(vector)); source_error=None
-        except Exception as exc: source_result=None; source_error=f"{exc.__class__.__name__}:{exc}"
-        try:
-            primitive=execute_logic(body,locals=vector); primitive_result=primitive.value if primitive.returned else None; primitive_error=None
-        except (LogicRuntimeError,Exception) as exc: primitive_result=None; primitive_error=f"{exc.__class__.__name__}:{exc}"
-        equivalent=source_error==primitive_error and source_result==primitive_result and type(source_result) is type(primitive_result)
-        observations.append(FunctionObservation(dict(vector),source_result,primitive_result,source_error,primitive_error,equivalent))
-    return FunctionEquivalenceResult("EQUIVALENT" if all(item.equivalent for item in observations) else "MISMATCH",compilation.decomposition_state,tuple(observations),compilation.unresolved)
+        if set(vector) != expected_params:
+            raise ValueError(
+                f"equivalence vector keys must match function parameters exactly: expected {sorted(expected_params)}, got {sorted(vector)}"
+            )
+        source_result, source_error = _run_source(function, vector)
+        primitive_result, primitive_error = _run_primitives(primitive_body, vector)
+        equivalent = (
+            source_error == primitive_error
+            and source_result == primitive_result
+            and type(source_result) is type(primitive_result)
+        )
+        observations.append(FunctionObservation(
+            args=dict(vector),
+            source_result=source_result,
+            primitive_result=primitive_result,
+            source_error=source_error,
+            primitive_error=primitive_error,
+            equivalent=equivalent,
+        ))
+
+    return FunctionEquivalenceResult(
+        status="EQUIVALENT" if all(item.equivalent for item in observations) else "MISMATCH",
+        decomposition_state=compilation.decomposition_state,
+        observations=tuple(observations),
+        unresolved=compilation.unresolved,
+    )
