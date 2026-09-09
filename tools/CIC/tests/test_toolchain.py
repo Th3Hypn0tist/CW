@@ -5,8 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.CIC import import_folder, ingest_cw, validate_toolchain
-from tools.CIC.cw_version import verify_cw_versions
+from CIC import import_folder, ingest_cw, validate_toolchain
+from CIC.cw_version import verify_cw_versions
 
 
 class CICToolchainTests(unittest.TestCase):
