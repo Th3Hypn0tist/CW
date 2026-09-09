@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import io
 import json
 import sys
@@ -47,6 +48,27 @@ def _selftest(cw_root=None, spec_set=None) -> dict:
         }
 
 
+def _forbidden_import_modules(path: Path) -> list[str]:
+    forbidden = {"CIC.api_legacy", "CIC.structuretree"}
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (OSError, SyntaxError) as exc:
+        raise RuntimeError(f"cannot inspect CIC Python source {path}: {exc}") from exc
+
+    hits: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                for module in forbidden:
+                    if alias.name == module or alias.name.startswith(module + "."):
+                        hits.add(alias.name)
+        elif isinstance(node, ast.ImportFrom) and isinstance(node.module, str):
+            for module in forbidden:
+                if node.module == module or node.module.startswith(module + "."):
+                    hits.add(node.module)
+    return sorted(hits)
+
+
 def _release_check(cw_root=None, spec_set=None) -> dict:
     root = Path(cw_root).expanduser().resolve() if cw_root else next(
         parent for parent in Path(__file__).resolve().parents if (parent / "spec_sets").is_dir() and (parent / "linter").is_dir()
@@ -56,9 +78,8 @@ def _release_check(cw_root=None, spec_set=None) -> dict:
     forbidden_files = [path for path in (cic_root / "api_legacy.py", cic_root / "structuretree.py") if path.exists()]
     forbidden_imports: list[str] = []
     for path in cic_root.rglob("*.py"):
-        text = path.read_text(encoding="utf-8")
-        if "CIC.api_legacy" in text or "CIC.structuretree" in text:
-            forbidden_imports.append(str(path.relative_to(root)))
+        for module in _forbidden_import_modules(path):
+            forbidden_imports.append(f"{path.relative_to(root)} -> {module}")
     if forbidden_files or forbidden_imports:
         raise RuntimeError(
             f"CIC release contains forbidden duplicate/domain remnants: files={forbidden_files}, imports={forbidden_imports}"
