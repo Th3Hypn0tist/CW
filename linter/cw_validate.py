@@ -5,11 +5,13 @@ from dataclasses import asdict,dataclass
 from pathlib import Path
 try:
  from .cw_spec_common import read_json,resolve_bundle
+ from .cw_compose import compose_documents
  from . import cw_spec_lint
 except ImportError:
  from cw_spec_common import read_json,resolve_bundle
+ from cw_compose import compose_documents
  import cw_spec_lint
-VER='2.0.0'
+VER='2.1.0'
 @dataclass
 class F: severity:str; code:str; file:str; path:str; message:str
 class C:
@@ -18,6 +20,11 @@ class C:
  def e(s,c,p,x,m):s.a('ERROR',c,p,x,m)
  def u(s,c,p,x,m):s.a('UNREADY',c,p,x,m)
 def dl(v):return [x for x in v if isinstance(x,dict)] if isinstance(v,list) else []
+def artifact_paths(root):
+ if root.is_file():return [root]
+ if not root.is_dir():raise FileNotFoundError(root)
+ paths=[p for p in root.rglob('*') if p.is_file() and p.suffix in {'.cw','.json'}]
+ return sorted(paths,key=lambda p:(p.as_posix().casefold(),p.as_posix()))
 def split(d):
  out=[];dep=0;start=0
  for i,ch in enumerate(d):
@@ -77,10 +84,7 @@ def main()->int:
   if any(z.severity=='ERROR' for z in lc.f):print('RESULT: INVALID_SPECIFICATION',file=sys.stderr);return 1
  c=C()
  try:
-  paths=[x.input] if x.input.is_file() else sorted(x.input.rglob('*.json'));docs=[]
-  for p in paths:
-   d=read_json(p)
-   if x.input.is_file() or isinstance(d.get('format'),dict):docs.append((p,d))
+  paths=artifact_paths(x.input);docs=compose_documents(paths,read_json)
   nts={z['id']:z for z in dl(b.nodetypes.get('nodetypes')) if isinstance(z.get('id'),str)}
   prs={z['id']:z for z in dl(b.rulesets.get('property_rulesets')) if isinstance(z.get('id'),str)}
   lrs={z['id']:z for z in dl(b.rulesets.get('link_rulesets')) if isinstance(z.get('id'),str)}

@@ -206,6 +206,81 @@ The two forms must remain semantically equivalent. Sharding changes storage and 
 
 The current templates expose both forms so a model can be authored manually without first requiring a dedicated editor.
 
+## Node version stamping
+
+CW create/update tooling may stamp a successfully validated canonical Node with lightweight content-derived version metadata.
+
+```text
+id        = stable canonical identity
+timestamp = chronological version order
+hash      = content checksum / version number
+```
+
+The timestamp format is exactly:
+
+```text
+YYYYMMDDhhmmss
+```
+
+For example:
+
+```text
+20260909080317
+```
+
+The current checksum algorithm is MD5. In this mechanism MD5 is used only as a fast deterministic version checksum. It is not a security, authenticity or cryptographic trust authority.
+
+A Node version is created only after the candidate CW has passed the applicable CW validation gate:
+
+```text
+create / update candidate
+        ↓
+validate CW
+        ↓
+valid?
+  ├── no  -> reject; do not change timestamp or hash
+  └── yes
+        ↓
+set timestamp = YYYYMMDDhhmmss
+set hash = ""
+        ↓
+serialize the direct canonical Node
+        ↓
+MD5
+        ↓
+set hash = calculated checksum
+        ↓
+write
+```
+
+Hash verification performs the inverse operation:
+
+```text
+saved_hash = hash
+hash = ""
+serialize the same direct canonical Node
+MD5
+compare calculated hash with saved_hash
+```
+
+The `hash` field remains present with an empty string while the checksum is calculated. The `timestamp` is already set and therefore participates in the checksum.
+
+The pair has deliberately separate roles:
+
+```text
+id          = which canonical Node
+id + hash   = which exact stored version of that Node
+timestamp   = which version is older or newer
+```
+
+Changing Node content and successfully writing that change creates a new timestamp/hash version. Tooling SHOULD preserve the existing timestamp and hash for an unchanged Node; merely re-running an importer or validator MUST NOT create a new Node version.
+
+For sharded CW, the checksum is calculated from the direct Entity shard serialization. A monolithic representation must preserve the same Node-level version metadata when converted to or from shards; sharding itself does not create a new semantic Node identity.
+
+This version stamp is operational metadata attached to the canonical Node. It does not replace canonical `id`, NodeType, Ruleset semantics, specification provenance or the repository's external source-control history.
+
+The current CIC CW create/update path implements this validation-before-stamp discipline.
+
 ## CW Constitution
 
 The architectural invariants of CW are defined in the [CW Constitution](docs/CW_CONSTITUTION.md).
