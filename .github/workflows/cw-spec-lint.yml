@@ -10,8 +10,6 @@ on:
       - 'linter/**'
       - '.github/workflows/cw-spec-lint.yml'
   push:
-    branches:
-      - main
     paths:
       - 'Canonical_Contract_Format_v*.json'
       - 'CanonicalWireframe_NodeTypes_v*.json'
