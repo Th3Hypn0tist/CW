@@ -28,7 +28,6 @@ _walk_source_files=_core._walk_source_files
 
 def _is_cw_root(path:Path)->bool:
     return (path/"linter"/"cw_spec_lint.py").is_file() and (path/"linter"/"cw_validate.py").is_file() and (path/"spec_sets").is_dir()
-
 def resolve_cw_root(value:str|Path|None=None)->Path:
     if value is not None:
         root=Path(value).expanduser().resolve()
@@ -41,12 +40,10 @@ def resolve_cw_root(value:str|Path|None=None)->Path:
     for parent in Path(__file__).resolve().parents:
         if _is_cw_root(parent): return parent
     raise ToolchainValidationError("CW toolchain root not found; provide cw_root or CW_ROOT")
-
 def _selected_spec_set(root:Path,spec_set:str|Path|None)->Path:
     candidate=Path(spec_set).expanduser().resolve() if spec_set is not None else root/"spec_sets"/"CW_CORE_v1.1.0.json"
     if not candidate.is_file(): raise ToolchainValidationError(f"CW specification set not found: {candidate}")
     return candidate
-
 def _evaluation_ref(spec_set:Path)->str:
     try: manifest=json.loads(spec_set.read_text(encoding="utf-8"))
     except Exception as exc: raise ToolchainValidationError(f"cannot read specification set: {spec_set}: {exc}") from exc
@@ -80,7 +77,6 @@ def _semantic_validate(cw_folder:Path,*,cw_root:Path,spec_set:Path)->str:
     result=report.get("result")
     if result not in {"READY","UNREADY"}: raise ToolchainValidationError(f"generated CW did not reach a valid model state: {result!r}")
     return str(result)
-
 def _entities_by_id(document): return {e["id"]:e for e in document.get("entities",[]) if isinstance(e,dict) and isinstance(e.get("id"),str)}
 def _write_finalized_shards(cw_folder:Path,finalized:dict[str,Any])->None:
     entities=_entities_by_id(finalized); manifest=json.loads((cw_folder/"model.cw").read_text(encoding="utf-8"))
@@ -110,6 +106,7 @@ def import_folder(code_folder:str|Path,cw_folder:str|Path,*,force:bool=False,cw_
     if not source.is_dir(): raise ValueError(f"code folder not found: {source}")
     if source==target: raise ValueError("CW output folder must differ from code folder")
     if target in source.parents: raise ValueError(f"CW output folder cannot contain the code folder: {target}")
+    if source in target.parents: raise ValueError(f"CW output folder cannot be inside the code folder: {target}")
     if target.exists() and not target.is_dir(): raise ValueError(f"CW output path exists and is not a directory: {target}")
     if target.exists() and not force: raise ValueError(f"CW output folder already exists: {target}; use --force to update it")
     staged,backup=_transaction_paths(target); previous=None
