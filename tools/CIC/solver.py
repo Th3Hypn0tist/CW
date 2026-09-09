@@ -3,11 +3,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
 
+
 SolverMode = Literal["off", "manual"]
 
 
 @dataclass(frozen=True)
 class SolverPolicy:
+    """Explicit policy for the expensive semantic solver branch.
+
+    The solver is OFF by default. `manual` mode requires an explicit positive
+    token budget so a future bot-backed implementation cannot be entered by
+    accident or by an unresolved parser observation alone.
+    """
+
     mode: SolverMode = "off"
     token_budget: int = 0
 
@@ -24,6 +32,8 @@ class SolverPolicy:
 
 @dataclass(frozen=True)
 class SolverResult:
+    """Pass-through result for the current placeholder solver stage."""
+
     ir: dict[str, Any]
     status: str
     mode: SolverMode
@@ -34,12 +44,50 @@ class SolverResult:
     placeholder: bool
 
     def report(self) -> dict[str, Any]:
-        return {"status": self.status, "mode": self.mode, "token_budget": self.token_budget, "tokens_used": self.tokens_used, "proposal_count": len(self.proposals), "canonical_changes": self.canonical_changes, "placeholder": self.placeholder}
+        return {
+            "status": self.status,
+            "mode": self.mode,
+            "token_budget": self.token_budget,
+            "tokens_used": self.tokens_used,
+            "proposal_count": len(self.proposals),
+            "canonical_changes": self.canonical_changes,
+            "placeholder": self.placeholder,
+        }
 
 
-def run_solver(ir: dict[str, Any], *, policy: SolverPolicy | None = None) -> SolverResult:
+def run_solver(
+    ir: dict[str, Any],
+    *,
+    policy: SolverPolicy | None = None,
+) -> SolverResult:
+    """Run the CIC solver branch without changing semantics.
+
+    Current behavior is intentionally pass-through only:
+
+    - default OFF mode consumes zero tokens;
+    - explicit MANUAL mode is accepted only with a positive token budget, but
+      still consumes zero tokens because no token-backed solver is connected;
+    - no proposal is created;
+    - no canonical change is possible;
+    - unresolved evidence is not promoted or guessed.
+
+    A future token-backed implementation must keep solver output as proposals
+    only. Proposal validation/application remains a separate deterministic
+    boundary before anything can affect canonical CW.
+    """
     if not isinstance(ir, dict):
         raise TypeError("CIC solver input must be a Code IR object")
+
     selected = policy or SolverPolicy()
     status = "PASS_THROUGH_DISABLED" if selected.mode == "off" else "PASS_THROUGH_PLACEHOLDER"
-    return SolverResult(ir=ir, status=status, mode=selected.mode, token_budget=selected.token_budget, tokens_used=0, proposals=(), canonical_changes=0, placeholder=True)
+
+    return SolverResult(
+        ir=ir,
+        status=status,
+        mode=selected.mode,
+        token_budget=selected.token_budget,
+        tokens_used=0,
+        proposals=(),
+        canonical_changes=0,
+        placeholder=True,
+    )
