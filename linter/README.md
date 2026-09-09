@@ -31,8 +31,18 @@ Rulesets
 The repository default is pinned by:
 
 ```text
-spec_sets/CW_CORE.json
+spec_sets/CW_CORE_v1.1.0.json
 ```
+
+Current default bundle:
+
+```text
+CCF        2.4.3
+NodeTypes  1.18.0
+Rulesets   3.14.0
+```
+
+The previous immutable `spec_sets/CW_CORE.json` bundle remains preserved and continues to pin NodeTypes 1.17.0 + Rulesets 3.13.0. It is not rewritten in place.
 
 The manifest may pin each file with its Git blob SHA. This makes the selected interpretation content explicit and immutable.
 
@@ -43,7 +53,7 @@ python linter/cw_spec_lint.py --coverage
 python linter/cw_validate.py artifact.json
 ```
 
-Both commands search upward from the tool location and prefer `spec_sets/CW_CORE.json`.
+Both commands search upward from the tool location and prefer `spec_sets/CW_CORE_v1.1.0.json`.
 
 ### Explicit specification-set manifest
 
@@ -91,21 +101,65 @@ RULESET_NODE.section_readers
 
 The linter checks this contract generically. It does not hardcode the concrete section vocabulary.
 
-For the CW Core set, a code Node exposes sections such as Functions, Events and Required Links. ABS, DOC and Contract Nodes do not inherit those code-only sections.
+For CW Core 1.1:
+
+```text
+code     -> inherited links + functions + events + required_links + data + effects + representation
+abs      -> inherited links
+DOC      -> inherited links + representation
+contract -> inherited links + members
+```
+
+`contract.members` is an Entity-root field interpreted by `RULESET_NODE`. It declares explicit normative Contract scope. Implementation-side Contract affiliation is a separate Link claim.
 
 ## Links
 
 Links are the universal relational navigation mechanism.
 
-The selected Rulesets may provide one open generic Link Ruleset. With that rule selected by `Property.ruleset_ref`, an explicit relation value can be read and preserved without requiring a dedicated Ruleset for every possible relation label.
+The selected Rulesets may provide one open generic Link Ruleset. With that rule selected by `Property.ruleset_ref`, an explicit relation selector can be read and preserved without requiring a dedicated Ruleset for every possible relation label.
 
-Specialized Link Rulesets remain valid when additional semantics are required, for example Event causality or Function calls.
+CW Core 1.1 distinguishes two generic Link selector forms:
+
+```text
+#ABS:Runtime
+```
+
+A leading `#` means the selector is a canonical topology identity reference. The referenced topology Entity must resolve, and `parent_ref -> child_ref` expresses hierarchy only inside that topology.
+
+```text
+ABS:Runtime:dependency
+```
+
+Without a leading `#`, the selector is an open literal relation name. It is preserved exactly and no canonical identity is inferred from its prefix.
+
+Topology hierarchy does not imply dependency, causality, ownership, authority, containment or implementation semantics. Those remain independent specialized Links when required.
+
+The same canonical Node may participate in multiple overlapping topology hierarchies without duplication.
+
+Specialized Link Rulesets remain valid when additional semantics are required, for example Event causality, Function calls or implementation-side Contract affiliation.
+
+`contract_affiliation` is directed:
+
+```text
+#FILE implementation -> #CTRCT contract
+```
+
+It states that an implementation FILE affiliates itself with the Contract as a whole. It does not silently add that FILE to `CTRCT.members`.
+
+This distinction is intentional:
+
+```text
+CTRCT.members        = declared normative Contract scope
+contract_affiliation = implementation-side affiliation
+```
+
+Both claims can be queried independently without duplicate truth.
 
 This means:
 
 ```text
 StructureTree = hierarchical navigation
-Links         = relational navigation
+Links         = relational navigation + explicit topology hierarchy
 ```
 
 Both navigate the same canonical identities.
@@ -157,6 +211,14 @@ CLI exit codes:
 `UNREADY != INVALID_MODEL`.
 
 The validator first self-lints the selected specification set unless `--skip-spec-lint` is supplied for isolated debugging.
+
+CW artifact validator 2.2 additionally validates:
+
+- `contract.members` is an array of unique canonical refs.
+- unresolved member refs remain `UNREADY` rather than being guessed.
+- a generic `RULESET_LINK` selector beginning with `#` resolves a canonical topology Entity.
+- a resolved topology selector must be compatible with the `topology_entity` NodeType family.
+- literal relation selectors without `#` are not identity-resolved.
 
 ## Canonical boundaries
 

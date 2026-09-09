@@ -6,15 +6,15 @@ on:
       - 'Canonical_Contract_Format_v*.json'
       - 'CanonicalWireframe_NodeTypes_v*.json'
       - 'CanonicalWireframe_Dependency_Rules_v*.json'
+      - 'spec_sets/**'
       - 'linter/**'
       - '.github/workflows/cw-spec-lint.yml'
   push:
-    branches:
-      - main
     paths:
       - 'Canonical_Contract_Format_v*.json'
       - 'CanonicalWireframe_NodeTypes_v*.json'
       - 'CanonicalWireframe_Dependency_Rules_v*.json'
+      - 'spec_sets/**'
       - 'linter/**'
       - '.github/workflows/cw-spec-lint.yml'
 
@@ -37,13 +37,16 @@ jobs:
           python-version: '3.13'
 
       - name: Compile CW tooling
-        run: python -m py_compile linter/__init__.py linter/cw_spec_common.py linter/cw_spec_lint.py linter/cw_compose.py linter/cw_bind.py linter/cw_validate.py
+        run: python -m py_compile linter/__init__.py linter/cw_spec_common.py linter/cw_spec_lint.py linter/cw_compose.py linter/cw_bind.py linter/cw_version.py linter/cw_validate.py
 
       - name: Verify package imports
-        run: python -c "import linter.cw_spec_common, linter.cw_spec_lint, linter.cw_compose, linter.cw_bind, linter.cw_validate"
+        run: python -c "import linter.cw_spec_common, linter.cw_spec_lint, linter.cw_compose, linter.cw_bind, linter.cw_version, linter.cw_validate"
 
       - name: Validate locked CW specification set
         run: python linter/cw_spec_lint.py --coverage
+
+      - name: Run CW Core regression tests
+        run: python -m unittest discover -s linter/tests -v
 
       # Keep generated reports outside the root *.json specification scan.
       - name: Emit machine-readable report

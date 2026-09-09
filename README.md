@@ -57,7 +57,21 @@ StructureTree provides hierarchical navigation.
 
 Links provide relational and graph navigation.
 
-A generic Link preserves its explicit relation label and endpoints. The relation vocabulary is open by default, so arbitrary relations do not require a dedicated Link Ruleset merely to exist or remain navigable.
+A generic Link preserves its explicit selector and endpoints. CW Core 1.1 gives `RULESET_LINK.value.link_type_ref` two explicit modes:
+
+```text
+#ABS:Runtime
+```
+
+A leading `#` means the selector is a canonical topology identity reference. The referenced topology Entity must resolve, and `parent_ref -> child_ref` expresses parent/child hierarchy inside that topology only.
+
+```text
+ABS:Runtime:dependency
+```
+
+Without a leading `#`, the value is a literal open relation name. It is preserved exactly; no canonical identity or topology semantics are inferred from the prefix.
+
+Topology hierarchy does not imply dependency, causality, ownership, authority, containment or implementation semantics. Those remain separate specialized Links when needed. The same canonical Node may participate in multiple overlapping topology hierarchies without duplication.
 
 Specialized Link Rulesets are used only when a relation needs additional machine-significant semantics, constraints, flow behavior or validation.
 
@@ -72,17 +86,41 @@ The current CW Core identity families are:
 
 Identity families and StructureTree paths provide identity and navigation topology. Paths, filenames and extensions do not replace explicit canonical semantics.
 
+### Contract scope
+
+The `contract` NodeType exposes a `members` section.
+
+```text
+CTRCT.members
+    = explicit declared / normative Contract scope
+
+contract_affiliation
+    = implementation-side FILE affiliation to the Contract as a whole
+```
+
+A Contract does not need to enumerate every implementation-detail FILE in `members`.
+
+An implementation FILE may instead carry a specialized `contract_affiliation` Link:
+
+```text
+#FILE implementation -> #CTRCT contract
+```
+
+That Link does not silently add the FILE to `CTRCT.members`. Declared membership and implementation affiliation are different claims, so retaining both is not duplicate truth.
+
 ## Specification sets
 
 CW interpretation is explicitly selected through a specification set.
 
-The current locked CW Core bundle is pinned by [`spec_sets/CW_CORE.json`](spec_sets/CW_CORE.json):
+The current locked CW Core bundle is pinned by [`spec_sets/CW_CORE_v1.1.0.json`](spec_sets/CW_CORE_v1.1.0.json):
 
 ```text
 CCF        2.4.3
-NodeTypes  1.17.0
-Rulesets   3.13.0
+NodeTypes  1.18.0
+Rulesets   3.14.0
 ```
+
+The previous immutable [`spec_sets/CW_CORE.json`](spec_sets/CW_CORE.json) remains preserved and continues to pin CCF 2.4.3 / NodeTypes 1.17.0 / Rulesets 3.13.0. It is not rewritten in place.
 
 The bundle pins one CCF + NodeTypes + Rulesets interpretation context. Selecting another compatible bundle changes evaluation context, not canonical truth.
 
@@ -301,7 +339,7 @@ CW ships with two separate validation tools under [`linter/`](linter/).
 python linter/cw_spec_lint.py --coverage
 ```
 
-The repository default resolves through `spec_sets/CW_CORE.json`.
+The repository default resolves through `spec_sets/CW_CORE_v1.1.0.json`.
 
 An explicit specification set can be selected with:
 
@@ -336,7 +374,7 @@ Validate a single `.cw` artifact:
 
 ```bash
 python linter/cw_validate.py my-model.cw \
-  --spec-set spec_sets/CW_CORE.json
+  --spec-set spec_sets/CW_CORE_v1.1.0.json
 ```
 
 Or evaluate the same canonical artifact using another compatible specification selection:
@@ -350,11 +388,11 @@ python linter/cw_validate.py my-model.cw \
 
 A single input file is parsed from its content. Its filename and extension do not provide semantic authority.
 
-Directory validation currently discovers `*.json` files recursively as one validation set. Canonical references may resolve across the loaded documents.
+Directory validation discovers supported CW artifacts recursively and composes sharded CW before semantic validation. Canonical references may resolve across the composed model.
 
 ```bash
 python linter/cw_validate.py ./artifact-directory/ \
-  --spec-set spec_sets/CW_CORE.json
+  --spec-set spec_sets/CW_CORE_v1.1.0.json
 ```
 
 The validator first lints the selected specification unless `--skip-spec-lint` is explicitly supplied for isolated debugging.

@@ -54,7 +54,7 @@ def discover(p:Path)->SpecBundle:
  return SpecBundle(f['ccf'][0][0],f['ccf'][0][1],f['nodetypes'][0][0],f['nodetypes'][0][1],f['rulesets'][0][0],f['rulesets'][0][1])
 def default(start:Path)->SpecBundle:
  for p in [start.resolve(),*start.resolve().parents]:
-  m=p/'spec_sets'/'CW_CORE.json'
+  m=p/'spec_sets'/'CW_CORE_v1.1.0.json'
   if m.is_file():return load_spec_set(m)
   try:return discover(p)
   except Exception:pass

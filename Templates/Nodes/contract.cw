@@ -3,5 +3,6 @@
   "name": "Template contract",
   "entity_type_ref": "contract",
   "status": "unlocked",
-  "properties": []
+  "properties": [],
+  "members": []
 }
