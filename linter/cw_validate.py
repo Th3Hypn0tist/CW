@@ -11,7 +11,7 @@ except ImportError:
  from cw_spec_common import read_json,resolve_bundle
  from cw_compose import compose_documents
  import cw_spec_lint
-VER='2.1.0'
+VER='2.2.0'
 @dataclass
 class F: severity:str; code:str; file:str; path:str; message:str
 class C:
@@ -116,6 +116,17 @@ def main()->int:
     for s in ss:
      r=readers.get(s)
      if isinstance(r,dict) and r.get('kind')=='entity_field' and r.get('required') is True and r.get('field') not in e:c.u('NODE_SECTION_REQUIRED_FIELD_MISSING',p,ep+'.'+str(r.get('field')),s)
+    if 'members' in ss and 'members' in e:
+     members=e.get('members')
+     if not isinstance(members,list):c.e('NODE_MEMBERS_TYPE_INVALID',p,ep+'.members','members must be array')
+     else:
+      seen_members=set()
+      for mi,ref in enumerate(members):
+       mp=f'{ep}.members[{mi}]'
+       if not isinstance(ref,str) or not ref:c.e('NODE_MEMBER_REF_INVALID',p,mp,repr(ref));continue
+       if ref in seen_members:c.e('NODE_MEMBER_REF_DUPLICATE',p,mp,ref)
+       seen_members.add(ref)
+       if ref not in objs:c.u('NODE_MEMBER_REF_UNRESOLVED',p,mp,ref)
     for pi,q in enumerate(e.get('properties',[]) if isinstance(e.get('properties'),list) else []):
      if not isinstance(q,dict):continue
      pp=f'{ep}.properties[{pi}]';pt=q.get('property_type_ref');rr=q.get('ruleset_ref');rule=lrs.get(rr) if pt=='link' else prs.get(rr)
@@ -140,6 +151,13 @@ def main()->int:
      if pt=='link':
       links.append(q);rel=v.get('link_type_ref')
       if rule.get('relation_policy','fixed')!='open' and rel!=rule.get('link_type_ref'):c.e('LINK_RELATION_RULESET_MISMATCH',p,pp+'.value.link_type_ref',str(rel))
+      if rule.get('relation_policy')=='open' and isinstance(rel,str) and rel.startswith('#'):
+       topo=objs.get(rel)
+       if topo is None:c.u('LINK_TOPOLOGY_REF_UNRESOLVED',p,pp+'.value.link_type_ref',rel)
+       else:
+        kind,t,_=topo
+        tn=t.get('entity_type_ref') if kind=='Entity' else None
+        if kind!='Entity' or not isinstance(tn,str) or not inherits(tn,'topology_entity',nts):c.e('LINK_TOPOLOGY_REF_INCOMPATIBLE',p,pp+'.value.link_type_ref',rel)
       for side in ('parent_ref','child_ref'):
        ref=v.get(side);obj=objs.get(ref)
        if obj is None:c.u('LINK_ENDPOINT_UNRESOLVED',p,pp+'.value.'+side,repr(ref));continue
