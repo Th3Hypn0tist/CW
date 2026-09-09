@@ -76,6 +76,23 @@ def _document() -> dict:
     }
 
 
+def _add_required_dependency(document: dict, *, endpoint_nodetype: str) -> None:
+    file_a = document["entities"][1]
+    file_b = document["entities"][2]
+    file_a["required_links"] = [
+        {
+            "id": "REQ_DEP",
+            "link_type_ref": "dependency",
+            "self_endpoint": "child_ref",
+            "min": 1,
+            "other_endpoint": {"entity_nodetype_ref": endpoint_nodetype},
+        }
+    ]
+    link = _link("LINK::B_TO_A", "dependency", "#FILE:b", "#FILE:a", "RULESET_LINK_DEPENDENCY")
+    link["value"]["required_link_ref"] = {"entity_ref": "#FILE:a", "required_link_id": "REQ_DEP"}
+    file_b["properties"].append(link)
+
+
 def _run(document: dict) -> dict:
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "model.json"
@@ -123,6 +140,20 @@ class CWCore11Tests(unittest.TestCase):
         result = _run(document)
         self.assertEqual(result["result"], "INVALID_MODEL", result)
         self.assertTrue(any(item["code"] == "NODE_SECTION_REF_DUPLICATE" for item in result["findings"]))
+
+    def test_required_link_other_endpoint_accepts_matching_nodetype(self) -> None:
+        document = _document()
+        _add_required_dependency(document, endpoint_nodetype="code")
+        result = _run(document)
+        self.assertEqual(result["result"], "READY", result)
+        self.assertFalse(any(item["code"] == "REQUIRED_LINK_UNSATISFIED" for item in result["findings"]))
+
+    def test_required_link_bound_to_wrong_other_endpoint_is_invalid(self) -> None:
+        document = _document()
+        _add_required_dependency(document, endpoint_nodetype="contract")
+        result = _run(document)
+        self.assertEqual(result["result"], "INVALID_MODEL", result)
+        self.assertTrue(any(item["code"] == "REQUIRED_LINK_BINDING_INCOMPATIBLE" for item in result["findings"]))
 
     def test_tampered_node_version_is_invalid(self) -> None:
         document = _document()
