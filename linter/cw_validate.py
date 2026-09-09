@@ -19,7 +19,7 @@ except ImportError:
     from cw_version import validate_entity_version
     import cw_spec_lint
 
-VER = "2.4.0"
+VER = "2.4.1"
 
 
 @dataclass
@@ -78,12 +78,12 @@ def type_matches(value: Any, description: Any) -> bool:
         return any(type_matches(value, option) for option in options)
     if description == "null":
         return value is None
-    if description == "string" or description.endswith("_ref"):
-        return isinstance(value, str) and bool(value)
     if description in {"logic_value", "logic_statement", "logic_representation", "required_link_ref"}:
         return isinstance(value, dict)
     if description == "endpoint_constraint":
         return isinstance(value, dict)
+    if description == "string" or description.endswith("_ref"):
+        return isinstance(value, str) and bool(value)
     if description == "non_negative_integer":
         return isinstance(value, int) and not isinstance(value, bool) and value >= 0
     if description == "integer":
@@ -154,11 +154,6 @@ def endpoint_constraint_matches(
     objects: dict[str, tuple[str, dict, Path]],
     nodetypes: dict[str, dict],
 ) -> bool | None:
-    """Evaluate the established Required Link other_endpoint constraint shape.
-
-    Returns True/False when the opposite endpoint resolves, or None when its
-    canonical target is unresolved and compatibility therefore cannot be proven.
-    """
     if constraint is None:
         return True
     if not isinstance(constraint, dict) or not constraint:
@@ -174,7 +169,6 @@ def endpoint_constraint_matches(
         return False
     if property_type_ref is not None and (not isinstance(property_type_ref, str) or not property_type_ref):
         return False
-
     target = objects.get(endpoint_ref)
     if target is None:
         return None
@@ -197,14 +191,7 @@ def required_fields(c: C, file: Path, value: Any, fields: Any, path: str, code: 
             c.e(code, file, path + "." + field, f"missing {field!r}")
 
 
-def _validate_ref_array(
-    value: Any,
-    schema_def: dict[str, Any],
-    objects: dict[str, tuple[str, dict, Path]],
-    c: C,
-    file: Path,
-    path: str,
-) -> None:
+def _validate_ref_array(value: Any, schema_def: dict[str, Any], objects: dict[str, tuple[str, dict, Path]], c: C, file: Path, path: str) -> None:
     if not isinstance(value, list):
         c.e("NODE_SECTION_ARRAY_INVALID", file, path, "must be an array")
         return
@@ -226,16 +213,7 @@ def _validate_ref_array(
             c.e("NODE_SECTION_REF_KIND_INCOMPATIBLE", file, item_path, target[0])
 
 
-def _validate_entity_sections(
-    entity: dict[str, Any],
-    sections: list[str],
-    readers: dict[str, Any],
-    node_ruleset: dict[str, Any],
-    objects: dict[str, tuple[str, dict, Path]],
-    c: C,
-    file: Path,
-    path: str,
-) -> None:
+def _validate_entity_sections(entity: dict[str, Any], sections: list[str], readers: dict[str, Any], node_ruleset: dict[str, Any], objects: dict[str, tuple[str, dict, Path]], c: C, file: Path, path: str) -> None:
     for section in sections:
         reader = readers.get(section)
         if not isinstance(reader, dict) or reader.get("kind") != "entity_field":
@@ -264,26 +242,16 @@ def main() -> int:
     parser.add_argument("--skip-spec-lint", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
-
     try:
-        bundle = resolve_bundle(
-            spec_set=args.spec_set,
-            ccf=args.ccf,
-            nodetypes=args.nodetypes,
-            rulesets=args.rulesets,
-            spec_dir=args.spec_dir,
-            default_start=Path(__file__).parent,
-        )
+        bundle = resolve_bundle(spec_set=args.spec_set, ccf=args.ccf, nodetypes=args.nodetypes, rulesets=args.rulesets, spec_dir=args.spec_dir, default_start=Path(__file__).parent)
     except Exception as exc:
         print(f"RESULT: IMPLEMENTATION_FAILURE\n{exc}", file=sys.stderr)
         return 2
-
     if not args.skip_spec_lint:
         specification_findings = cw_spec_lint.lint_bundle(bundle)
         if any(item.severity == "ERROR" for item in specification_findings.f):
             print("RESULT: INVALID_SPECIFICATION", file=sys.stderr)
             return 1
-
     c = C()
     try:
         paths = artifact_paths(args.input)
@@ -299,7 +267,7 @@ def main() -> int:
         entity_required = entity_shape.get("item_required", []) if isinstance(entity_shape, dict) else []
         property_shape = entity_shape.get("properties", {}) if isinstance(entity_shape, dict) else {}
         property_required = property_shape.get("item_required", []) if isinstance(property_shape, dict) else []
-
+        known_property_types = {item.get("property_type_ref") for item in property_rulesets.values() if isinstance(item.get("property_type_ref"), str)} | {"link"}
         objects: dict[str, tuple[str, dict, Path]] = {}
         owners: dict[str, str] = {}
         for file, document in documents:
@@ -336,7 +304,6 @@ def main() -> int:
                         objects[property_id] = ("Property", prop, file)
                         if isinstance(entity_id, str):
                             owners[property_id] = entity_id
-
         section_cache: dict[str, list[str]] = {}
         links: list[dict[str, Any]] = []
         for file, document in documents:
@@ -351,7 +318,6 @@ def main() -> int:
                 else:
                     sections = effective_sections(nodetype, nodetypes, section_cache)
                 _validate_entity_sections(entity, sections, readers, node_ruleset, objects, c, file, entity_path)
-
                 for property_index, prop in enumerate(entity.get("properties", []) if isinstance(entity.get("properties"), list) else []):
                     if not isinstance(prop, dict):
                         continue
@@ -368,7 +334,6 @@ def main() -> int:
                     value = prop.get("value")
                     if not isinstance(value, dict):
                         continue
-
                     constraints = ruleset.get("reference_constraints", {}) if isinstance(ruleset.get("reference_constraints"), dict) else {}
                     for field, policy in constraints.items():
                         values = value.get(field)
@@ -393,7 +358,6 @@ def main() -> int:
                                 target_nodetype = target_value.get("entity_type_ref")
                                 if not isinstance(target_nodetype, str) or not any(inherits(target_nodetype, wanted, nodetypes) for wanted in allowed_nodetypes):
                                     c.e("REFERENCE_NODETYPE_INCOMPATIBLE", file, ref_path, str(target_nodetype))
-
                     if property_type == "link":
                         links.append(prop)
                         relation = value.get("link_type_ref")
@@ -413,7 +377,6 @@ def main() -> int:
                                     compatible = inherits(target_nodetype, required_nodetype, nodetypes)
                                 if not compatible:
                                     c.e("LINK_TOPOLOGY_REF_INCOMPATIBLE", file, property_path + ".value.link_type_ref", relation)
-
                         endpoint_constraints = ruleset.get("endpoint_constraints", {}) if isinstance(ruleset.get("endpoint_constraints"), dict) else {}
                         for side in ("parent_ref", "child_ref"):
                             ref = value.get(side)
@@ -432,20 +395,17 @@ def main() -> int:
                                         compatible = True
                                 if not compatible:
                                     c.e("LINK_ENDPOINT_INCOMPATIBLE", file, property_path + ".value." + side, str(constraints_for_side))
-
                     if property_type == "function" and isinstance(value.get("logic"), dict):
                         logic = value["logic"]
                         validate_schema(logic, ruleset.get("logic_schema"), c, file, property_path + ".value.logic", str(ruleset_ref))
                         if primitive_sets.get(logic.get("primitive_set_ref")) is None:
                             c.e("LOGIC_PRIMITIVE_SET_UNRESOLVED", file, property_path + ".value.logic.primitive_set_ref", repr(logic.get("primitive_set_ref")))
-
         by_requirement: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
         for link in links:
             value = link.get("value", {})
             requirement_ref = value.get("required_link_ref") if isinstance(value, dict) else None
             if isinstance(requirement_ref, dict):
                 by_requirement.setdefault((requirement_ref.get("entity_ref"), requirement_ref.get("required_link_id")), []).append(link)
-
         for file, document in documents:
             for entity_index, entity in enumerate(document.get("entities", []) if isinstance(document.get("entities"), list) else []):
                 if not isinstance(entity, dict) or entity.get("entity_type_ref") not in nodetypes:
@@ -472,9 +432,8 @@ def main() -> int:
                                 c.e("REQUIRED_LINK_ENDPOINT_CONSTRAINT_INVALID", file, requirement_path + ".other_endpoint", "constraint is empty")
                             if entity_constraint is not None and (not isinstance(entity_constraint, str) or entity_constraint not in nodetypes):
                                 c.e("REQUIRED_LINK_ENDPOINT_NODETYPE_UNRESOLVED", file, requirement_path + ".other_endpoint.entity_nodetype_ref", repr(entity_constraint))
-                            if property_constraint is not None and (not isinstance(property_constraint, str) or not property_constraint):
-                                c.e("REQUIRED_LINK_ENDPOINT_PROPERTY_TYPE_INVALID", file, requirement_path + ".other_endpoint.property_type_ref", repr(property_constraint))
-
+                            if property_constraint is not None and (not isinstance(property_constraint, str) or property_constraint not in known_property_types):
+                                c.e("REQUIRED_LINK_ENDPOINT_PROPERTY_TYPE_UNRESOLVED", file, requirement_path + ".other_endpoint.property_type_ref", repr(property_constraint))
                     hits = []
                     for link in by_requirement.get((entity.get("id"), requirement.get("id")), []):
                         value = link.get("value", {})
@@ -496,12 +455,10 @@ def main() -> int:
                         c.u("REQUIRED_LINK_UNSATISFIED", file, requirement_path, f"{len(hits)} < {minimum}")
                     if isinstance(maximum, int) and len(hits) > maximum:
                         c.e("REQUIRED_LINK_MAX_EXCEEDED", file, requirement_path, f"{len(hits)} > {maximum}")
-
         result = "INVALID_MODEL" if any(item.severity == "ERROR" for item in c.f) else ("UNREADY" if any(item.severity == "UNREADY" for item in c.f) else "READY")
     except Exception as exc:
         print(f"RESULT: IMPLEMENTATION_FAILURE\n{exc}", file=sys.stderr)
         return 2
-
     if args.json:
         print(json.dumps({"validator_version": VER, "result": result, "findings": [asdict(item) for item in c.f]}, indent=2))
     else:
