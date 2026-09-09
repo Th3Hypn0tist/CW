@@ -4,6 +4,7 @@ import argparse
 import ast
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -79,7 +80,7 @@ def _release_check(cw_root=None, spec_set=None) -> dict:
     forbidden_imports: list[str] = []
     for path in cic_root.rglob("*.py"):
         for module in _forbidden_import_modules(path):
-            forbidden_imports.append(f"{path.relative_to(root)} -> {module}")
+            forbidden_imports.append(f"{path.relative_to(cic_root)} -> {module}")
     if forbidden_files or forbidden_imports:
         raise RuntimeError(
             f"CIC release contains forbidden duplicate/domain remnants: files={forbidden_files}, imports={forbidden_imports}"
@@ -88,12 +89,24 @@ def _release_check(cw_root=None, spec_set=None) -> dict:
     tool_report = validate_toolchain(cw_root=root, spec_set=spec_set)
     selftest_report = _selftest(root, spec_set)
 
-    tools_path = str(root / "tools")
-    if tools_path not in sys.path:
-        sys.path.insert(0, tools_path)
-    suite = unittest.defaultTestLoader.discover(str(cic_root / "tests"), pattern="test*.py")
-    stream = io.StringIO()
-    result = unittest.TextTestRunner(stream=stream, verbosity=2).run(suite)
+    # The same regression suite must run from the CW SSOT location and from a
+    # synchronized top-level CIC consumer. Propagate the resolved CW authority
+    # for tests that intentionally call the public importer without cw_root.
+    previous_cw_root = os.environ.get("CW_ROOT")
+    os.environ["CW_ROOT"] = str(root)
+    try:
+        tools_path = str(root / "tools")
+        if tools_path not in sys.path:
+            sys.path.insert(0, tools_path)
+        suite = unittest.defaultTestLoader.discover(str(cic_root / "tests"), pattern="test*.py")
+        stream = io.StringIO()
+        result = unittest.TextTestRunner(stream=stream, verbosity=2).run(suite)
+    finally:
+        if previous_cw_root is None:
+            os.environ.pop("CW_ROOT", None)
+        else:
+            os.environ["CW_ROOT"] = previous_cw_root
+
     if not result.wasSuccessful():
         raise RuntimeError("CIC regression suite failed:\n" + stream.getvalue())
 
