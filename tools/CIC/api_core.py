@@ -7,13 +7,13 @@ from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 
-from .call_resolution import resolve_function_calls
-from .cw import ingest_cw
-from .diagnostics import summarize_diagnostics
-from .event_canonicalization import apply_canonical_event, approve_canonical_event, propose_canonical_event
-from .event_logic import EventTriggerRule, detect_event_candidates
-from .event_mapping import propose_event_mapping
-from .identity import (
+from CIC.call_resolution import resolve_function_calls
+from CIC.cw import ingest_cw
+from CIC.diagnostics import summarize_diagnostics
+from CIC.event_canonicalization import apply_canonical_event, approve_canonical_event, propose_canonical_event
+from CIC.event_logic import EventTriggerRule, detect_event_candidates
+from CIC.event_mapping import propose_event_mapping
+from CIC.identity import (
     CICIdentityError,
     canonical_file_key,
     canonical_file_ref,
@@ -22,171 +22,449 @@ from .identity import (
     normalize_source_path,
     observed_file_ref,
 )
-from .modules.css import extract_css
-from .modules.html import extract_html
-from .modules.javascript import extract_javascript
-from .modules.python import extract_python
-from .modules.registry import extract as extract_language_ir
-from .modules.registry import install_builtin_modules
-from .reference_resolution import resolve_code_references
-from .solver import SolverPolicy, run_solver
+from CIC.modules.css import extract_css
+from CIC.modules.html import extract_html
+from CIC.modules.javascript import extract_javascript
+from CIC.modules.python import extract_python
+from CIC.modules.registry import extract as extract_language_ir
+from CIC.modules.registry import install_builtin_modules
+from CIC.reference_resolution import resolve_code_references
+from CIC.solver import SolverPolicy, run_solver
 
-DEFAULT_EXCLUDED_DIRS=frozenset({".git",".hg",".svn","node_modules","__pycache__",".pytest_cache",".mypy_cache",".ruff_cache",".tox",".venv","venv","dist","build","target","bin","obj"})
+
+DEFAULT_EXCLUDED_DIRS = frozenset({
+    ".git", ".hg", ".svn", "node_modules", "__pycache__", ".pytest_cache", ".mypy_cache",
+    ".ruff_cache", ".tox", ".venv", "venv", "dist", "build", "target", "bin", "obj",
+})
+
 
 @dataclass(frozen=True)
 class ImportBundle:
-    cw:dict[str,Any]
-    ir:dict[str,Any]
-    files_seen:int
-    files_imported:int
-    diagnostics:int
+    cw: dict[str, Any]
+    ir: dict[str, Any]
+    files_seen: int
+    files_imported: int
+    diagnostics: int
+
 
 @dataclass(frozen=True)
 class ImportResult:
-    code_folder:Path
-    cw_folder:Path
-    cw_path:Path
-    ir_path:Path
-    files_seen:int
-    files_imported:int
-    diagnostics:int
-    diagnostic_summary:dict[str,Any]
-    shard_count:int
+    code_folder: Path
+    cw_folder: Path
+    cw_path: Path
+    ir_path: Path
+    files_seen: int
+    files_imported: int
+    diagnostics: int
+    diagnostic_summary: dict[str, Any]
+    shard_count: int
 
 
-def _normalize_relative(path:Path,root:Path)->str: return normalize_source_path(path.relative_to(root).as_posix())
+def _normalize_source_path(value: Any) -> str:
+    return normalize_source_path(value)
 
-def _read_text(path:Path)->str|None:
-    try: return path.read_text(encoding="utf-8")
+
+def _normalize_relative(path: Path, root: Path) -> str:
+    return normalize_source_path(path.relative_to(root).as_posix())
+
+
+def _read_text(path: Path) -> str | None:
+    try:
+        return path.read_text(encoding="utf-8")
     except UnicodeDecodeError:
-        try: return path.read_text(encoding="utf-8-sig")
-        except UnicodeDecodeError: return None
+        try:
+            return path.read_text(encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            return None
 
 
-def _walk_source_files(root:Path,excluded_dirs:frozenset[str])->list[Path]:
-    files=[]
+def _walk_source_files(root: Path, excluded_dirs: frozenset[str]) -> list[Path]:
+    files: list[Path] = []
     for path in root.rglob("*"):
-        parts=path.relative_to(root).parts
-        if path.name in excluded_dirs or any(part in excluded_dirs for part in parts[:-1]): continue
-        if path.is_file(): files.append(path)
-    return sorted(files,key=lambda item:item.relative_to(root).as_posix().lower())
+        relative_parts = path.relative_to(root).parts
+        if path.name in excluded_dirs:
+            continue
+        if any(part in excluded_dirs for part in relative_parts[:-1]):
+            continue
+        if path.is_file():
+            files.append(path)
+    return sorted(files, key=lambda item: item.relative_to(root).as_posix().lower())
 
 
-def _function_properties(file_record:dict[str,Any],symbols:list[dict[str,Any]])->list[dict[str,Any]]:
-    properties=[]; source_path=file_record["path"]; owner_ref=file_record["canonical_file_ref"]
-    def add(symbol,owner=None):
-        name=symbol.get("name")
-        if not isinstance(name,str) or not name: return
-        qualified=symbol.get("qualified_name"); scoped=qualified if isinstance(qualified,str) and qualified else (f"{owner}.{name}" if owner else name)
-        properties.append({"id":canonical_function_ref(source_path,scoped),"property_type_ref":"function","ruleset_ref":"RULESET_FUNCTION","status":"unlocked","value":{"function_type_ref":"implementation_function","properties":{"owner_file_ref":owner_ref,"source_file_ref":file_record["file_ref"],"source_path":source_path,"source_language":file_record["language_ir"].get("language_id","unclassified"),"name":name,"qualified_name":scoped,"owner":symbol.get("owner",owner),"async":bool(symbol.get("async")),"parameters":symbol.get("parameters",[]),"returns_annotation":symbol.get("returns_annotation"),"decorators":symbol.get("decorators",[]),"span":symbol.get("span"),"decomposition_state":symbol.get("decomposition_state","none")}}})
-        for nested in symbol.get("nested_functions",[]):
-            if isinstance(nested,dict): add(nested,scoped)
+def _function_properties(file_record: dict[str, Any], symbols: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    properties: list[dict[str, Any]] = []
+    source_path = file_record["path"]
+    canonical_owner_ref = file_record["canonical_file_ref"]
+
+    def add_function(symbol: dict[str, Any], *, owner: str | None = None) -> None:
+        name = symbol.get("name")
+        if not isinstance(name, str) or not name:
+            return
+        qualified_name = symbol.get("qualified_name")
+        scoped = qualified_name if isinstance(qualified_name, str) and qualified_name else (f"{owner}.{name}" if owner else name)
+        prop_id = canonical_function_ref(source_path, scoped)
+        properties.append({
+            "id": prop_id,
+            "property_type_ref": "function",
+            "ruleset_ref": "RULESET_FUNCTION",
+            "status": "unlocked",
+            "value": {
+                "function_type_ref": "implementation_function",
+                "properties": {
+                    "owner_file_ref": canonical_owner_ref,
+                    "source_file_ref": file_record["file_ref"],
+                    "source_path": source_path,
+                    "source_language": file_record["language_ir"].get("language_id", "unclassified"),
+                    "name": name,
+                    "qualified_name": scoped,
+                    "owner": symbol.get("owner", owner),
+                    "async": bool(symbol.get("async")),
+                    "parameters": symbol.get("parameters", []),
+                    "returns_annotation": symbol.get("returns_annotation"),
+                    "decorators": symbol.get("decorators", []),
+                    "span": symbol.get("span"),
+                    "decomposition_state": symbol.get("decomposition_state", "none"),
+                },
+            },
+        })
+        for nested in symbol.get("nested_functions", []):
+            if isinstance(nested, dict):
+                add_function(nested, owner=scoped)
+
     for symbol in symbols:
-        if not isinstance(symbol,dict): continue
-        if symbol.get("kind")=="function": add(symbol)
-        elif symbol.get("kind")=="class":
-            owner=symbol.get("name") if isinstance(symbol.get("name"),str) else None
-            for method in symbol.get("methods",[]):
-                if isinstance(method,dict): add(method,owner)
+        if not isinstance(symbol, dict):
+            continue
+        if symbol.get("kind") == "function":
+            add_function(symbol)
+        elif symbol.get("kind") == "class":
+            owner = symbol.get("name") if isinstance(symbol.get("name"), str) else None
+            for method in symbol.get("methods", []):
+                if isinstance(method, dict):
+                    add_function(method, owner=owner)
     return properties
 
 
-def _file_entity(file_record:dict[str,Any])->dict[str,Any]:
-    source_path=file_record["path"]; lir=file_record["language_ir"]; ref=file_record["canonical_file_ref"]; key=file_record["canonical_file_key"]
-    properties=[
-        {"id":f"DATA::{ref}::SOURCE_PATH","property_type_ref":"data","ruleset_ref":"RULESET_DATA","status":"unlocked","value":{"data_type_ref":"source_path","value":source_path,"properties":{"provenance_only":True}}},
-        {"id":f"DATA::{ref}::SOURCE_LANGUAGE","property_type_ref":"data","ruleset_ref":"RULESET_DATA","status":"unlocked","value":{"data_type_ref":"language_id","value":lir.get("language_id","unclassified"),"properties":{"provenance_only":True}}},
+def _file_entity(file_record: dict[str, Any]) -> dict[str, Any]:
+    source_path = file_record["path"]
+    language_ir = file_record["language_ir"]
+    file_ref = file_record["canonical_file_ref"]
+    key = file_record["canonical_file_key"]
+    properties: list[dict[str, Any]] = [
+        {
+            "id": f"DATA::{file_ref}::SOURCE_PATH",
+            "property_type_ref": "data",
+            "ruleset_ref": "RULESET_DATA",
+            "status": "unlocked",
+            "value": {
+                "data_type_ref": "source_path",
+                "value": source_path,
+                "properties": {"provenance_only": True},
+            },
+        },
+        {
+            "id": f"DATA::{file_ref}::SOURCE_LANGUAGE",
+            "property_type_ref": "data",
+            "ruleset_ref": "RULESET_DATA",
+            "status": "unlocked",
+            "value": {
+                "data_type_ref": "language_id",
+                "value": language_ir.get("language_id", "unclassified"),
+                "properties": {"provenance_only": True},
+            },
+        },
     ]
-    properties.extend(_function_properties(file_record,lir.get("symbols",[])))
-    return {"id":ref,"name":PurePosixPath(key).name,"entity_type_ref":"code","status":"unlocked","properties":properties,"required_links":[]}
-
-
-def _cw_document(files:list[dict[str,Any]])->dict[str,Any]:
+    properties.extend(_function_properties(file_record, language_ir.get("symbols", [])))
     return {
-        "format":{"contract_format":"CANONICAL_CONTRACT","format_version":"2.1"},
-        "identity":{"id":"CIC_IMPORTED_CODE_MODEL","name":"CIC Imported Code Model","type":"code_model","version":"0.4.0"},
-        "status":"unlocked",
-        "purpose":"Unbound CW candidate produced from deterministic source-code import. Specification selection and semantic validation happen after import.",
-        "scope":{"owns":["active imported code model"],"does_not_own":["parser evidence archive","specification selection","semantic validation","renderer state"]},
-        "entities":[_file_entity(item) for item in files],
-        "constraints":{"invariants":[
-            {"id":"CIC_ONE_FILE_ONE_ENTITY","rule":"Every imported source file maps to exactly one language-agnostic #FILE canonical Entity identity."},
-            {"id":"CIC_SOURCE_SUFFIX_NOT_CANONICAL_IDENTITY","rule":"Source-format suffixes are provenance and MUST NOT appear in canonical #FILE identity or physical shard basename."},
-            {"id":"CIC_ONE_FILE_ONE_SHARD","rule":"Every canonical #FILE Entity is serialized to exactly one FILE/<canonical path>.cw shard."},
-            {"id":"CIC_FUNCTION_IS_FILE_PROPERTY","rule":"Functions and methods remain Properties of their owning #FILE Entity and never become Entities."},
-            {"id":"CIC_NO_GUESSED_LINKS","rule":"Implementation import or call evidence does not become canonical Link truth without explicit resolution/authority."},
-            {"id":"CIC_IMPORT_IS_SPEC_UNBOUND","rule":"Import MUST NOT select a CCF + NodeTypes + Rulesets interpretation bundle."},
-        ]},
-        "references":[],"gaps":[],"prose":{"summary":"CIC code import candidate; specification authority begins only after explicit validation binding."},
+        "id": file_ref,
+        "name": PurePosixPath(key).name,
+        "entity_type_ref": "code",
+        "status": "unlocked",
+        "properties": properties,
+        "required_links": [],
     }
 
 
-def _materialize_event_candidates(cw:dict[str,Any],candidates:list[dict[str,Any]])->tuple[dict[str,Any],list[dict[str,Any]]]:
-    result=cw; audit=[]
+def _cw_document(files: list[dict[str, Any]]) -> dict[str, Any]:
+    entities = [_file_entity(item) for item in files]
+    return {
+        "format": {"contract_format": "CANONICAL_CONTRACT", "format_version": "2.1"},
+        "identity": {
+            "id": "CIC_IMPORTED_CODE_MODEL",
+            "name": "CIC Imported Code Model",
+            "type": "code_model",
+            "version": "0.3.0",
+        },
+        "status": "unlocked",
+        "purpose": "Unbound CW candidate produced from deterministic source-code import. Specification selection and semantic validation happen after import.",
+        "scope": {
+            "owns": ["active imported code model"],
+            "does_not_own": ["parser evidence archive", "specification selection", "semantic validation", "renderer state"],
+        },
+        "entities": entities,
+        "constraints": {
+            "invariants": [
+                {"id": "CIC_ONE_FILE_ONE_ENTITY", "rule": "Every imported source file maps to exactly one language-agnostic #FILE canonical Entity identity."},
+                {"id": "CIC_SOURCE_SUFFIX_NOT_CANONICAL_IDENTITY", "rule": "Source-format suffixes such as .py, .js, .html, .css and .hgi are provenance and MUST NOT appear in canonical #FILE identity or physical shard basename."},
+                {"id": "CIC_ONE_FILE_ONE_SHARD", "rule": "Every canonical #FILE Entity is serialized to exactly one FILE/<canonical path>.cw shard."},
+                {"id": "CIC_FUNCTION_IS_FILE_PROPERTY", "rule": "Functions and methods remain Properties of their owning #FILE Entity and never become Entities."},
+                {"id": "CIC_NO_GUESSED_LINKS", "rule": "Implementation import or call evidence does not become canonical Link truth without explicit resolution/authority."},
+                {"id": "CIC_IMPORT_IS_SPEC_UNBOUND", "rule": "Import MUST NOT select a CCF + NodeTypes + Rulesets interpretation bundle. specification_ref is added only by an explicit post-import binding step."},
+                {"id": "CIC_STDLIB_CORE", "rule": "CIC core and built-in parser chain are self-contained Python code and require no Node/npm or external parser runtime."},
+            ]
+        },
+        "references": [],
+        "gaps": [],
+        "prose": {"summary": "CIC code import candidate; source-language identity ends at the import boundary and specification authority begins only after explicit binding."},
+    }
+
+
+def _materialize_event_candidates(cw: dict[str, Any], candidates: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    result = cw
+    audit: list[dict[str, Any]] = []
     for candidate in candidates:
-        mapping=propose_event_mapping(result,candidate); proposal=propose_canonical_event(mapping); approved=approve_canonical_event(result,proposal); result=apply_canonical_event(result,approved)
-        audit.append({"candidate_id":candidate.get("candidate_id"),"mapping_proposal_id":mapping.proposal_id,"event_property_ref":proposal.event_property["id"],"event_handler_link_ref":proposal.handler_link_property["id"],"target_function_ref":proposal.target_function_ref,"status":"MATERIALIZED","canonical_semantic_authority":False})
-    return result,audit
+        mapping = propose_event_mapping(result, candidate)
+        proposal = propose_canonical_event(mapping)
+        approved = approve_canonical_event(result, proposal)
+        result = apply_canonical_event(result, approved)
+        audit.append({
+            "candidate_id": candidate.get("candidate_id"),
+            "mapping_proposal_id": mapping.proposal_id,
+            "event_property_ref": proposal.event_property["id"],
+            "event_handler_link_ref": proposal.handler_link_property["id"],
+            "target_function_ref": proposal.target_function_ref,
+            "status": "MATERIALIZED",
+            "canonical_semantic_authority": False,
+        })
+    return result, audit
 
 
-def import_files(files:Iterable[dict[str,Any]],*,solver_policy:SolverPolicy|None=None,event_rules:Iterable[EventTriggerRule|dict[str,Any]]=(),materialize_events:bool=True)->ImportBundle:
-    install_builtin_modules(python_extractor=extract_python,javascript_extractor=extract_javascript,html_extractor=extract_html,css_extractor=extract_css)
-    normalized=[]; seen=set(); files_seen=0
+def import_files(
+    files: Iterable[dict[str, Any]],
+    *,
+    solver_policy: SolverPolicy | None = None,
+    event_rules: Iterable[EventTriggerRule | dict[str, Any]] = (),
+    materialize_events: bool = True,
+) -> ImportBundle:
+    """Import source files into an unbound canonical CW candidate."""
+    install_builtin_modules(
+        python_extractor=extract_python,
+        javascript_extractor=extract_javascript,
+        html_extractor=extract_html,
+        css_extractor=extract_css,
+    )
+
+    normalized: list[dict[str, str]] = []
+    seen: set[str] = set()
+    files_seen = 0
     for item in files:
-        files_seen+=1
-        if not isinstance(item,dict): raise ValueError("CIC file entry must be an object")
-        path=normalize_source_path(item.get("path")); content=item.get("content")
-        if path in seen: raise ValueError(f"duplicate CIC source path: {path}")
-        if not isinstance(content,str): raise ValueError(f"CIC source content must be text: {path}")
-        seen.add(path); normalized.append({"path":path,"content":content})
-    normalized.sort(key=lambda item:item["path"].lower())
-    imported=[]; diagnostics=0; canonical_owners={}
+        files_seen += 1
+        if not isinstance(item, dict):
+            raise ValueError("CIC file entry must be an object")
+        path = normalize_source_path(item.get("path"))
+        if path in seen:
+            raise ValueError(f"duplicate CIC source path: {path}")
+        seen.add(path)
+        content = item.get("content")
+        if not isinstance(content, str):
+            raise ValueError(f"CIC source content must be text: {path}")
+        normalized.append({"path": path, "content": content})
+    normalized.sort(key=lambda item: item["path"].lower())
+
+    imported: list[dict[str, Any]] = []
+    diagnostics = 0
+    canonical_owners: dict[str, str] = {}
     for item in normalized:
-        lir=extract_language_ir(item["path"],item["content"]); diagnostics+=len(lir.get("diagnostics",[])); canonical_ref=canonical_file_ref(item["path"])
-        previous=canonical_owners.get(canonical_ref)
-        if previous is not None and previous!=item["path"]: raise CICIdentityError(f"canonical #FILE identity collision: {previous!r} and {item['path']!r} both map to {canonical_ref}")
-        canonical_owners[canonical_ref]=item["path"]
-        imported.append({"path":item["path"],"file_ref":observed_file_ref(item["path"]),"canonical_file_ref":canonical_ref,"canonical_file_key":canonical_file_key(item["path"]),"cw_shard_path":canonical_file_shard_path(canonical_ref),"language_ir":lir})
-    ir={"kind":"cic_code_ir","version":"0.4.0","canonical_semantic_authority":False,"policy":{"maximum_extraction":True,"zero_semantic_guessing":True,"one_source_file_one_file_identity":True,"canonical_file_identity_is_language_agnostic":True,"source_suffix_is_not_canonical_identity":True,"function_is_file_property":True,"call_is_property_evidence":True,"event_requires_explicit_trigger_evidence":True,"solver_requires_explicit_opt_in":True,"import_selects_specification":False,"builtin_frontends":["python","javascript","html","css"]},"files":imported,"skipped_binary":[]}
-    ir["diagnostic_summary"]=summarize_diagnostics(imported); ir["reference_evidence"]=resolve_code_references(ir); ir["call_evidence"]=resolve_function_calls(ir); ir["event_candidates"]=[asdict(candidate) for candidate in detect_event_candidates(ir,event_rules)]
-    solved=run_solver(ir,policy=solver_policy); solved_ir=solved.ir; solved_ir["solver"]=solved.report(); cw=_cw_document(solved_ir.get("files",[]))
-    if materialize_events: cw,event_materialization=_materialize_event_candidates(cw,solved_ir.get("event_candidates",[]))
-    else: event_materialization=[]
-    solved_ir["event_materialization"]=event_materialization
-    return ImportBundle(cw,solved_ir,files_seen,len(imported),diagnostics)
+        language_ir = extract_language_ir(item["path"], item["content"])
+        diagnostics += len(language_ir.get("diagnostics", []))
+        canonical_ref = canonical_file_ref(item["path"])
+        previous = canonical_owners.get(canonical_ref)
+        if previous is not None and previous != item["path"]:
+            raise CICIdentityError(
+                f"canonical #FILE identity collision: {previous!r} and {item['path']!r} both map to {canonical_ref}"
+            )
+        canonical_owners[canonical_ref] = item["path"]
+        imported.append({
+            "path": item["path"],
+            "file_ref": observed_file_ref(item["path"]),
+            "canonical_file_ref": canonical_ref,
+            "canonical_file_key": canonical_file_key(item["path"]),
+            "cw_shard_path": canonical_file_shard_path(canonical_ref),
+            "language_ir": language_ir,
+        })
+
+    ir_document = {
+        "kind": "cic_code_ir",
+        "version": "0.3.0",
+        "canonical_semantic_authority": False,
+        "policy": {
+            "maximum_extraction": True,
+            "zero_semantic_guessing": True,
+            "one_source_file_one_file_identity": True,
+            "observed_file_identity_preserves_source_path": True,
+            "canonical_file_identity_is_language_agnostic": True,
+            "source_suffix_is_not_canonical_identity": True,
+            "one_canonical_file_one_cw_shard": True,
+            "function_is_file_property": True,
+            "call_is_property_evidence": True,
+            "event_requires_explicit_trigger_evidence": True,
+            "event_materialization_requires_validated_target": True,
+            "solver_requires_explicit_opt_in": True,
+            "import_selects_specification": False,
+            "stdlib_core_only": True,
+            "external_parser_runtime_required": False,
+            "builtin_frontends": ["python", "javascript", "html", "css"],
+        },
+        "files": imported,
+        "skipped_binary": [],
+    }
+
+    ir_document["diagnostic_summary"] = summarize_diagnostics(imported)
+    ir_document["reference_evidence"] = resolve_code_references(ir_document)
+    ir_document["call_evidence"] = resolve_function_calls(ir_document)
+    ir_document["event_candidates"] = [asdict(candidate) for candidate in detect_event_candidates(ir_document, event_rules)]
+
+    solver_result = run_solver(ir_document, policy=solver_policy)
+    solved_ir = solver_result.ir
+    solved_ir["solver"] = solver_result.report()
+
+    cw = _cw_document(solved_ir.get("files", []))
+    if materialize_events:
+        cw, event_materialization = _materialize_event_candidates(cw, solved_ir.get("event_candidates", []))
+    else:
+        event_materialization = []
+    solved_ir["event_materialization"] = event_materialization
+
+    return ImportBundle(
+        cw=cw,
+        ir=solved_ir,
+        files_seen=files_seen,
+        files_imported=len(imported),
+        diagnostics=diagnostics,
+    )
 
 
-def _manifest_document(cw,files):
-    manifest=copy.deepcopy(cw); manifest["entities"]=[]; manifest["shards"]=[{"entity_ref":item["canonical_file_ref"],"artifact_ref":item["cw_shard_path"]} for item in sorted(files,key=lambda value:value["canonical_file_ref"].lower())]; manifest.setdefault("serialization",{}).update({"mode":"cw_entity_shards","one_entity_one_shard":True,"manifest":"model.cw","source_suffix_in_shard_name":False}); return manifest
+def _prepare_output_folder(source_root: Path, output_root: Path, *, force: bool) -> None:
+    if source_root == output_root:
+        raise ValueError("CW output folder must differ from code folder")
+    if output_root in source_root.parents:
+        raise ValueError(f"CW output folder cannot contain the code folder: {output_root}")
+    if source_root in output_root.parents:
+        raise ValueError(f"CW output folder cannot be inside the code folder: {output_root}")
+
+    if output_root.exists():
+        if not output_root.is_dir():
+            raise ValueError(f"CW output path exists and is not a directory: {output_root}")
+        if not force:
+            raise ValueError(f"CW output folder already exists: {output_root}; use --force to replace it")
+        shutil.rmtree(output_root)
 
 
-def _write_sharded_cw(output_root:Path,bundle:ImportBundle)->tuple[Path,int]:
-    files=[item for item in bundle.ir.get("files",[]) if isinstance(item,dict)]; entities={e["id"]:e for e in bundle.cw.get("entities",[]) if isinstance(e,dict) and isinstance(e.get("id"),str)}; manifest=_manifest_document(bundle.cw,files); cw_path=output_root/"model.cw"; cw_path.write_text(json.dumps(manifest,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
-    count=0
+def _manifest_document(cw: dict[str, Any], files: list[dict[str, Any]]) -> dict[str, Any]:
+    manifest = copy.deepcopy(cw)
+    manifest["entities"] = []
+    manifest["shards"] = [
+        {
+            "entity_ref": item["canonical_file_ref"],
+            "artifact_ref": item["cw_shard_path"],
+        }
+        for item in sorted(files, key=lambda value: value["canonical_file_ref"].lower())
+    ]
+    manifest.setdefault("serialization", {}).update({
+        "mode": "cw_entity_shards",
+        "one_entity_one_shard": True,
+        "manifest": "model.cw",
+        "source_suffix_in_shard_name": False,
+    })
+    return manifest
+
+
+def _shard_document(cw: dict[str, Any], entity: dict[str, Any]) -> dict[str, Any]:
+    del cw
+    return copy.deepcopy(entity)
+
+
+def _write_sharded_cw(output_root: Path, bundle: ImportBundle) -> tuple[Path, int]:
+    files = [item for item in bundle.ir.get("files", []) if isinstance(item, dict)]
+    entities = {
+        entity["id"]: entity
+        for entity in bundle.cw.get("entities", [])
+        if isinstance(entity, dict) and isinstance(entity.get("id"), str)
+    }
+    manifest = _manifest_document(bundle.cw, files)
+    cw_path = output_root / "model.cw"
+    cw_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    shard_count = 0
     for item in files:
-        entity=entities.get(item["canonical_file_ref"])
-        if entity is None: raise ValueError(f"CW shard entity missing from active model: {item['canonical_file_ref']}")
-        shard=output_root/item["cw_shard_path"]; shard.parent.mkdir(parents=True,exist_ok=True); shard.write_text(json.dumps(entity,indent=2,ensure_ascii=False)+"\n",encoding="utf-8"); count+=1
-    return cw_path,count
+        entity_ref = item["canonical_file_ref"]
+        entity = entities.get(entity_ref)
+        if entity is None:
+            raise ValueError(f"CW shard entity missing from active model: {entity_ref}")
+        shard_path = output_root / item["cw_shard_path"]
+        shard_path.parent.mkdir(parents=True, exist_ok=True)
+        shard_path.write_text(
+            json.dumps(_shard_document(bundle.cw, entity), indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        shard_count += 1
+    return cw_path, shard_count
 
 
-def import_folder(code_folder:str|Path,cw_folder:str|Path,*,excluded_dirs:frozenset[str]=DEFAULT_EXCLUDED_DIRS,solver_policy:SolverPolicy|None=None,event_rules:Iterable[EventTriggerRule|dict[str,Any]]=(),materialize_events:bool=True,force:bool=False)->ImportResult:
-    source=Path(code_folder).expanduser().resolve(); output=Path(cw_folder).expanduser().resolve()
-    if not source.is_dir(): raise ValueError(f"code folder not found: {source}")
-    if source==output: raise ValueError("CW output folder must differ from code folder")
-    if output in source.parents: raise ValueError(f"CW output folder cannot contain the code folder: {output}")
-    if output.exists():
-        if not output.is_dir(): raise ValueError(f"CW output path exists and is not a directory: {output}")
-        if not force: raise ValueError(f"CW output folder already exists: {output}; use --force to replace it")
-        shutil.rmtree(output)
-    source_paths=_walk_source_files(source,excluded_dirs); text_files=[]; skipped=[]
-    for path in source_paths:
-        relative=_normalize_relative(path,source); content=_read_text(path)
-        if content is None: skipped.append(relative)
-        else: text_files.append({"path":relative,"content":content})
-    bundle=import_files(text_files,solver_policy=solver_policy,event_rules=event_rules,materialize_events=materialize_events); bundle.ir["skipped_binary"]=skipped; output.mkdir(parents=True,exist_ok=False)
+def import_folder(
+    code_folder: str | Path,
+    cw_folder: str | Path,
+    *,
+    excluded_dirs: frozenset[str] = DEFAULT_EXCLUDED_DIRS,
+    solver_policy: SolverPolicy | None = None,
+    event_rules: Iterable[EventTriggerRule | dict[str, Any]] = (),
+    materialize_events: bool = True,
+    force: bool = False,
+) -> ImportResult:
+    source_root = Path(code_folder).expanduser().resolve()
+    output_root = Path(cw_folder).expanduser().resolve()
+    if not source_root.is_dir():
+        raise ValueError(f"code folder not found: {source_root}")
+    _prepare_output_folder(source_root, output_root, force=force)
+
+    source_paths = _walk_source_files(source_root, excluded_dirs)
+    text_files: list[dict[str, str]] = []
+    skipped_binary: list[str] = []
+    for source_path in source_paths:
+        relative = _normalize_relative(source_path, source_root)
+        source = _read_text(source_path)
+        if source is None:
+            skipped_binary.append(relative)
+            continue
+        text_files.append({"path": relative, "content": source})
+
+    bundle = import_files(
+        text_files,
+        solver_policy=solver_policy,
+        event_rules=event_rules,
+        materialize_events=materialize_events,
+    )
+    bundle.ir["skipped_binary"] = skipped_binary
+
+    output_root.mkdir(parents=True, exist_ok=False)
     try:
-        ir_path=output/"import.ir.json"; ir_path.write_text(json.dumps(bundle.ir,indent=2,ensure_ascii=False)+"\n",encoding="utf-8"); cw_path,count=_write_sharded_cw(output,bundle); ingest_cw(output)
+        ir_path = output_root / "import.ir.json"
+        ir_path.write_text(json.dumps(bundle.ir, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        cw_path, shard_count = _write_sharded_cw(output_root, bundle)
+        # Import success proves only lossless serialization/composition closure.
+        # Specification binding and semantic validation are deliberately later steps.
+        ingest_cw(output_root)
     except Exception:
-        shutil.rmtree(output,ignore_errors=True); raise
-    return ImportResult(source,output,cw_path,ir_path,len(source_paths),bundle.files_imported,bundle.diagnostics,dict(bundle.ir.get("diagnostic_summary",{})),count)
+        shutil.rmtree(output_root, ignore_errors=True)
+        raise
+
+    return ImportResult(
+        code_folder=source_root,
+        cw_folder=output_root,
+        cw_path=cw_path,
+        ir_path=ir_path,
+        files_seen=len(source_paths),
+        files_imported=bundle.files_imported,
+        diagnostics=bundle.diagnostics,
+        diagnostic_summary=dict(bundle.ir.get("diagnostic_summary", {})),
+        shard_count=shard_count,
+    )
