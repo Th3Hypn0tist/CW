@@ -66,12 +66,16 @@ def _validated_manifest_record(record: Any) -> tuple[str, str]:
 
 def _validate_direct_entity_shard(shard: dict[str, Any], entity_ref: str, artifact_ref: str) -> dict[str, Any]:
     if isinstance(shard.get("format"), dict) or "entities" in shard:
-        raise CWValidationError(f"CW shard must be one direct canonical Entity, not a contract wrapper: {artifact_ref}")
+        raise CWValidationError(
+            f"CW shard must be one direct canonical Entity, not a contract wrapper: {artifact_ref}"
+        )
     shard_id = shard.get("id")
     if not isinstance(shard_id, str) or not shard_id:
         raise CWValidationError(f"CW shard Entity id missing: {artifact_ref}")
     if shard_id != entity_ref:
-        raise CWValidationError(f"CW shard identity mismatch: manifest {entity_ref!r}, shard {shard_id!r}")
+        raise CWValidationError(
+            f"CW shard identity mismatch: manifest {entity_ref!r}, shard {shard_id!r}"
+        )
     if not isinstance(shard.get("properties"), list):
         raise CWValidationError(f"CW shard Entity properties must be an array: {artifact_ref}")
     return shard
@@ -83,6 +87,7 @@ def _compose_manifest(manifest: dict[str, Any], shard_loader) -> dict[str, Any]:
         return manifest
     if not isinstance(shards, list):
         raise CWValidationError("CW manifest shards must be an array")
+
     inline_entities = manifest.get("entities")
     if not isinstance(inline_entities, list):
         raise CWValidationError("sharded CW manifest entities must be an array")
@@ -113,6 +118,7 @@ def _compose_manifest(manifest: dict[str, Any], shard_loader) -> dict[str, Any]:
 def _assemble_sharded_model(manifest_path: Path, manifest: dict[str, Any]) -> dict[str, Any]:
     if manifest.get("shards") is not None and manifest_path.suffix.lower() != CW_EXTENSION:
         raise CWValidationError("sharded CW requires model.cw and .cw Entity shards; .json is monolithic-only")
+
     root = manifest_path.parent.resolve()
 
     def load_shard(artifact_ref: str) -> dict[str, Any]:
@@ -139,8 +145,15 @@ def _normalize_uploaded_path(value: Any, *, allowed_extensions: frozenset[str]) 
 
 
 def ingest_cw_files(files: Any) -> dict[str, Any]:
+    """Compose uploaded CW without duplicating CW semantic validation.
+
+    A single monolithic artifact may use .cw or .json serialization. Sharded CW
+    remains the native .cw representation: model.cw plus direct Entity .cw shards.
+    JSON is therefore an interoperability envelope for monolithic CW only.
+    """
     if not isinstance(files, list) or not files:
         raise CWValidationError("CW ingress requires a non-empty files array")
+
     if len(files) == 1:
         item = files[0]
         if not isinstance(item, dict):
@@ -172,7 +185,10 @@ def ingest_cw_files(files: Any) -> dict[str, Any]:
 
     manifest_paths = [path for path in uploaded if PurePosixPath(path).name == CW_FOLDER_ENTRY]
     if len(manifest_paths) != 1:
-        raise CWValidationError(f"sharded CW upload must contain exactly one {CW_FOLDER_ENTRY}; found {len(manifest_paths)}")
+        raise CWValidationError(
+            f"sharded CW upload must contain exactly one {CW_FOLDER_ENTRY}; found {len(manifest_paths)}"
+        )
+
     manifest_path = PurePosixPath(manifest_paths[0])
     root = manifest_path.parent
     manifest = _parse_cw_json_text(uploaded[str(manifest_path)], str(manifest_path))
@@ -199,6 +215,7 @@ def load_cw(path: str | Path) -> dict[str, Any]:
         candidate = candidate / CW_FOLDER_ENTRY
         manifest = _read_serialized_object(candidate, allowed_extensions=frozenset({CW_EXTENSION}))
         return _assemble_sharded_model(candidate, manifest)
+
     suffix = candidate.suffix.lower()
     if suffix not in MONOLITHIC_EXTENSIONS:
         raise CWValidationError(f"CW input must use .cw or .json extension: {candidate}")
@@ -209,16 +226,25 @@ def load_cw(path: str | Path) -> dict[str, Any]:
 
 
 def validate_cw(document: dict[str, Any]) -> dict[str, Any]:
+    """Validate only the lossless CW representation/identity closure.
+
+    This intentionally does not implement CCF, NodeType, Ruleset, Property,
+    Link, Function, Event, Required Link, or readiness semantics. Those are
+    validated only by the selected immutable CW specification set after binding.
+    """
     if not isinstance(document, dict):
         raise CWValidationError("CW document must be an object")
     if not isinstance(document.get("format"), dict):
         raise CWValidationError("CW format block missing")
+
     identity = document.get("identity")
     if not isinstance(identity, dict) or not isinstance(identity.get("id"), str) or not identity.get("id"):
         raise CWValidationError("CW identity.id missing")
+
     specification_ref = document.get("specification_ref")
     if specification_ref is not None and (not isinstance(specification_ref, str) or not specification_ref.strip()):
         raise CWValidationError("CW specification_ref must be a non-empty string when bound")
+
     entities = document.get("entities")
     if not isinstance(entities, list):
         raise CWValidationError("CW entities must be an array")
@@ -233,6 +259,7 @@ def validate_cw(document: dict[str, Any]) -> dict[str, Any]:
         if entity_id in identities:
             raise CWValidationError(f"duplicate canonical identity: {entity_id}")
         identities.add(entity_id)
+
         properties = entity.get("properties")
         if not isinstance(properties, list):
             raise CWValidationError(f"CW entity {entity_id} properties must be an array")
@@ -245,6 +272,7 @@ def validate_cw(document: dict[str, Any]) -> dict[str, Any]:
             if prop_id in identities:
                 raise CWValidationError(f"duplicate canonical identity: {prop_id}")
             identities.add(prop_id)
+
     return document
 
 
@@ -254,7 +282,12 @@ def ingest_cw(path: str | Path) -> dict[str, Any]:
 
 def file_refs(document: dict[str, Any]) -> list[str]:
     validate_cw(document)
-    return sorted([entity["id"] for entity in document.get("entities", []) if isinstance(entity, dict) and isinstance(entity.get("id"), str) and entity["id"].startswith("#FILE:")], key=str.lower)
+    refs = [
+        entity["id"]
+        for entity in document.get("entities", [])
+        if isinstance(entity, dict) and isinstance(entity.get("id"), str) and entity["id"].startswith("#FILE:")
+    ]
+    return sorted(refs, key=str.lower)
 
 
 def filetree(document: dict[str, Any]) -> dict[str, Any]:
@@ -291,8 +324,9 @@ def _tree_lines(tree: dict[str, Any], prefix: str = "") -> list[str]:
 
 
 def format_filetree(document: dict[str, Any]) -> str:
+    tree = filetree(document)
     lines = ["#FILE"]
-    lines.extend(_tree_lines(filetree(document)))
+    lines.extend(_tree_lines(tree))
     return "\n".join(lines)
 
 
@@ -306,12 +340,27 @@ def links(document: dict[str, Any]) -> list[dict[str, Any]]:
             if not isinstance(prop, dict) or prop.get("property_type_ref") != "link":
                 continue
             value = prop.get("value") if isinstance(prop.get("value"), dict) else {}
-            result.append({"id": prop.get("id"), "owner_ref": entity.get("id"), "ruleset_ref": prop.get("ruleset_ref"), "link_type_ref": value.get("link_type_ref"), "parent_ref": value.get("parent_ref"), "child_ref": value.get("child_ref"), "properties": value.get("properties", {}) if isinstance(value.get("properties", {}), dict) else {}})
+            result.append({
+                "id": prop.get("id"),
+                "owner_ref": entity.get("id"),
+                "ruleset_ref": prop.get("ruleset_ref"),
+                "link_type_ref": value.get("link_type_ref"),
+                "parent_ref": value.get("parent_ref"),
+                "child_ref": value.get("child_ref"),
+                "properties": value.get("properties", {}) if isinstance(value.get("properties", {}), dict) else {},
+            })
     return sorted(result, key=lambda item: str(item.get("id", "")).lower())
 
 
 def format_links(document: dict[str, Any]) -> str:
+    records = links(document)
     blocks: list[str] = []
-    for item in links(document):
-        blocks.append("\n".join([f"LINK {item['id']}", f"  type: {item['link_type_ref']}", f"  parent: {item['parent_ref']}", f"  child: {item['child_ref']}", f"  ruleset: {item['ruleset_ref']}"]))
+    for item in records:
+        blocks.append("\n".join([
+            f"LINK {item['id']}",
+            f"  type: {item['link_type_ref']}",
+            f"  parent: {item['parent_ref']}",
+            f"  child: {item['child_ref']}",
+            f"  ruleset: {item['ruleset_ref']}",
+        ]))
     return "\n\n".join(blocks)
