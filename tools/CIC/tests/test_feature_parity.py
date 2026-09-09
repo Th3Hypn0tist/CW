@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from tools.CIC import import_files
-from tools.CIC.function_equivalence import compare_python_fixture
+from CIC import import_files
+from CIC.function_equivalence import compare_python_fixture
 
 
 class CICFeatureParityTests(unittest.TestCase):
