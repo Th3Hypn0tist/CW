@@ -29,6 +29,17 @@ def observed_file_ref(source_path: Any) -> str:
 
 
 def canonical_file_key(source_path: Any) -> str:
+    """Return the language-agnostic path key used by canonical CW.
+
+    Only the final source-format suffix is removed. Directory structure and any
+    earlier dots in the basename remain semantic path material.
+
+    Examples:
+      foo/bar.py    -> foo/bar
+      web/app.js    -> web/app
+      schema.v1.json -> schema.v1
+      .gitignore    -> .gitignore
+    """
     normalized = normalize_source_path(source_path)
     path = PurePosixPath(normalized)
     basename = path.name
@@ -36,7 +47,8 @@ def canonical_file_key(source_path: Any) -> str:
     stem = basename[:-len(suffix)] if suffix else basename
     if not stem or stem in {".", ".."}:
         raise CICIdentityError(f"source basename cannot produce canonical #FILE identity: {source_path!r}")
-    return "/".join([*path.parts[:-1], stem])
+    parts = [*path.parts[:-1], stem]
+    return "/".join(parts)
 
 
 def canonical_file_ref(source_path: Any) -> str:
@@ -61,7 +73,11 @@ def canonical_file_key_from_ref(value: Any) -> str:
 
 
 def canonical_file_shard_path(value: Any) -> str:
-    key = canonical_file_key_from_ref(value) if isinstance(value, str) and value.startswith(CANONICAL_FILE_PREFIX) else canonical_file_key(value)
+    """Return physical .cw shard path for a source path or canonical #FILE ref."""
+    if isinstance(value, str) and value.startswith(CANONICAL_FILE_PREFIX):
+        key = canonical_file_key_from_ref(value)
+    else:
+        key = canonical_file_key(value)
     path = PurePosixPath(key)
     return str(PurePosixPath("FILE", *path.parts[:-1], f"{path.name}.cw"))
 
@@ -78,6 +94,8 @@ def assert_no_canonical_file_collisions(source_paths: list[str]) -> dict[str, st
         ref = canonical_file_ref(source_path)
         previous = by_ref.get(ref)
         if previous is not None and previous != source_path:
-            raise CICIdentityError(f"canonical #FILE identity collision: {previous!r} and {source_path!r} both map to {ref}")
+            raise CICIdentityError(
+                f"canonical #FILE identity collision: {previous!r} and {source_path!r} both map to {ref}"
+            )
         by_ref[ref] = source_path
     return by_ref
