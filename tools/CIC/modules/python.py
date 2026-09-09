@@ -53,6 +53,8 @@ class _FunctionFacts(ast.NodeVisitor):
         self.yields: list[dict[str, Any]] = []
         self.lambdas: list[dict[str, Any]] = []
 
+    # Nested lexical scopes are extracted separately. Their bodies must not be
+    # attributed to the parent function's observable logic.
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         return None
 
@@ -64,6 +66,8 @@ class _FunctionFacts(ast.NodeVisitor):
 
     def visit_Lambda(self, node: ast.Lambda) -> None:
         self.lambdas.append({"span": _span(node)})
+        # Lambda expression body executes only when the lambda is invoked, so it
+        # is not folded into the enclosing function's direct execution facts.
         return None
 
     def visit_Name(self, node: ast.Name) -> None:
