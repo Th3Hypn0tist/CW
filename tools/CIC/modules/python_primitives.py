@@ -22,7 +22,14 @@ class _Value:
     value_type: str | None
 
 
-_COMPARE_OPS = {ast.Eq: "eq", ast.NotEq: "ne", ast.Lt: "lt", ast.LtE: "lte", ast.Gt: "gt", ast.GtE: "gte"}
+_COMPARE_OPS = {
+    ast.Eq: "eq",
+    ast.NotEq: "ne",
+    ast.Lt: "lt",
+    ast.LtE: "lte",
+    ast.Gt: "gt",
+    ast.GtE: "gte",
+}
 
 
 class _Compiler:
@@ -43,10 +50,19 @@ class _Compiler:
             self.types[function.args.kwarg.arg] = None
 
     def _span(self, node: ast.AST) -> dict[str, int | None]:
-        return {"line": getattr(node, "lineno", None), "column": getattr(node, "col_offset", None), "end_line": getattr(node, "end_lineno", None), "end_column": getattr(node, "end_col_offset", None)}
+        return {
+            "line": getattr(node, "lineno", None),
+            "column": getattr(node, "col_offset", None),
+            "end_line": getattr(node, "end_lineno", None),
+            "end_column": getattr(node, "end_col_offset", None),
+        }
 
     def _reject(self, node: ast.AST, reason: str) -> None:
-        self.unresolved.append({"kind": node.__class__.__name__, "reason": reason, "span": self._span(node)})
+        self.unresolved.append({
+            "kind": node.__class__.__name__,
+            "reason": reason,
+            "span": self._span(node),
+        })
 
     def value(self, node: ast.AST) -> _Value | None:
         if isinstance(node, ast.Constant):
@@ -59,7 +75,9 @@ class _Compiler:
             return _Value({"local_ref": node.id}, self.types.get(node.id))
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
             operand = self.value(node.operand)
-            return _Value({"op": "not", "arg": operand.value}, "bool") if operand is not None else None
+            if operand is None:
+                return None
+            return _Value({"op": "not", "arg": operand.value}, "bool")
         if isinstance(node, ast.BoolOp):
             op = "and" if isinstance(node.op, ast.And) else "or" if isinstance(node.op, ast.Or) else None
             if op is None:
@@ -70,7 +88,10 @@ class _Compiler:
                 return None
             values = [item for item in compiled if item is not None]
             if not all(item.value_type == "bool" for item in values):
-                self._reject(node, "Python and/or returns operand values; CW boolean primitive is equivalent only for proven bool operands")
+                self._reject(
+                    node,
+                    "Python and/or returns operand values; CW boolean primitive is equivalent only for proven bool operands",
+                )
                 return None
             return _Value({"op": op, "args": [item.value for item in values]}, "bool")
         if isinstance(node, ast.Compare):
@@ -131,16 +152,21 @@ class _Compiler:
             return {"op": "return", "value": value.value} if value is not None else None
         if isinstance(node, ast.If):
             condition = self.value(node.test)
-            if condition is None or condition.value_type != "bool":
-                if condition is not None:
-                    self._reject(node.test, "if condition is not proven boolean")
+            if condition is None:
                 return None
-            before_locals, before_types = set(self.locals), dict(self.types)
+            if condition.value_type != "bool":
+                self._reject(node.test, "if condition is not proven boolean")
+                return None
+            before_locals = set(self.locals)
+            before_types = dict(self.types)
             then_body, then_complete = self.block(node.body)
-            then_locals, then_types = set(self.locals), dict(self.types)
-            self.locals, self.types = set(before_locals), dict(before_types)
+            then_locals = set(self.locals)
+            then_types = dict(self.types)
+            self.locals = set(before_locals)
+            self.types = dict(before_types)
             else_body, else_complete = self.block(node.orelse)
-            else_locals, else_types = set(self.locals), dict(self.types)
+            else_locals = set(self.locals)
+            else_types = dict(self.types)
             self.locals = before_locals | (then_locals & else_locals)
             for name in self.locals:
                 if name in before_types:
@@ -158,15 +184,26 @@ class _Compiler:
             return result
         if isinstance(node, ast.While):
             condition = self.value(node.test)
-            if condition is None or condition.value_type != "bool":
-                if condition is not None:
-                    self._reject(node.test, "while condition is not proven boolean")
+            if condition is None:
                 return None
-            before_locals, before_types = set(self.locals), dict(self.types)
+            if condition.value_type != "bool":
+                self._reject(node.test, "while condition is not proven boolean")
+                return None
+            before_locals = set(self.locals)
+            before_types = dict(self.types)
             body, complete = self.block(node.body)
             body_types = dict(self.types)
+
+            # A Python while may execute zero times. Therefore locals introduced
+            # only inside the body are not definitely assigned after the loop.
+            # Existing locals remain definitely present, but their proven type is
+            # retained only when the body preserves the same type evidence.
             self.locals = set(before_locals)
-            self.types = {name: before_types.get(name) if body_types.get(name) == before_types.get(name) else None for name in before_locals}
+            self.types = {
+                name: before_types.get(name) if body_types.get(name) == before_types.get(name) else None
+                for name in before_locals
+            }
+
             if node.orelse:
                 self._reject(node, "Python while-else has no direct CW while primitive semantics")
                 return None
@@ -182,22 +219,59 @@ class _Compiler:
 
 
 def _parameter_names(function: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[str, ...]:
-    return tuple(arg.arg for arg in [*function.args.posonlyargs, *function.args.args, *function.args.kwonlyargs])
+    return tuple(arg.arg for arg in [
+        *function.args.posonlyargs,
+        *function.args.args,
+        *function.args.kwonlyargs,
+    ])
 
 
-def compile_python_function_node(function: ast.FunctionDef | ast.AsyncFunctionDef) -> PythonPrimitiveCompilation:
+def compile_python_function_node(
+    function: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> PythonPrimitiveCompilation:
+    """Compile one already-parsed Python function AST node.
+
+    This is the importer-facing entry point. It preserves the parser's lexical
+    node identity and avoids reparsing detached method/nested-function source.
+    The result remains implementation evidence; `canonical_ready` is always
+    false until canonical parameter/data/call bindings are established later.
+    """
     parameters = _parameter_names(function)
     if isinstance(function, ast.AsyncFunctionDef):
-        return PythonPrimitiveCompilation(function.name, parameters, "CW_LOGIC_PRIMITIVES", (), "none", ({"kind": "AsyncFunctionDef", "reason": "async execution is outside current equivalence harness"},), False)
+        return PythonPrimitiveCompilation(
+            function_name=function.name,
+            parameters=parameters,
+            primitive_set_ref="CW_LOGIC_PRIMITIVES",
+            body=(),
+            decomposition_state="none",
+            unresolved=({
+                "kind": "AsyncFunctionDef",
+                "reason": "async execution is outside current equivalence harness",
+            },),
+            canonical_ready=False,
+        )
+
     compiler = _Compiler(function)
     body, complete = compiler.block(function.body)
     state = "complete" if complete and not compiler.unresolved else "partial" if body else "none"
-    return PythonPrimitiveCompilation(function.name, parameters, "CW_LOGIC_PRIMITIVES", tuple(body), state, tuple(compiler.unresolved), False)
+    return PythonPrimitiveCompilation(
+        function_name=function.name,
+        parameters=parameters,
+        primitive_set_ref="CW_LOGIC_PRIMITIVES",
+        body=tuple(body),
+        decomposition_state=state,
+        unresolved=tuple(compiler.unresolved),
+        canonical_ready=False,
+    )
 
 
 def compile_python_function(source: str, function_name: str) -> PythonPrimitiveCompilation:
+    """Compile one top-level fixture function through the node-level compiler."""
     tree = ast.parse(source, filename="<cic-equivalence>", type_comments=True)
-    matches = [node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name]
+    matches = [
+        node for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name
+    ]
     if len(matches) != 1:
         raise ValueError(f"expected exactly one top-level function named {function_name!r}")
     return compile_python_function_node(matches[0])
