@@ -91,6 +91,8 @@ The default validation context is the locked `spec_sets/CW_CORE_v1.1.0.json` bun
 
 `CW/tools/CIC/` is the source copied to consumer repositories. A synchronized consumer may expose it as top-level `CIC/`; the package bootstrap deliberately supports both locations without maintaining two implementations.
 
+The public importer still requires access to the CW specification/linter authority. Inside the CW repository this is discovered automatically. When a synchronized CIC copy is executed from another repository, set `CW_ROOT` to a local CW checkout containing `spec_sets/` and `linter/`, or pass `cw_root` explicitly. A consumer copy must not carry or invent a parallel specification authority merely to make CIC self-contained.
+
 The synchronization mechanism itself is outside CIC and outside this contract. A consumer copy does not become an authority merely because it is locally modified.
 
 ## SSOT rule
