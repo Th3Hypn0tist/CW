@@ -1,0 +1,129 @@
+name: CIC release parity migration
+
+on:
+  push:
+    branches:
+      - agent/cic-release-parity
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-and-validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout CW
+        uses: actions/checkout@v4
+        with:
+          path: cw
+          fetch-depth: 0
+
+      - name: Checkout Structure CIC baseline
+        uses: actions/checkout@v4
+        with:
+          repository: Th3Hypn0tist/Structure
+          ref: agent/structure-cw-only-ingress
+          path: structure
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Rebuild CW CIC from Structure baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/cw-cic-preserve
+          cp cw/tools/CIC/api.py /tmp/cw-cic-preserve/api.py
+          cp cw/tools/CIC/__main__.py /tmp/cw-cic-preserve/__main__.py
+          cp cw/tools/CIC/__init__.py /tmp/cw-cic-preserve/__init__.py
+          cp cw/tools/CIC/README.md /tmp/cw-cic-preserve/README.md
+          cp cw/tools/CIC/tests/test_toolchain.py /tmp/cw-cic-preserve/test_toolchain.py
+
+          rm -rf cw/tools/CIC
+          cp -a structure/CIC cw/tools/CIC
+
+          cp /tmp/cw-cic-preserve/api.py cw/tools/CIC/api.py
+          cp /tmp/cw-cic-preserve/__main__.py cw/tools/CIC/__main__.py
+          cp /tmp/cw-cic-preserve/__init__.py cw/tools/CIC/__init__.py
+          cp /tmp/cw-cic-preserve/README.md cw/tools/CIC/README.md
+          cp /tmp/cw-cic-preserve/test_toolchain.py cw/tools/CIC/tests/test_toolchain.py
+
+          mv cw/tools/CIC/api_legacy.py cw/tools/CIC/api_core.py
+          rm -f cw/tools/CIC/structuretree.py
+
+          rm -f \
+            cw/tools/CIC/tests/cw/test_structure_cw_extension_boundary.py \
+            cw/tools/CIC/tests/cw/test_structure_shared_ingress.py \
+            cw/tools/CIC/tests/events/test_structure_event_surface_projection.py \
+            cw/tools/CIC/tests/integrity/test_harness_integrity.py
+
+          python - <<'PY'
+          from pathlib import Path
+
+          init = Path('cw/tools/CIC/__init__.py')
+          text = init.read_text(encoding='utf-8')
+          bootstrap = "import sys\nsys.modules.setdefault('CIC', sys.modules[__name__])\n\n"
+          if not text.startswith(bootstrap):
+              init.write_text(bootstrap + text, encoding='utf-8')
+
+          api = Path('cw/tools/CIC/api.py')
+          text = api.read_text(encoding='utf-8')
+          old = '''    if target in source.parents: raise ValueError(f"CW output folder cannot contain the code folder: {target}")\n'''
+          new = '''    if target in source.parents: raise ValueError(f"CW output folder cannot contain the code folder: {target}")\n    if source in target.parents: raise ValueError(f"CW output folder cannot be inside the code folder: {target}")\n'''
+          if old not in text:
+              raise SystemExit('expected CW source/output guard not found')
+          api.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          for path in Path('cw/tools/CIC/tests').rglob('*.py'):
+              text = path.read_text(encoding='utf-8')
+              text = text.replace('CIC.api_legacy', 'CIC.api_core')
+              path.write_text(text, encoding='utf-8')
+          PY
+
+          if grep -R --line-number --include='*.py' 'CIC\.structuretree\|CIC\.api_legacy' cw/tools/CIC; then
+            echo 'Structure-only or legacy imports remain in CW CIC' >&2
+            exit 1
+          fi
+
+      - name: Install test runner
+        run: python -m pip install --disable-pip-version-check -q pytest
+
+      - name: Compile CIC and CW toolchain
+        working-directory: cw
+        run: |
+          python -m py_compile tools/CIC/*.py tools/CIC/modules/*.py
+          python -m py_compile linter/*.py
+
+      - name: Validate authoritative CW toolchain
+        working-directory: cw
+        run: python -m tools.CIC validate-tools
+
+      - name: Run CIC end-to-end selftest
+        working-directory: cw
+        run: python -m tools.CIC selftest
+
+      - name: Run migrated CIC regression suite
+        working-directory: cw
+        env:
+          PYTHONPATH: ${{ github.workspace }}/cw/tools
+        run: python -m pytest -q tools/CIC/tests
+
+      - name: Commit validated parity result
+        working-directory: cw
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tools/CIC
+          if git diff --cached --quiet; then
+            echo 'No CIC parity changes required.'
+            exit 0
+          fi
+          git commit -m 'Restore full CIC feature parity [skip ci]'
+          git push origin HEAD:agent/cic-release-parity
