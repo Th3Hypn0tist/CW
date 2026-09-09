@@ -60,6 +60,7 @@ def _obligation(record: dict[str, Any]) -> dict[str, Any]:
         "required": required,
         "link_type_ref": _text(record, "link_type_ref"),
         "parent_ref": _text(record, "parent_ref"),
+        # null child_ref is an explicit any-target cardinality obligation, not a guess.
         "child_ref": _text(record, "child_ref", required=False),
         "min_count": min_count,
         "max_count": max_count,
@@ -137,6 +138,7 @@ def evaluate_required_links(
             if link["resolution_status"] == "RESOLVED" and _shape_matches(obligation, link)
         ]
 
+        # Semantic duplicates never multiply satisfaction evidence.
         unique: dict[tuple[str, str | None, str | None], dict[str, Any]] = {}
         for link in exact_resolved:
             unique.setdefault(_semantic_key(link), link)
