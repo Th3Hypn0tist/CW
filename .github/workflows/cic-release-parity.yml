@@ -19,13 +19,8 @@ jobs:
           path: cw
           fetch-depth: 0
 
-      - name: Checkout Structure CIC baseline
-        uses: actions/checkout@v4
-        with:
-          repository: Th3Hypn0tist/Structure
-          ref: agent/structure-cw-only-ingress
-          path: structure
-          fetch-depth: 1
+      - name: Clone Structure CIC baseline
+        run: git clone --depth 1 --branch agent/structure-cw-only-ingress https://github.com/Th3Hypn0tist/Structure.git structure
 
       - name: Set up Python
         uses: actions/setup-python@v5
