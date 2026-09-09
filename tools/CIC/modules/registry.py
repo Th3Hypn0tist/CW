@@ -69,10 +69,26 @@ def detect(path: str) -> LanguageModule | None:
 
 
 def _empty_language_ir(language_id: str, *, parser_id: str | None, diagnostic: dict) -> dict:
-    return {"language_id": language_id, "parser_id": parser_id, "parser_available": False, "diagnostics": [diagnostic], "symbols": [], "imports": [], "exports": [], "evidence": []}
+    return {
+        "language_id": language_id,
+        "parser_id": parser_id,
+        "parser_available": False,
+        "diagnostics": [diagnostic],
+        "symbols": [],
+        "imports": [],
+        "exports": [],
+        "evidence": [],
+    }
 
 
 def _python_module_function_exports(symbols: object) -> list[dict]:
+    """Derive exact Python module function bindings from parser symbols.
+
+    A top-level ``def name`` deterministically binds ``name`` on the module
+    object. This is not JavaScript-style export inference; it is the concrete
+    module attribute required to prove ``import module as m; m.name()`` calls.
+    Nested functions and class methods are intentionally excluded.
+    """
     if not isinstance(symbols, list):
         return []
     exports: list[dict] = []
@@ -85,16 +101,31 @@ def _python_module_function_exports(symbols: object) -> list[dict]:
             continue
         if not isinstance(qualified, str) or not qualified:
             qualified = name
-        exports.append({"kind": "local_export", "exported_name": name, "local_name": name, "target_kind": "function", "target_qualified_name": qualified, "evidence_kind": "python_module_binding"})
+        exports.append({
+            "kind": "local_export",
+            "exported_name": name,
+            "local_name": name,
+            "target_kind": "function",
+            "target_qualified_name": qualified,
+            "evidence_kind": "python_module_binding",
+        })
     return exports
 
 
 def extract(path: str, source: str) -> dict:
     module = detect(path)
     if module is None:
-        return _empty_language_ir("unclassified", parser_id=None, diagnostic={"code": "LANGUAGE_UNCLASSIFIED", "message": "no registered language evidence matched this path"})
+        return _empty_language_ir(
+            "unclassified",
+            parser_id=None,
+            diagnostic={"code": "LANGUAGE_UNCLASSIFIED", "message": "no registered language evidence matched this path"},
+        )
     if module.extractor is None:
-        return _empty_language_ir(module.language_id, parser_id=module.language_id, diagnostic={"code": "PARSER_UNAVAILABLE", "message": f"no CIC extractor is registered for {module.language_id}"})
+        return _empty_language_ir(
+            module.language_id,
+            parser_id=module.language_id,
+            diagnostic={"code": "PARSER_UNAVAILABLE", "message": f"no CIC extractor is registered for {module.language_id}"},
+        )
     result = module.extractor(path, source)
     if not isinstance(result, dict):
         raise TypeError(f"CIC module {module.language_id} returned non-dict IR")
@@ -111,8 +142,26 @@ def extract(path: str, source: str) -> dict:
     return result
 
 
-def install_builtin_modules(*, python_extractor: Extractor | None = None, javascript_extractor: Extractor | None = None, html_extractor: Extractor | None = None, css_extractor: Extractor | None = None) -> None:
-    extractors = {"python": python_extractor, "javascript": javascript_extractor, "html": html_extractor, "css": css_extractor}
+def install_builtin_modules(
+    *,
+    python_extractor: Extractor | None = None,
+    javascript_extractor: Extractor | None = None,
+    html_extractor: Extractor | None = None,
+    css_extractor: Extractor | None = None,
+) -> None:
+    """Install self-contained CIC built-in frontends.
+
+    Built-in availability is limited to implementations that ship inside CIC
+    and require no external parser runtime. TypeScript and other recognized
+    languages remain explicit PARSER_UNAVAILABLE entries until they have an
+    equally self-contained frontend.
+    """
+    extractors = {
+        "python": python_extractor,
+        "javascript": javascript_extractor,
+        "html": html_extractor,
+        "css": css_extractor,
+    }
     existing = {module.language_id: module for module in _MODULES}
     for language_id, suffixes in BUILTIN_LANGUAGE_SUFFIXES.items():
         supplied = extractors.get(language_id)
