@@ -19,7 +19,7 @@ except ImportError:
     from cw_version import validate_entity_version
     import cw_spec_lint
 
-VER = "2.3.0"
+VER = "2.4.0"
 
 
 @dataclass
@@ -83,7 +83,7 @@ def type_matches(value: Any, description: Any) -> bool:
     if description in {"logic_value", "logic_statement", "logic_representation", "required_link_ref"}:
         return isinstance(value, dict)
     if description == "endpoint_constraint":
-        return isinstance(value, (str, dict))
+        return isinstance(value, dict)
     if description == "non_negative_integer":
         return isinstance(value, int) and not isinstance(value, bool) and value >= 0
     if description == "integer":
@@ -146,6 +146,47 @@ def inherits(nodetype: str, wanted: str, registry: dict[str, dict]) -> bool:
                 return True
             stack.append(parent)
     return False
+
+
+def endpoint_constraint_matches(
+    constraint: Any,
+    endpoint_ref: Any,
+    objects: dict[str, tuple[str, dict, Path]],
+    nodetypes: dict[str, dict],
+) -> bool | None:
+    """Evaluate the established Required Link other_endpoint constraint shape.
+
+    Returns True/False when the opposite endpoint resolves, or None when its
+    canonical target is unresolved and compatibility therefore cannot be proven.
+    """
+    if constraint is None:
+        return True
+    if not isinstance(constraint, dict) or not constraint:
+        return False
+    allowed_fields = {"entity_nodetype_ref", "property_type_ref"}
+    if set(constraint) - allowed_fields:
+        return False
+    entity_nodetype_ref = constraint.get("entity_nodetype_ref")
+    property_type_ref = constraint.get("property_type_ref")
+    if entity_nodetype_ref is None and property_type_ref is None:
+        return False
+    if entity_nodetype_ref is not None and (not isinstance(entity_nodetype_ref, str) or entity_nodetype_ref not in nodetypes):
+        return False
+    if property_type_ref is not None and (not isinstance(property_type_ref, str) or not property_type_ref):
+        return False
+
+    target = objects.get(endpoint_ref)
+    if target is None:
+        return None
+    kind, value, _ = target
+    if entity_nodetype_ref is not None:
+        target_nodetype = value.get("entity_type_ref") if kind == "Entity" else None
+        if not isinstance(target_nodetype, str) or not inherits(target_nodetype, entity_nodetype_ref, nodetypes):
+            return False
+    if property_type_ref is not None:
+        if kind != "Property" or value.get("property_type_ref") != property_type_ref:
+            return False
+    return True
 
 
 def required_fields(c: C, file: Path, value: Any, fields: Any, path: str, code: str) -> None:
@@ -416,16 +457,45 @@ def main() -> int:
                     validate_schema(requirement, node_ruleset.get("required_link_schema"), c, file, requirement_path, "Required Link")
                     if not isinstance(requirement, dict):
                         continue
+                    minimum = requirement.get("min")
+                    maximum = requirement.get("max")
+                    if isinstance(minimum, int) and isinstance(maximum, int) and maximum < minimum:
+                        c.e("REQUIRED_LINK_CARDINALITY_INVALID", file, requirement_path, f"max {maximum} < min {minimum}")
+                    constraint = requirement.get("other_endpoint")
+                    if constraint is not None:
+                        if not isinstance(constraint, dict) or not constraint or set(constraint) - {"entity_nodetype_ref", "property_type_ref"}:
+                            c.e("REQUIRED_LINK_ENDPOINT_CONSTRAINT_INVALID", file, requirement_path + ".other_endpoint", repr(constraint))
+                        else:
+                            entity_constraint = constraint.get("entity_nodetype_ref")
+                            property_constraint = constraint.get("property_type_ref")
+                            if entity_constraint is None and property_constraint is None:
+                                c.e("REQUIRED_LINK_ENDPOINT_CONSTRAINT_INVALID", file, requirement_path + ".other_endpoint", "constraint is empty")
+                            if entity_constraint is not None and (not isinstance(entity_constraint, str) or entity_constraint not in nodetypes):
+                                c.e("REQUIRED_LINK_ENDPOINT_NODETYPE_UNRESOLVED", file, requirement_path + ".other_endpoint.entity_nodetype_ref", repr(entity_constraint))
+                            if property_constraint is not None and (not isinstance(property_constraint, str) or not property_constraint):
+                                c.e("REQUIRED_LINK_ENDPOINT_PROPERTY_TYPE_INVALID", file, requirement_path + ".other_endpoint.property_type_ref", repr(property_constraint))
+
                     hits = []
                     for link in by_requirement.get((entity.get("id"), requirement.get("id")), []):
                         value = link.get("value", {})
                         side = requirement.get("self_endpoint")
-                        if value.get("link_type_ref") == requirement.get("link_type_ref") and side in {"parent_ref", "child_ref"} and value.get(side) == entity.get("id"):
-                            hits.append(link)
-                    if isinstance(requirement.get("min"), int) and len(hits) < requirement["min"]:
-                        c.u("REQUIRED_LINK_UNSATISFIED", file, requirement_path, f"{len(hits)} < {requirement['min']}")
-                    if isinstance(requirement.get("max"), int) and len(hits) > requirement["max"]:
-                        c.e("REQUIRED_LINK_MAX_EXCEEDED", file, requirement_path, f"{len(hits)} > {requirement['max']}")
+                        if side not in {"parent_ref", "child_ref"}:
+                            continue
+                        if value.get("link_type_ref") != requirement.get("link_type_ref") or value.get(side) != entity.get("id"):
+                            c.e("REQUIRED_LINK_BINDING_INCOMPATIBLE", file, requirement_path, f"bound Link {link.get('id')!r} contradicts relation or self endpoint")
+                            continue
+                        other_side = "child_ref" if side == "parent_ref" else "parent_ref"
+                        endpoint_match = endpoint_constraint_matches(constraint, value.get(other_side), objects, nodetypes)
+                        if endpoint_match is False:
+                            c.e("REQUIRED_LINK_BINDING_INCOMPATIBLE", file, requirement_path, f"bound Link {link.get('id')!r} contradicts other_endpoint constraint")
+                            continue
+                        if endpoint_match is None:
+                            continue
+                        hits.append(link)
+                    if isinstance(minimum, int) and len(hits) < minimum:
+                        c.u("REQUIRED_LINK_UNSATISFIED", file, requirement_path, f"{len(hits)} < {minimum}")
+                    if isinstance(maximum, int) and len(hits) > maximum:
+                        c.e("REQUIRED_LINK_MAX_EXCEEDED", file, requirement_path, f"{len(hits)} > {maximum}")
 
         result = "INVALID_MODEL" if any(item.severity == "ERROR" for item in c.f) else ("UNREADY" if any(item.severity == "UNREADY" for item in c.f) else "READY")
     except Exception as exc:
