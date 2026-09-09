@@ -1,0 +1,120 @@
+{
+  "id": "CW_NODETYPES",
+  "name": "CanonicalWireframe NodeTypes",
+  "version": "1.18.0",
+  "ccf_ref": "CANONICAL_CONTRACT_FORMAT",
+  "purpose": "Declare which NodeTypes exist and which semantic sections each NodeType makes available for projection and presentation. NodeTypes do not define how sections are interpreted or rendered.",
+  "authority": {
+    "nodetypes": "Declare NodeType identity, inheritance and available semantic sections.",
+    "rulesets": "Define how Node roots, sections, Properties, Links, Functions, Events, Required Links and other semantics are read and validated.",
+    "renderer": "Chooses how the available canonical content is presented. Rendering is not NodeType authority."
+  },
+  "rules": [
+    "NodeTypes define what NodeTypes exist and what canonical semantic sections are available to present.",
+    "NodeTypes MUST NOT define Property value semantics, Link semantics, Function logic, Event semantics, causality, Required Link satisfaction, rendering, layout, geometry, animation, color or interaction behavior.",
+    "Every section id declared by a NodeType is interpreted only by the selected Rulesets artifact through RULESET_NODE.section_readers.",
+    "NodeType inheritance composes available sections. A child receives all parent sections and may add more.",
+    "Section order is presentation-neutral canonical metadata and MUST NOT be used as semantic execution order.",
+    "A renderer such as Structure may choose any presentation for the declared sections without changing canonical truth.",
+    "Every canonical Node has a StructureTree navigation address under the selected topology. The address is navigation topology, not semantic inference authority.",
+    "Canonical Links provide relational navigation between the same canonical Nodes. Link navigation does not create duplicate truth.",
+    "FILE, ABS, DOC and CTRCT are canonical identity families. Their NodeTypes are code, abs, doc and contract respectively.",
+    "Identity-family prefixes, filenames, extensions, directories and StructureTree paths MUST NOT be used to infer a missing NodeType."
+  ],
+  "nodetype_schema": {
+    "required": ["id", "name", "sections"],
+    "optional": ["extends", "abstract", "description", "identity_family"],
+    "semantics": {
+      "id": "Local NodeType identity inside the pinned immutable specification closure.",
+      "name": "Human-readable NodeType name.",
+      "sections": "Semantic section ids available on this NodeType. Section interpretation belongs exclusively to RULESET_NODE.section_readers.",
+      "extends": "Optional NodeType inheritance used only to compose NodeType availability declarations.",
+      "abstract": "When true, the NodeType is an inheritance/grouping type and is not intended as a concrete imported Node.",
+      "identity_family": "Optional canonical identity-family convention associated with this NodeType. It does not infer type from an id prefix."
+    }
+  },
+  "nodetypes": [
+    {"id":"generic","name":"Generic","sections":["links"],"description":"Minimal generic canonical Node."},
+    {"id":"system","name":"System","extends":["generic"],"sections":["events","effects","data","functions"]},
+    {"id":"component","name":"Component","extends":["generic"],"sections":["events","effects","data","functions"]},
+    {"id":"input","name":"Input","extends":["generic"],"sections":[]},
+    {"id":"output","name":"Output","extends":["generic"],"sections":[]},
+    {"id":"binding","name":"Binding","extends":["generic"],"sections":[]},
+    {"id":"file_input","name":"File Input","extends":["generic"],"sections":["representation"]},
+    {"id":"file_output","name":"File Output","extends":["generic"],"sections":["representation"]},
+    {"id":"api","name":"API","extends":["generic"],"sections":["api","functions","data","events"]},
+    {"id":"database","name":"Database","extends":["generic"],"sections":["data","functions","events"]},
+    {"id":"stream_input","name":"Stream Input","extends":["generic"],"sections":["data","events"]},
+    {"id":"stream_output","name":"Stream Output","extends":["generic"],"sections":["data","events"]},
+    {"id":"user_input","name":"User Input","extends":["generic"],"sections":["data","events"]},
+    {"id":"user_output","name":"User Output","extends":["generic"],"sections":["data","events","effects"]},
+    {"id":"static_file","name":"Static File","extends":["generic"],"sections":["data"]},
+    {"id":"derived_output","name":"Derived Output","extends":["generic"],"sections":["data"]},
+    {"id":"stream_source","name":"Stream Source","extends":["stream_input"],"sections":[]},
+    {
+      "id":"topology_entity",
+      "name":"Topology Entity",
+      "extends":["generic"],
+      "sections":[],
+      "abstract":true,
+      "description":"Shared topology grouping type. It contributes only generic Link availability."
+    },
+    {
+      "id":"code",
+      "name":"Code",
+      "extends":["topology_entity"],
+      "sections":["functions","events","required_links","data","effects","representation"],
+      "identity_family":"#FILE",
+      "description":"Canonical implementation Node. Functions, Events and Required Links are part of the Code Node surface even when their projected arrays are empty."
+    },
+    {
+      "id":"abs",
+      "name":"Abstraction",
+      "extends":["topology_entity"],
+      "sections":[],
+      "identity_family":"#ABS",
+      "description":"Canonical abstraction Node over canonical identities. It has no Function or Event section."
+    },
+    {
+      "id":"doc",
+      "name":"Document",
+      "extends":["topology_entity"],
+      "sections":["representation"],
+      "identity_family":"#DOC",
+      "description":"Canonical document Node. Its readable physical representation is exposed through the representation section; it has no Function or Event section."
+    },
+    {
+      "id":"contract",
+      "name":"Contract",
+      "extends":["topology_entity"],
+      "sections":["members"],
+      "identity_family":"#CTRCT",
+      "description":"Canonical contract Node. The members section declares the explicit normative contract scope; implementation-side affiliation remains Link semantics."
+    }
+  ],
+  "structuretree": {
+    "principle":"StructureTree is hierarchical navigation over canonical Nodes, not a second semantic authority.",
+    "every_node_addressable":true,
+    "address_source":"explicit canonical Node identity plus selected topology mapping",
+    "semantic_inference_from_address":false,
+    "identity_families": {
+      "#FILE":{"nodetype_ref":"code","root":"FILE/"},
+      "#ABS":{"nodetype_ref":"abs","root":"ABS/"},
+      "#DOC":{"nodetype_ref":"doc","root":"DOC/"},
+      "#CTRCT":{"nodetype_ref":"contract","root":"CTRCT/"}
+    },
+    "doc_extension_fixed":false,
+    "monolithic_and_sharded_semantically_equivalent":true
+  },
+  "navigation": {
+    "hierarchical":"StructureTree address",
+    "relational":"canonical Links",
+    "same_canonical_nodes":true,
+    "duplicate_truth":false
+  },
+  "resolution": {
+    "registry_ref":"CW_NODETYPES",
+    "rule":"Entity.entity_type_ref resolves a NodeType only inside the NodeTypes registry selected by the active immutable specification set.",
+    "current_registry_fallback":false
+  }
+}
