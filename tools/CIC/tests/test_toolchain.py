@@ -45,5 +45,19 @@ class CICToolchainTests(unittest.TestCase):
             with self.assertRaises(Exception): import_folder(source,target,force=True)
             self.assertEqual(ingest_cw(target),before)
 
+    def test_rejects_output_inside_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            source=Path(tmp)/"src"; source.mkdir()
+            (source/"a.py").write_text("def a():\n    return True\n",encoding="utf-8")
+            with self.assertRaisesRegex(ValueError,"inside the code folder"):
+                import_folder(source,source/"generated-cw")
+
+    def test_rejects_output_that_contains_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); target=root/"out"; source=target/"src"; source.mkdir(parents=True)
+            (source/"a.py").write_text("def a():\n    return True\n",encoding="utf-8")
+            with self.assertRaisesRegex(ValueError,"cannot contain the code folder"):
+                import_folder(source,target)
+
 
 if __name__=="__main__": unittest.main()
