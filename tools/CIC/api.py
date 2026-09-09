@@ -100,8 +100,6 @@ def _transaction_paths(target):
 def _retarget(result,target): return replace(result,cw_folder=target,cw_path=target/result.cw_path.relative_to(result.cw_folder),ir_path=target/result.ir_path.relative_to(result.cw_folder))
 
 def import_folder(code_folder:str|Path,cw_folder:str|Path,*,force:bool=False,cw_root:str|Path|None=None,spec_set:str|Path|None=None,validate_tools:bool=True,**kwargs:Any)->ImportResult:
-    root=resolve_cw_root(cw_root); selected=_selected_spec_set(root,spec_set)
-    if validate_tools: validate_toolchain(cw_root=root,spec_set=selected)
     source=Path(code_folder).expanduser().resolve(); target=Path(cw_folder).expanduser().resolve()
     if not source.is_dir(): raise ValueError(f"code folder not found: {source}")
     if source==target: raise ValueError("CW output folder must differ from code folder")
@@ -109,6 +107,10 @@ def import_folder(code_folder:str|Path,cw_folder:str|Path,*,force:bool=False,cw_
     if source in target.parents: raise ValueError(f"CW output folder cannot be inside the code folder: {target}")
     if target.exists() and not target.is_dir(): raise ValueError(f"CW output path exists and is not a directory: {target}")
     if target.exists() and not force: raise ValueError(f"CW output folder already exists: {target}; use --force to update it")
+
+    root=resolve_cw_root(cw_root); selected=_selected_spec_set(root,spec_set)
+    if validate_tools: validate_toolchain(cw_root=root,spec_set=selected)
+
     staged,backup=_transaction_paths(target); previous=None
     if target.exists(): previous=ingest_cw(target); verify_cw_versions(previous)
     result=None
