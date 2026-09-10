@@ -1,4 +1,4 @@
-from .cw_topology import main
+from .tui import main
 
 
 if __name__ == "__main__":
