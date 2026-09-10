@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import curses
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable, Sequence
 
 
 RenderLines = Callable[[], Sequence[str]]
 StatusLine = Callable[[], str]
 KeyHandler = Callable[["CursesViewHost"], None]
+PathFilter = Callable[[Path], bool]
 
 
 def _clip(text: str, width: int) -> str:
@@ -21,8 +23,8 @@ class CursesViewHost:
     """Small reusable curses host for line-oriented View modules.
 
     The host owns terminal concerns only: scrolling, key dispatch, modal input/list
-    dialogs, status rendering and the quit sequence. Domain/View semantics stay in
-    the caller supplied callbacks.
+    dialogs, filesystem browsing, status rendering and the quit sequence.
+    Domain/View semantics stay in the caller supplied callbacks.
     """
 
     title: str
@@ -128,7 +130,10 @@ class CursesViewHost:
             return None
 
         height, width = stdscr.getmaxyx()
-        dialog_width = max(28, min(width - 4, max(len(title) + 4, *(len(x) + 4 for x in options))))
+        dialog_width = max(
+            28,
+            min(width - 4, max(len(title) + 4, *(len(x) + 4 for x in options))),
+        )
         visible = max(1, min(len(options), height - 6, 16))
         dialog_height = visible + 2
         if height < 6 or width < 32:
@@ -152,7 +157,9 @@ class CursesViewHost:
             win.erase()
             win.box()
             win.addnstr(0, 2, f" {title} ", max(0, dialog_width - 4))
-            for row, option_index in enumerate(range(offset, min(len(options), offset + visible)), start=1):
+            for row, option_index in enumerate(
+                range(offset, min(len(options), offset + visible)), start=1
+            ):
                 option = options[option_index]
                 attr = curses.A_REVERSE if option_index == index else curses.A_NORMAL
                 win.addnstr(row, 2, option, max(0, dialog_width - 4), attr)
@@ -170,16 +177,124 @@ class CursesViewHost:
             if key == "\x1b":
                 return None
 
+    def browse_path(
+        self,
+        stdscr: curses.window,
+        title: str,
+        *,
+        start: Path | None = None,
+        file_filter: PathFilter | None = None,
+        allow_directories: bool = True,
+    ) -> Path | None:
+        """Browse the filesystem and return a selected file or directory.
+
+        Directories are navigation targets. When ``allow_directories`` is true,
+        ``[open this folder]`` selects the currently displayed directory. The
+        optional filter applies only to files, keeping this host domain-neutral.
+        """
+
+        current = (start or Path.cwd()).expanduser()
+        if current.is_file():
+            current = current.parent
+        if not current.exists() or not current.is_dir():
+            current = Path.cwd()
+        current = current.resolve()
+        index = 0
+        offset = 0
+
+        while True:
+            entries: list[tuple[str, str, Path]] = []
+            if allow_directories:
+                entries.append(("select", "[open this folder]", current))
+            if current.parent != current:
+                entries.append(("parent", "../", current.parent))
+
+            try:
+                children = sorted(
+                    current.iterdir(),
+                    key=lambda path: (not path.is_dir(), path.name.casefold(), path.name),
+                )
+            except OSError as exc:
+                self.message = f"browse failed: {exc}"
+                return None
+
+            for path in children:
+                if path.is_dir():
+                    entries.append(("directory", f"{path.name}/", path))
+                elif file_filter is None or file_filter(path):
+                    entries.append(("file", path.name, path))
+
+            if not entries:
+                self.message = "folder is empty"
+                return None
+
+            height, width = stdscr.getmaxyx()
+            if height < 7 or width < 32:
+                self.message = "terminal too small for browser"
+                return None
+
+            visible = max(1, min(len(entries), height - 7, 20))
+            dialog_height = visible + 3
+            dialog_width = max(32, min(width - 4, max(64, len(title) + 4)))
+            y = max(0, (height - dialog_height) // 2)
+            x = max(0, (width - dialog_width) // 2)
+            win = curses.newwin(dialog_height, dialog_width, y, x)
+            win.keypad(True)
+
+            index = min(index, len(entries) - 1)
+            if index < offset:
+                offset = index
+            elif index >= offset + visible:
+                offset = index - visible + 1
+            offset = min(max(0, offset), max(0, len(entries) - visible))
+
+            win.erase()
+            win.box()
+            win.addnstr(0, 2, f" {title} ", max(0, dialog_width - 4))
+            win.addnstr(1, 2, str(current), max(0, dialog_width - 4), curses.A_DIM)
+            for row, entry_index in enumerate(
+                range(offset, min(len(entries), offset + visible)), start=2
+            ):
+                _, label, _ = entries[entry_index]
+                attr = curses.A_REVERSE if entry_index == index else curses.A_NORMAL
+                win.addnstr(row, 2, label, max(0, dialog_width - 4), attr)
+            win.refresh()
+
+            key = win.get_wch()
+            if key == curses.KEY_UP:
+                index = max(0, index - 1)
+                continue
+            if key == curses.KEY_DOWN:
+                index = min(len(entries) - 1, index + 1)
+                continue
+            if key == "\x1b":
+                return None
+            if key not in ("\n", "\r") and key != curses.KEY_ENTER:
+                continue
+
+            kind, _, path = entries[index]
+            if kind in {"parent", "directory"}:
+                current = path.resolve()
+                index = 0
+                offset = 0
+                continue
+            return path.resolve()
+
     def _consume_quit(self, key: str) -> bool:
         if not self.quit_sequence:
             return False
 
         expected_index = len(self._quit_progress)
-        if expected_index < len(self.quit_sequence) and key == self.quit_sequence[expected_index]:
+        if (
+            expected_index < len(self.quit_sequence)
+            and key == self.quit_sequence[expected_index]
+        ):
             self._quit_progress += key
             return self._quit_progress == self.quit_sequence
 
-        self._quit_progress = self.quit_sequence[:1] if key == self.quit_sequence[:1] else ""
+        self._quit_progress = (
+            self.quit_sequence[:1] if key == self.quit_sequence[:1] else ""
+        )
         return False
 
     def _content_height(self, stdscr: curses.window) -> int:
