@@ -120,7 +120,7 @@ NodeTypes  1.18.0
 Rulesets   3.14.0
 ```
 
-The previous immutable [`spec_sets/CW_CORE.json`](spec_sets/CW_CORE.json) remains preserved and continues to pin CCF 2.4.3 / NodeTypes 1.17.0 / Rulesets 3.13.0. It is not rewritten in place.
+The previous immutable bundle is archived as [`History/spec_sets/CW_CORE.json`](History/spec_sets/CW_CORE.json). Its original manifest is preserved unchanged, and its pinned closure is preserved under `History/` with CCF 2.4.3 / NodeTypes 1.17.0 / Rulesets 3.13.0. Superseded NodeTypes and Rulesets are no longer kept at repository root.
 
 The bundle pins one CCF + NodeTypes + Rulesets interpretation context. Selecting another compatible bundle changes evaluation context, not canonical truth.
 
@@ -326,6 +326,28 @@ The architectural invariants of CW are defined in the [CW Constitution](docs/CW_
 Its governing principle is:
 
 > **One truth. Many topologies. No duplicate truth.**
+
+## Topology tools
+
+Shell-oriented topology inspection tools live under [`tools/Topology/`](tools/Topology/).
+
+The topology renderer prints explicit canonical Link relations without inferring semantics from names, paths, filenames, geometry or rendering:
+
+```bash
+python3 -m tools.Topology Examples/Ultralight_CMS_CW_Open_Page_v1.4.json --list
+python3 -m tools.Topology Examples/Ultralight_CMS_CW_Open_Page_v1.4.json -t dependency
+python3 -m tools.Topology Examples/Ultralight_CMS_CW_Open_Page_v1.4.json -t event_input,event_read,event_effect,effect_target
+```
+
+For a plain hierarchy without relation labels or presentation extras:
+
+```bash
+python3 tools/Topology/hierarchy.py \
+  Examples/Ultralight_CMS_CW_Open_Page_v1.4.json \
+  containment
+```
+
+Both tools read the same canonical model. They only project explicitly selected topology information.
 
 ## Validation tools
 
