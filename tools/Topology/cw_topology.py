@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -24,12 +24,12 @@ if str(REPO_ROOT) not in sys.path:
 
 from linter.cw_compose import compose_documents
 from linter.cw_spec_common import read_json
+from tools.Topology.ascii_walk import render_ascii_walk
 
 
 @dataclass(frozen=True)
 class Node:
     ref: str
-    kind: str
     name: str | None
 
 
@@ -78,7 +78,6 @@ def collect_graph(
                 name = entity.get("name")
                 nodes[entity_ref] = Node(
                     ref=entity_ref,
-                    kind="Entity",
                     name=name if isinstance(name, str) and name else None,
                 )
 
@@ -95,7 +94,6 @@ def collect_graph(
                     prop_name = prop.get("name")
                     nodes[prop_ref] = Node(
                         ref=prop_ref,
-                        kind="Property",
                         name=prop_name if isinstance(prop_name, str) and prop_name else None,
                     )
 
@@ -155,15 +153,6 @@ def relation_counts(edges: list[Edge]) -> list[tuple[str, int]]:
     return sorted(counts.items(), key=lambda item: item[0])
 
 
-def roots_for(edges: list[Edge]) -> list[str]:
-    parents = {edge.parent_ref for edge in edges}
-    children = {edge.child_ref for edge in edges}
-    roots = sorted(parents - children)
-    if roots:
-        return roots
-    return [min(parents | children)] if parents or children else []
-
-
 def render_ascii(
     edges: list[Edge],
     nodes: dict[str, Node],
@@ -171,61 +160,12 @@ def render_ascii(
     show_names: bool = False,
     show_link_ids: bool = False,
 ) -> str:
-    if not edges:
-        return "(no matching links)"
-
-    outgoing: dict[str, list[Edge]] = defaultdict(list)
-    for edge in edges:
-        outgoing[edge.parent_ref].append(edge)
-    for edge_list in outgoing.values():
-        edge_list.sort(key=lambda edge: (edge.relation, edge.child_ref, edge.link_ref))
-
-    rendered_nodes: set[str] = set()
-    lines: list[str] = []
-
-    def walk(ref: str, prefix: str, stack: tuple[str, ...]) -> None:
-        children = outgoing.get(ref, [])
-        for index, edge in enumerate(children):
-            last = index == len(children) - 1
-            branch = "`-- " if last else "|-- "
-            continuation = "    " if last else "|   "
-            child = edge.child_ref
-            suffix = ""
-
-            if child in stack:
-                suffix = " [cycle]"
-            elif child in rendered_nodes:
-                suffix = " [seen]"
-            elif child not in nodes:
-                suffix = " [unresolved]"
-
-            lines.append(
-                f"{prefix}{branch}{edge_label(edge, show_link_ids)} --> "
-                f"{display_ref(child, nodes, show_names)}{suffix}"
-            )
-            rendered_nodes.add(child)
-
-            if not suffix and outgoing.get(child):
-                walk(child, prefix + continuation, stack + (child,))
-
-    all_refs = sorted(
-        {edge.parent_ref for edge in edges} | {edge.child_ref for edge in edges}
+    return render_ascii_walk(
+        edges,
+        nodes,
+        node_label=lambda ref, mapping: display_ref(ref, mapping, show_names),
+        edge_label=lambda edge: edge_label(edge, show_link_ids),
     )
-    roots = roots_for(edges)
-    root_order = roots + [ref for ref in all_refs if ref not in roots]
-
-    printed_roots: set[str] = set()
-    for root in root_order:
-        if root in printed_roots or root in rendered_nodes:
-            continue
-        if lines:
-            lines.append("")
-        lines.append(display_ref(root, nodes, show_names))
-        printed_roots.add(root)
-        rendered_nodes.add(root)
-        walk(root, "", (root,))
-
-    return "\n".join(lines)
 
 
 def parse_relations(values: list[str]) -> set[str]:
