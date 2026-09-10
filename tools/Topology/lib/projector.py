@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from tools.CodeImport import CodeImporter
 from tools.Topology.lib.graph import Edge, Node, collect_graph, load_documents
 from tools.Topology.lib.projection import ProjectionResult
 from tools.Topology.projections import PROJECTIONS
@@ -11,22 +12,28 @@ from tools.Topology.projections import PROJECTIONS
 @dataclass
 class ProjectionState:
     source: Path | None = None
+    source_kind: str | None = None
     topology: str = "containment"
     projection: str = "hierarchy"
 
 
 class TopologyProjector:
-    """Host-neutral CW topology projection service.
+    """Host-neutral topology projection service.
 
-    Owns source loading, explicit topology selection and projection dispatch only.
-    It has no shell, curses, AIGMos command, or export semantics.
+    Source adapters populate one neutral Node/Edge graph. Projection modules then
+    operate only on that graph. The service has no shell, curses, AIGMos command,
+    export, or rendering semantics.
     """
 
-    def __init__(self, source: Path | None = None) -> None:
-        self.state = ProjectionState(source=source.resolve() if source else None)
+    def __init__(self, source: Path | None = None, source_kind: str = "cw") -> None:
+        self.state = ProjectionState(
+            source=source.resolve() if source else None,
+            source_kind=source_kind if source else None,
+        )
         self.nodes: dict[str, Node] = {}
         self.edges: list[Edge] = []
         self.relations: list[str] = []
+        self.code_importer = CodeImporter()
         if self.state.source is not None:
             self.reload()
 
@@ -34,19 +41,45 @@ class TopologyProjector:
     def projections(self) -> tuple[str, ...]:
         return tuple(sorted(PROJECTIONS))
 
-    def open(self, source: Path) -> None:
+    @property
+    def source_kinds(self) -> tuple[str, ...]:
+        return ("cw", "code")
+
+    def open(self, source: Path, *, source_kind: str) -> None:
+        if source_kind not in self.source_kinds:
+            raise ValueError(f"unknown source kind: {source_kind}")
         self.state.source = source.expanduser().resolve()
+        self.state.source_kind = source_kind
         self.reload()
 
     def reload(self) -> None:
-        if self.state.source is None:
+        if self.state.source is None or self.state.source_kind is None:
             self.nodes = {}
             self.edges = []
             self.relations = []
             return
 
-        documents = load_documents(self.state.source)
-        self.nodes, self.edges = collect_graph(documents)
+        if self.state.source_kind == "cw":
+            documents = load_documents(self.state.source)
+            self.nodes, self.edges = collect_graph(documents)
+        elif self.state.source_kind == "code":
+            imported = self.code_importer.import_source(self.state.source)
+            self.nodes = {
+                ref: Node(ref=node.ref, name=node.name)
+                for ref, node in imported.nodes.items()
+            }
+            self.edges = [
+                Edge(
+                    link_ref=edge.ref,
+                    relation=edge.relation,
+                    parent_ref=edge.parent_ref,
+                    child_ref=edge.child_ref,
+                )
+                for edge in imported.edges
+            ]
+        else:
+            raise ValueError(f"unknown source kind: {self.state.source_kind}")
+
         self.relations = sorted({edge.relation for edge in self.edges})
         if self.relations and self.state.topology not in self.relations:
             self.state.topology = self.relations[0]
@@ -60,7 +93,7 @@ class TopologyProjector:
         if self.state.source is None:
             return ProjectionResult(
                 name=self.state.projection,
-                lines=("No source loaded. Press o to open a CW folder or monolith.",),
+                lines=("No source loaded. Press o to open a CW or code source.",),
             )
         projector = PROJECTIONS[self.state.projection]
         return projector(self.selected_edges(), self.nodes)
