@@ -10,7 +10,7 @@ from tools.Topology.projections import PROJECTIONS
 
 @dataclass
 class ProjectionState:
-    source: Path
+    source: Path | None = None
     topology: str = "containment"
     projection: str = "hierarchy"
 
@@ -22,18 +22,29 @@ class TopologyProjector:
     It has no shell, curses, AIGMos command, or export semantics.
     """
 
-    def __init__(self, source: Path) -> None:
-        self.state = ProjectionState(source=source.resolve())
+    def __init__(self, source: Path | None = None) -> None:
+        self.state = ProjectionState(source=source.resolve() if source else None)
         self.nodes: dict[str, Node] = {}
         self.edges: list[Edge] = []
         self.relations: list[str] = []
-        self.reload()
+        if self.state.source is not None:
+            self.reload()
 
     @property
     def projections(self) -> tuple[str, ...]:
         return tuple(sorted(PROJECTIONS))
 
+    def open(self, source: Path) -> None:
+        self.state.source = source.expanduser().resolve()
+        self.reload()
+
     def reload(self) -> None:
+        if self.state.source is None:
+            self.nodes = {}
+            self.edges = []
+            self.relations = []
+            return
+
         documents = load_documents(self.state.source)
         self.nodes, self.edges = collect_graph(documents)
         self.relations = sorted({edge.relation for edge in self.edges})
@@ -46,6 +57,11 @@ class TopologyProjector:
         return [edge for edge in self.edges if edge.relation == self.state.topology]
 
     def project(self) -> ProjectionResult:
+        if self.state.source is None:
+            return ProjectionResult(
+                name=self.state.projection,
+                lines=("No source loaded. Press o to open a CW folder or monolith.",),
+            )
         projector = PROJECTIONS[self.state.projection]
         return projector(self.selected_edges(), self.nodes)
 
