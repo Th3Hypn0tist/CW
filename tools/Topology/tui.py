@@ -3,15 +3,13 @@ from __future__ import annotations
 import curses
 from pathlib import Path
 
-from tools.CodeImport.cw_export import export_cw
-from tools.CodeImport.importer import CodeImporter
+from tools.CIC import import_folder
 from tools.Topology.lib.curses_view import CursesViewHost
 from tools.Topology.lib.projector import TopologyProjector
 
 
 def run(source: Path | None = None) -> None:
     projector = TopologyProjector(source)
-    code_importer = CodeImporter()
 
     def render_lines() -> list[str]:
         return list(projector.project().lines)
@@ -54,60 +52,47 @@ def run(source: Path | None = None) -> None:
                 current.message = f"open failed: {exc}"
 
         def code_import_dialog(current: CursesViewHost) -> None:
-            selected = current.browse_path(
+            code_folder = current.browse_path(
                 stdscr,
-                "Code import source",
+                "Code import source folder",
                 start=Path.cwd(),
-                file_filter=None,
+                file_filter=lambda _path: False,
                 allow_directories=True,
             )
-            if selected is None:
+            if code_folder is None:
                 return
-
-            try:
-                imported = code_importer.import_source(selected)
-            except Exception as exc:
-                current.message = f"code import failed: {exc}"
+            if not code_folder.is_dir():
+                current.message = "CIC code import source must be a folder"
                 return
-
-            if not imported.nodes:
-                parser_ids = ", ".join(code_importer.registry.ids()) or "<none>"
-                current.message = (
-                    f"no supported code found in {selected}  parsers={parser_ids}"
-                )
-                return
-
-            if selected.is_dir():
-                default_dir = selected.parent
-                default_name = f"{selected.name}.cw"
-            else:
-                default_dir = selected.parent
-                default_name = f"{selected.stem}.cw"
 
             destination_text = current.prompt(
                 stdscr,
-                "Export imported code to CW",
-                str(default_dir / default_name),
+                "Export CIC result to CW folder",
+                str(code_folder.parent / f"{code_folder.name}_CW"),
             )
             if destination_text is None or not destination_text:
                 current.message = "code import cancelled before CW export"
                 return
 
-            destination = Path(destination_text).expanduser()
-            if destination.suffix.lower() not in {".cw", ".json"}:
-                destination = destination.with_suffix(".cw")
+            cw_folder = Path(destination_text).expanduser().resolve()
+            updating = cw_folder.exists()
 
             try:
-                exported = export_cw(imported, destination)
-                projector.open(exported)
+                result = import_folder(
+                    code_folder,
+                    cw_folder,
+                    force=updating,
+                )
+                projector.open(result.cw_folder)
                 current.scroll = 0
+                action = "updated" if updating else "created"
                 current.message = (
-                    f"code imported -> {exported}  "
-                    f"nodes={len(imported.nodes)} edges={len(imported.edges)} "
-                    f"findings={len(imported.findings)}"
+                    f"CIC {action}: {result.cw_folder}  "
+                    f"files={result.files_imported}/{result.files_seen}  "
+                    f"shards={result.shard_count} diagnostics={result.diagnostics}"
                 )
             except Exception as exc:
-                current.message = f"CW export/open failed: {exc}"
+                current.message = f"CIC import failed: {exc}"
 
         def topology_dialog(current: CursesViewHost) -> None:
             options = list(projector.relations)
