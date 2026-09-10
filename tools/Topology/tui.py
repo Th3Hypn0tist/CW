@@ -3,12 +3,15 @@ from __future__ import annotations
 import curses
 from pathlib import Path
 
+from tools.CodeImport.cw_export import export_cw
+from tools.CodeImport.importer import CodeImporter
 from tools.Topology.lib.curses_view import CursesViewHost
 from tools.Topology.lib.projector import TopologyProjector
 
 
 def run(source: Path | None = None) -> None:
     projector = TopologyProjector(source)
+    code_importer = CodeImporter()
 
     def render_lines() -> list[str]:
         return list(projector.project().lines)
@@ -26,7 +29,10 @@ def run(source: Path | None = None) -> None:
             title="CW Topology",
             render_lines=render_lines,
             status_line=status,
-            footer="up/down scroll  o open  t topology  h hierarchy/view  e export .md  q q q quit",
+            footer=(
+                "up/down scroll  o open CW  c code import  t topology  "
+                "h hierarchy/view  e export .md  q q q quit"
+            ),
         )
 
         def open_dialog(current: CursesViewHost) -> None:
@@ -46,6 +52,62 @@ def run(source: Path | None = None) -> None:
                 current.message = f"source opened: {selected}"
             except Exception as exc:
                 current.message = f"open failed: {exc}"
+
+        def code_import_dialog(current: CursesViewHost) -> None:
+            selected = current.browse_path(
+                stdscr,
+                "Code import source",
+                start=Path.cwd(),
+                file_filter=None,
+                allow_directories=True,
+            )
+            if selected is None:
+                return
+
+            try:
+                imported = code_importer.import_source(selected)
+            except Exception as exc:
+                current.message = f"code import failed: {exc}"
+                return
+
+            if not imported.nodes:
+                parser_ids = ", ".join(code_importer.registry.ids()) or "<none>"
+                current.message = (
+                    f"no supported code found in {selected}  parsers={parser_ids}"
+                )
+                return
+
+            if selected.is_dir():
+                default_dir = selected.parent
+                default_name = f"{selected.name}.cw"
+            else:
+                default_dir = selected.parent
+                default_name = f"{selected.stem}.cw"
+
+            destination_text = current.prompt(
+                stdscr,
+                "Export imported code to CW",
+                str(default_dir / default_name),
+            )
+            if destination_text is None or not destination_text:
+                current.message = "code import cancelled before CW export"
+                return
+
+            destination = Path(destination_text).expanduser()
+            if destination.suffix.lower() not in {".cw", ".json"}:
+                destination = destination.with_suffix(".cw")
+
+            try:
+                exported = export_cw(imported, destination)
+                projector.open(exported)
+                current.scroll = 0
+                current.message = (
+                    f"code imported -> {exported}  "
+                    f"nodes={len(imported.nodes)} edges={len(imported.edges)} "
+                    f"findings={len(imported.findings)}"
+                )
+            except Exception as exc:
+                current.message = f"CW export/open failed: {exc}"
 
         def topology_dialog(current: CursesViewHost) -> None:
             options = list(projector.relations)
@@ -130,6 +192,7 @@ def run(source: Path | None = None) -> None:
         host.key_handlers.update(
             {
                 "o": open_dialog,
+                "c": code_import_dialog,
                 "t": topology_dialog,
                 "h": hierarchy_dialog,
                 "e": export_dialog,
