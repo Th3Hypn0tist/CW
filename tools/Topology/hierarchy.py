@@ -6,11 +6,11 @@ import sys
 from pathlib import Path
 
 try:
-    from .ascii_walk import render_ascii_walk
-    from .cw_topology import Edge, Node, collect_graph, load_documents
+    from .lib.ascii_walk import render_ascii_walk
+    from .lib.graph import Edge, Node, collect_graph, load_documents
 except ImportError:
-    from ascii_walk import render_ascii_walk
-    from cw_topology import Edge, Node, collect_graph, load_documents
+    from lib.ascii_walk import render_ascii_walk
+    from lib.graph import Edge, Node, collect_graph, load_documents
 
 
 def render_hierarchy(edges: list[Edge], nodes: dict[str, Node]) -> str:
