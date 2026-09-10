@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import curses
+import shutil
 from pathlib import Path
 
 from tools.CIC import import_folder
@@ -75,19 +76,50 @@ def run(source: Path | None = None) -> None:
                 return
 
             cw_folder = Path(destination_text).expanduser().resolve()
-            updating = cw_folder.exists()
+
+            # Validate destructive-overwrite boundaries before asking to remove
+            # anything. CIC enforces the same source/output separation again.
+            if cw_folder == code_folder:
+                current.message = "CW output folder must differ from code folder"
+                return
+            if cw_folder in code_folder.parents:
+                current.message = "CW output folder cannot contain the code folder"
+                return
+            if code_folder in cw_folder.parents:
+                current.message = "CW output folder cannot be inside the code folder"
+                return
+
+            if cw_folder.exists():
+                if not cw_folder.is_dir():
+                    current.message = f"CW output path exists and is not a folder: {cw_folder}"
+                    return
+
+                choice = current.choose(
+                    stdscr,
+                    f"Destination exists: {cw_folder}",
+                    ["jyrää", "hylkää"],
+                    selected=1,
+                )
+                if choice is None or choice == 1:
+                    current.message = "code import cancelled; existing CW kept"
+                    return
+
+                try:
+                    shutil.rmtree(cw_folder)
+                except Exception as exc:
+                    current.message = f"cannot clear destination: {exc}"
+                    return
 
             try:
                 result = import_folder(
                     code_folder,
                     cw_folder,
-                    force=updating,
+                    force=False,
                 )
                 projector.open(result.cw_folder)
                 current.scroll = 0
-                action = "updated" if updating else "created"
                 current.message = (
-                    f"CIC {action}: {result.cw_folder}  "
+                    f"CIC created: {result.cw_folder}  "
                     f"files={result.files_imported}/{result.files_seen}  "
                     f"shards={result.shard_count} diagnostics={result.diagnostics}"
                 )
