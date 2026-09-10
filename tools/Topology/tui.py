@@ -7,15 +7,16 @@ from tools.Topology.lib.curses_view import CursesViewHost
 from tools.Topology.lib.projector import TopologyProjector
 
 
-def run(source: Path) -> None:
+def run(source: Path | None = None) -> None:
     projector = TopologyProjector(source)
 
     def render_lines() -> list[str]:
         return list(projector.project().lines)
 
     def status() -> str:
+        source_text = str(projector.state.source) if projector.state.source else "<none>"
         return (
-            f"source={projector.state.source}  "
+            f"source={source_text}  "
             f"topology={projector.state.topology}  "
             f"projection={projector.state.projection}"
         )
@@ -29,18 +30,20 @@ def run(source: Path) -> None:
         )
 
         def open_dialog(current: CursesViewHost) -> None:
-            value = current.prompt(
+            start = projector.state.source or Path.cwd()
+            selected = current.browse_path(
                 stdscr,
                 "Open CW source",
-                str(projector.state.source),
+                start=start,
+                file_filter=lambda path: path.suffix.lower() in {".cw", ".json"},
+                allow_directories=True,
             )
-            if value is None or not value:
+            if selected is None:
                 return
             try:
-                projector.state.source = Path(value).expanduser().resolve()
-                projector.reload()
+                projector.open(selected)
                 current.scroll = 0
-                current.message = "source opened"
+                current.message = f"source opened: {selected}"
             except Exception as exc:
                 current.message = f"open failed: {exc}"
 
@@ -93,6 +96,10 @@ def run(source: Path) -> None:
             current.message = f"projection: {projector.state.projection}"
 
         def export_dialog(current: CursesViewHost) -> None:
+            if projector.state.source is None:
+                current.message = "no source loaded"
+                return
+
             result = projector.project()
             default = (
                 f"{projector.state.source.stem}_"
@@ -137,7 +144,12 @@ def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description="Interactive CW topology View")
-    parser.add_argument("source", type=Path, help="Canonical CW artifact or folder")
+    parser.add_argument(
+        "source",
+        nargs="?",
+        type=Path,
+        help="Optional canonical CW artifact or folder. Use o in the TUI to browse.",
+    )
     args = parser.parse_args()
 
     try:
