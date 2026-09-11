@@ -2,7 +2,17 @@ from __future__ import annotations
 
 import curses
 import shutil
+import sys
 from pathlib import Path
+
+# Support both invocation styles:
+#   python3 -m tools.Topology
+#   python3 tools/Topology/tui.py
+# Direct script execution puts tools/Topology on sys.path, not the repo root.
+if __package__ in {None, ""}:
+    repo_root = Path(__file__).resolve().parents[2]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
 
 from tools.CIC import import_folder
 from tools.Topology.lib.curses_view import CursesViewHost
@@ -79,8 +89,6 @@ def run(source: Path | None = None) -> None:
                 return
             cw_folder = cw_folder.expanduser().resolve()
 
-            # Validate destructive-overwrite boundaries before asking to remove
-            # anything. CIC enforces the same source/output separation again.
             if cw_folder == code_folder:
                 current.message = "CW output folder must differ from code folder"
                 return
