@@ -185,12 +185,16 @@ class CursesViewHost:
         start: Path | None = None,
         file_filter: PathFilter | None = None,
         allow_directories: bool = True,
+        allow_new_directory: bool = False,
     ) -> Path | None:
         """Browse the filesystem and return a selected file or directory.
 
         Directories are navigation targets. When ``allow_directories`` is true,
-        ``[open this folder]`` selects the currently displayed directory. The
-        optional filter applies only to files, keeping this host domain-neutral.
+        ``[open this folder]`` selects the currently displayed directory. When
+        ``allow_new_directory`` is true, ``[new dir]`` asks for a child directory
+        name and returns that path without creating it. This lets a caller hand
+        the path to the component that owns creation semantics. The optional file
+        filter applies only to files, keeping this host domain-neutral.
         """
 
         current = (start or Path.cwd()).expanduser()
@@ -206,6 +210,8 @@ class CursesViewHost:
             entries: list[tuple[str, str, Path]] = []
             if allow_directories:
                 entries.append(("select", "[open this folder]", current))
+            if allow_new_directory:
+                entries.append(("new_directory", "[new dir]", current))
             if current.parent != current:
                 entries.append(("parent", "../", current.parent))
 
@@ -278,6 +284,19 @@ class CursesViewHost:
                 index = 0
                 offset = 0
                 continue
+            if kind == "new_directory":
+                name = self.prompt(stdscr, "New directory name")
+                if name is None:
+                    continue
+                name = name.strip()
+                if not name:
+                    self.message = "directory name is required"
+                    continue
+                candidate_name = Path(name)
+                if candidate_name.name != name or name in {".", ".."}:
+                    self.message = "enter one directory name, not a path"
+                    continue
+                return (current / name).resolve()
             return path.resolve()
 
     def _consume_quit(self, key: str) -> bool:
