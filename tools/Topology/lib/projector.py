@@ -2,16 +2,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from tools.Topology.lib.graph import (
     Edge,
     Node,
+    ProgressCallback,
     collect_graph,
     collect_structure_tree,
     load_documents,
 )
 from tools.Topology.lib.projection import ProjectionResult
 from tools.Topology.projections import PROJECTIONS
+
+
+OpenProgressCallback = Callable[[int, str], None]
 
 
 @dataclass
@@ -22,16 +27,7 @@ class ProjectionState:
 
 
 class TopologyProjector:
-    """Host-neutral CW topology projection service.
-
-    The projector consumes canonical CW only. Other source types, such as code,
-    are converted to CW by their own importer before being opened here.
-
-    Canonical relation projections consume canonical Node/Edge data. The
-    hierarchy projection consumes a separate derived StructureTree navigation
-    graph over those same canonical Entity identities. Projection-only directory
-    nodes never become canonical truth.
-    """
+    """Host-neutral CW topology projection service."""
 
     def __init__(self, source: Path | None = None) -> None:
         self.state = ProjectionState(source=source.expanduser().resolve() if source else None)
@@ -53,11 +49,42 @@ class TopologyProjector:
             return "structuretree"
         return self.state.topology
 
-    def open(self, source: Path) -> None:
-        candidate = source.expanduser().resolve()
-        documents = load_documents(candidate)
-        nodes, edges = collect_graph(documents)
-        structure_nodes, structure_edges = collect_structure_tree(documents)
+    @staticmethod
+    def _phase_progress(
+        callback: OpenProgressCallback | None,
+        start: int,
+        end: int,
+    ) -> ProgressCallback | None:
+        if callback is None:
+            return None
+
+        def report(fraction: float, detail: str) -> None:
+            bounded = max(0.0, min(1.0, fraction))
+            percent = start + round((end - start) * bounded)
+            callback(percent, detail)
+
+        return report
+
+    def _load(
+        self,
+        candidate: Path,
+        progress: OpenProgressCallback | None = None,
+    ) -> None:
+        if progress is not None:
+            progress(0, "starting CW load")
+
+        documents = load_documents(
+            candidate,
+            progress=self._phase_progress(progress, 0, 65),
+        )
+        nodes, edges = collect_graph(
+            documents,
+            progress=self._phase_progress(progress, 65, 82),
+        )
+        structure_nodes, structure_edges = collect_structure_tree(
+            documents,
+            progress=self._phase_progress(progress, 82, 99),
+        )
 
         self.state.source = candidate
         self.nodes = nodes
@@ -66,7 +93,17 @@ class TopologyProjector:
         self.structure_edges = structure_edges
         self._refresh_relations()
 
-    def reload(self) -> None:
+        if progress is not None:
+            progress(100, "CW ready")
+
+    def open(
+        self,
+        source: Path,
+        progress: OpenProgressCallback | None = None,
+    ) -> None:
+        self._load(source.expanduser().resolve(), progress)
+
+    def reload(self, progress: OpenProgressCallback | None = None) -> None:
         if self.state.source is None:
             self.nodes = {}
             self.edges = []
@@ -74,16 +111,7 @@ class TopologyProjector:
             self.structure_edges = []
             self.relations = []
             return
-
-        documents = load_documents(self.state.source)
-        nodes, edges = collect_graph(documents)
-        structure_nodes, structure_edges = collect_structure_tree(documents)
-
-        self.nodes = nodes
-        self.edges = edges
-        self.structure_nodes = structure_nodes
-        self.structure_edges = structure_edges
-        self._refresh_relations()
+        self._load(self.state.source, progress)
 
     def _refresh_relations(self) -> None:
         self.relations = sorted({edge.relation for edge in self.edges})
@@ -105,7 +133,6 @@ class TopologyProjector:
         projector = PROJECTIONS[self.state.projection]
         if self.state.projection == "hierarchy":
             return projector(self.structure_edges, self.structure_nodes)
-
         return projector(self.selected_edges(), self.nodes)
 
     def select_topology(self, topology: str) -> None:

@@ -7,10 +7,6 @@ import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Support both invocation styles:
-#   python3 -m tools.Topology
-#   python3 tools/Topology/tui.py
-# Direct script execution puts tools/Topology on sys.path, not the repo root.
 if __package__ in {None, ""}:
     repo_root = Path(__file__).resolve().parents[2]
     if str(repo_root) not in sys.path:
@@ -18,11 +14,14 @@ if __package__ in {None, ""}:
 
 from tools.CIC import import_folder
 from tools.Topology.lib.curses_view import CursesViewHost
+from tools.Topology.lib.progress_view import draw_progress
 from tools.Topology.lib.projector import TopologyProjector
 
 
 def run(source: Path | None = None) -> None:
-    projector = TopologyProjector(source)
+    # Delay initial loading until curses is active so even a large startup source
+    # can report progress instead of making the terminal appear frozen.
+    projector = TopologyProjector()
 
     def render_lines() -> list[str]:
         return list(projector.project().lines)
@@ -110,6 +109,37 @@ def run(source: Path | None = None) -> None:
             except Exception as export_exc:
                 current.message = f"error log export failed: {export_exc}"
 
+        def load_cw_source(
+            current: CursesViewHost,
+            selected: Path,
+            *,
+            operation: str = "Open CW",
+        ) -> bool:
+            try:
+                projector.open(
+                    selected,
+                    progress=lambda percent, detail: draw_progress(
+                        stdscr,
+                        "Loading CW",
+                        percent,
+                        detail,
+                    ),
+                )
+                current.scroll = 0
+                current.message = f"source opened: {selected}"
+                return True
+            except Exception as exc:
+                trace = traceback.format_exc()
+                current.message = f"open failed: {exc}"
+                offer_error_log(
+                    current,
+                    operation=operation,
+                    source_path=selected,
+                    error=exc,
+                    traceback_text=trace,
+                )
+                return False
+
         def open_dialog(current: CursesViewHost) -> None:
             start = projector.state.source or Path.cwd()
             selected = current.browse_path(
@@ -121,20 +151,7 @@ def run(source: Path | None = None) -> None:
             )
             if selected is None:
                 return
-            try:
-                projector.open(selected)
-                current.scroll = 0
-                current.message = f"source opened: {selected}"
-            except Exception as exc:
-                trace = traceback.format_exc()
-                current.message = f"open failed: {exc}"
-                offer_error_log(
-                    current,
-                    operation="Open CW",
-                    source_path=selected,
-                    error=exc,
-                    traceback_text=trace,
-                )
+            load_cw_source(current, selected)
 
         def code_import_dialog(current: CursesViewHost) -> None:
             code_folder = current.browse_path(
@@ -195,12 +212,21 @@ def run(source: Path | None = None) -> None:
                     return
 
             try:
+                draw_progress(stdscr, "CIC import", 0, "importing code to canonical CW")
                 result = import_folder(
                     code_folder,
                     cw_folder,
                     force=False,
                 )
-                projector.open(result.cw_folder)
+                projector.open(
+                    result.cw_folder,
+                    progress=lambda percent, detail: draw_progress(
+                        stdscr,
+                        "Loading imported CW",
+                        percent,
+                        detail,
+                    ),
+                )
                 current.scroll = 0
                 current.message = (
                     f"CIC created: {result.cw_folder}  "
@@ -299,6 +325,10 @@ def run(source: Path | None = None) -> None:
                 "e": export_dialog,
             }
         )
+
+        if source is not None:
+            load_cw_source(host, source.expanduser().resolve(), operation="Open initial CW")
+
         host.run(stdscr)
 
     curses.wrapper(app)
