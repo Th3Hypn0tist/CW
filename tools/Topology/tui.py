@@ -31,7 +31,7 @@ def run(source: Path | None = None) -> None:
         source_text = str(projector.state.source) if projector.state.source else "<none>"
         return (
             f"source={source_text}  "
-            f"topology={projector.state.topology}  "
+            f"topology={projector.active_topology}  "
             f"projection={projector.state.projection}"
         )
 
@@ -266,7 +266,7 @@ def run(source: Path | None = None) -> None:
             result = projector.project()
             default = (
                 f"{projector.state.source.stem}_"
-                f"{projector.state.topology}_"
+                f"{projector.active_topology}_"
                 f"{projector.state.projection}.md"
             )
             value = current.prompt(stdscr, "Export Markdown", default)
@@ -280,7 +280,7 @@ def run(source: Path | None = None) -> None:
             text = (
                 "# CW Topology\n\n"
                 f"- Source: `{projector.state.source}`\n"
-                f"- Topology: `{projector.state.topology}`\n"
+                f"- Topology: `{projector.active_topology}`\n"
                 f"- Projection: `{projector.state.projection}`\n\n"
                 f"{result.markdown()}"
             )

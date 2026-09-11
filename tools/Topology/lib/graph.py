@@ -37,6 +37,10 @@ class Edge:
     child_ref: str
 
 
+STRUCTURE_ROOT_REF = "@STRUCTURETREE:ROOT"
+STRUCTURE_DIR_PREFIX = "@STRUCTURETREE:DIR:"
+
+
 def artifact_paths(root: Path) -> list[Path]:
     if root.is_file():
         return [root]
@@ -120,4 +124,101 @@ def collect_graph(
                 )
 
     edges.sort(key=lambda edge: (edge.relation, edge.parent_ref, edge.child_ref, edge.link_ref))
+    return nodes, edges
+
+
+def _structure_address(entity_ref: str) -> tuple[str, ...]:
+    """Return projection-only directory nodes from an explicit canonical Node id.
+
+    Identity-family prefixes are used only as already-present StructureTree
+    navigation addresses. They never infer or replace Entity.entity_type_ref.
+    """
+    if not entity_ref.startswith("#"):
+        return ()
+
+    parts = tuple(entity_ref.split(":"))
+    if len(parts) < 2 or any(not part for part in parts):
+        return ()
+
+    # The final identity component is represented by the canonical Entity leaf.
+    # Everything before it is the navigation hierarchy under the common ROOT.
+    return parts[:-1]
+
+
+def _structure_dir_ref(parts: tuple[str, ...]) -> str:
+    return STRUCTURE_DIR_PREFIX + ":".join(parts)
+
+
+def collect_structure_tree(
+    documents: Iterable[tuple[Path, dict[str, Any]]],
+) -> tuple[dict[str, Node], list[Edge]]:
+    """Build one projection-only StructureTree over all canonical Entity Nodes.
+
+    Directory nodes and directory_child edges exist only in this derived
+    navigation graph. They never become canonical Entities or Link Properties.
+    """
+    nodes: dict[str, Node] = {
+        STRUCTURE_ROOT_REF: Node(ref=STRUCTURE_ROOT_REF, name="ROOT")
+    }
+    edges: list[Edge] = []
+    linked_directories: set[tuple[str, str]] = set()
+    linked_entities: set[tuple[str, str]] = set()
+
+    for _, document in documents:
+        entities = document.get("entities")
+        if not isinstance(entities, list):
+            continue
+
+        for entity in entities:
+            if not isinstance(entity, dict):
+                continue
+
+            entity_ref = entity.get("id")
+            if not isinstance(entity_ref, str) or not entity_ref:
+                continue
+
+            name = entity.get("name")
+            nodes[entity_ref] = Node(
+                ref=entity_ref,
+                name=name if isinstance(name, str) and name else None,
+            )
+
+            parent_ref = STRUCTURE_ROOT_REF
+            address_parts: list[str] = []
+
+            for label in _structure_address(entity_ref):
+                address_parts.append(label)
+                directory_ref = _structure_dir_ref(tuple(address_parts))
+                nodes.setdefault(
+                    directory_ref,
+                    Node(ref=directory_ref, name=label),
+                )
+
+                key = (parent_ref, directory_ref)
+                if key not in linked_directories:
+                    edges.append(
+                        Edge(
+                            link_ref=f"@STRUCTURETREE:EDGE:{len(edges):08d}",
+                            relation="directory_child",
+                            parent_ref=parent_ref,
+                            child_ref=directory_ref,
+                        )
+                    )
+                    linked_directories.add(key)
+
+                parent_ref = directory_ref
+
+            key = (parent_ref, entity_ref)
+            if key not in linked_entities:
+                edges.append(
+                    Edge(
+                        link_ref=f"@STRUCTURETREE:EDGE:{len(edges):08d}",
+                        relation="directory_child",
+                        parent_ref=parent_ref,
+                        child_ref=entity_ref,
+                    )
+                )
+                linked_entities.add(key)
+
+    edges.sort(key=lambda edge: (edge.parent_ref, edge.child_ref, edge.link_ref))
     return nodes, edges
