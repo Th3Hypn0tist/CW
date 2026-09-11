@@ -3,6 +3,8 @@ from __future__ import annotations
 import curses
 import shutil
 import sys
+import traceback
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Support both invocation styles:
@@ -44,6 +46,70 @@ def run(source: Path | None = None) -> None:
             ),
         )
 
+        def offer_error_log(
+            current: CursesViewHost,
+            *,
+            operation: str,
+            source_path: Path | None,
+            error: BaseException,
+            traceback_text: str,
+        ) -> None:
+            choice = current.choose(
+                stdscr,
+                f"{operation} failed",
+                ["export error log .md", "close"],
+                selected=0,
+            )
+            if choice is None or choice == 1:
+                return
+
+            if source_path is not None:
+                base_dir = source_path if source_path.is_dir() else source_path.parent
+                base_name = source_path.name or "source"
+            else:
+                base_dir = Path.cwd()
+                base_name = "cw_topology"
+
+            safe_name = "".join(
+                ch if ch.isalnum() or ch in {"-", "_", "."} else "_"
+                for ch in base_name
+            ).strip("._") or "source"
+            default_path = base_dir / f"{safe_name}_{operation.lower().replace(' ', '_')}_error.md"
+
+            value = current.prompt(
+                stdscr,
+                "Export error log Markdown",
+                str(default_path),
+            )
+            if value is None or not value:
+                return
+
+            path = Path(value).expanduser()
+            if path.suffix.lower() != ".md":
+                path = path.with_suffix(".md")
+
+            timestamp = datetime.now(timezone.utc).isoformat()
+            escaped_traceback = traceback_text.replace("```", "` ` `")
+            text = (
+                "# CW Topology Error Log\n\n"
+                f"- Timestamp UTC: `{timestamp}`\n"
+                f"- Operation: `{operation}`\n"
+                f"- Source: `{source_path if source_path is not None else '<none>'}`\n"
+                f"- Exception: `{type(error).__name__}`\n\n"
+                "## Message\n\n"
+                f"{error}\n\n"
+                "## Traceback\n\n"
+                "```text\n"
+                f"{escaped_traceback.rstrip()}\n"
+                "```\n"
+            )
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(text, encoding="utf-8")
+                current.message = f"error log exported: {path}"
+            except Exception as export_exc:
+                current.message = f"error log export failed: {export_exc}"
+
         def open_dialog(current: CursesViewHost) -> None:
             start = projector.state.source or Path.cwd()
             selected = current.browse_path(
@@ -60,7 +126,15 @@ def run(source: Path | None = None) -> None:
                 current.scroll = 0
                 current.message = f"source opened: {selected}"
             except Exception as exc:
+                trace = traceback.format_exc()
                 current.message = f"open failed: {exc}"
+                offer_error_log(
+                    current,
+                    operation="Open CW",
+                    source_path=selected,
+                    error=exc,
+                    traceback_text=trace,
+                )
 
         def code_import_dialog(current: CursesViewHost) -> None:
             code_folder = current.browse_path(
