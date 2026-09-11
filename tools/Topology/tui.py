@@ -66,16 +66,18 @@ def run(source: Path | None = None) -> None:
                 current.message = "CIC code import source must be a folder"
                 return
 
-            destination_text = current.prompt(
+            cw_folder = current.browse_path(
                 stdscr,
                 "Export CIC result to CW folder",
-                str(code_folder.parent / f"{code_folder.name}_CW"),
+                start=code_folder.parent,
+                file_filter=lambda _path: False,
+                allow_directories=True,
+                allow_new_directory=True,
             )
-            if destination_text is None or not destination_text:
+            if cw_folder is None:
                 current.message = "code import cancelled before CW export"
                 return
-
-            cw_folder = Path(destination_text).expanduser().resolve()
+            cw_folder = cw_folder.expanduser().resolve()
 
             # Validate destructive-overwrite boundaries before asking to remove
             # anything. CIC enforces the same source/output separation again.
