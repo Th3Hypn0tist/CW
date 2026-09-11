@@ -59,9 +59,13 @@ class CursesViewHost:
             if isinstance(key, str):
                 if self._consume_quit(key):
                     return
+                if self._quit_progress:
+                    # A quit sequence is in progress. Preserve it across
+                    # consecutive key reads instead of clearing it at the end
+                    # of this loop iteration.
+                    continue
                 handler = self.key_handlers.get(key)
                 if handler is not None:
-                    self._quit_progress = ""
                     handler(self)
                     continue
 
