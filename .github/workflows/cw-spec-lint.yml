@@ -1,4 +1,4 @@
-name: CW Specification Integrity
+name: CW Integrity
 
 on:
   pull_request:
@@ -8,6 +8,8 @@ on:
       - 'CanonicalWireframe_Dependency_Rules_v*.json'
       - 'spec_sets/**'
       - 'linter/**'
+      - 'tools/CIC/**'
+      - 'Examples/Ultralight_CMS/**'
       - '.github/workflows/cw-spec-lint.yml'
   push:
     paths:
@@ -16,16 +18,18 @@ on:
       - 'CanonicalWireframe_Dependency_Rules_v*.json'
       - 'spec_sets/**'
       - 'linter/**'
+      - 'tools/CIC/**'
+      - 'Examples/Ultralight_CMS/**'
       - '.github/workflows/cw-spec-lint.yml'
 
 permissions:
   contents: read
 
 jobs:
-  specification-integrity:
-    name: CW specification integrity
+  integrity:
+    name: CW package and CIC integrity
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -37,28 +41,43 @@ jobs:
           python-version: '3.13'
 
       - name: Compile CW tooling
-        run: python -m py_compile linter/__init__.py linter/cw_spec_common.py linter/cw_spec_lint.py linter/cw_compose.py linter/cw_bind.py linter/cw_version.py linter/cw_validate.py
+        run: |
+          python -m py_compile \
+            linter/__init__.py \
+            linter/cw_spec_common.py \
+            linter/cw_spec_lint.py \
+            linter/cw_compose.py \
+            linter/cw_bind.py \
+            linter/cw_version.py \
+            linter/cw_validate.py \
+            linter/cw_package_validate.py \
+            tools/CIC/*.py \
+            tools/CIC/modules/*.py
 
-      - name: Verify package imports
-        run: python -c "import linter.cw_spec_common, linter.cw_spec_lint, linter.cw_compose, linter.cw_bind, linter.cw_version, linter.cw_validate"
-
-      - name: Validate locked CW specification set
+      - name: Validate historical locked specification set
         run: python linter/cw_spec_lint.py --coverage
+
+      - name: Validate current Ultralight CMS golden package
+        run: python linter/cw_package_validate.py Examples/Ultralight_CMS --json
 
       - name: Run CW Core regression tests
         run: python -m unittest discover -s linter/tests -v
 
-      # Keep generated reports outside the root *.json specification scan.
-      - name: Emit machine-readable report
+      - name: Run CIC package release gate
+        run: python -m tools.CIC release-check
+
+      - name: Emit machine-readable reports
         if: always()
         run: |
           mkdir -p .artifacts
           python linter/cw_spec_lint.py --json > .artifacts/cw-spec-lint-report.json || true
+          python linter/cw_package_validate.py Examples/Ultralight_CMS --json > .artifacts/cw-package-report.json || true
+          python -m tools.CIC release-check > .artifacts/cic-release-report.json || true
 
-      - name: Upload lint report
+      - name: Upload integrity reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cw-spec-lint-report
-          path: .artifacts/cw-spec-lint-report.json
+          name: cw-integrity-reports
+          path: .artifacts/*.json
           if-no-files-found: error
