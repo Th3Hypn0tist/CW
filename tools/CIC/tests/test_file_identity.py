@@ -39,8 +39,15 @@ class CICFileIdentityTests(unittest.TestCase):
         self.assertEqual(ir["files"][0]["file_ref"], "FILE::app.py")
         self.assertEqual(ir["files"][0]["canonical_file_ref"], "#FILE:app")
         self.assertEqual(ir["files"][0]["cw_shard_path"], "FILE/app.cw")
-        self.assertTrue((output / "FILE" / "app.cw").is_file())
-        self.assertFalse((output / "FILE" / "app.py.cw").exists())
+        self.assertTrue((output / "Model" / "FILE" / "app.cw").is_file())
+        self.assertFalse((output / "Model" / "FILE" / "app.py.cw").exists())
+        self.assertTrue((output / "Format" / "CW.json").is_file())
+        self.assertTrue((output / "Assets" / "FILE" / "%23FILE%3Aapp.py").is_file())
+        entity = cw["entities"][0]
+        self.assertEqual(entity["entity_type_ref"], "FILE")
+        assets = [prop for prop in entity["properties"] if prop.get("property_type_ref") == "asset"]
+        self.assertEqual(len(assets), 1)
+        self.assertEqual(assets[0]["value"]["asset_ref"], "Assets/FILE/%23FILE%3Aapp.py")
 
     def test_CW_FILE_TREE_002_distinct_canonical_paths_do_not_collapse(self):
         cw, _, _ = self._import({"a/common.py": "A = 1\n", "b/common.py": "B = 2\n"})
@@ -72,13 +79,16 @@ class CICFileIdentityTests(unittest.TestCase):
         self.assertEqual(functions[0]["value"]["properties"]["source_language"], "python")
         self.assertFalse(any(item.get("file_ref", "").startswith("FUNCTION::") for item in ir.get("files", [])))
 
-    def test_CW_FILE_TREE_008_unknown_text_file_is_preserved_but_suffix_is_not_canonical(self):
+    def test_CW_FILE_TREE_008_unknown_text_file_is_preserved_as_registered_package_asset(self):
         cw, ir, output = self._import({"notes.weird": "hello\n"})
         self.assertEqual(self._file_refs(cw), ["#FILE:notes"])
         self.assertEqual(ir["files"][0]["file_ref"], "FILE::notes.weird")
         self.assertEqual(ir["files"][0]["language_ir"]["language_id"], "unclassified")
         self.assertEqual(ir["files"][0]["language_ir"]["diagnostics"][0]["code"], "LANGUAGE_UNCLASSIFIED")
-        self.assertTrue((output / "FILE" / "notes.cw").is_file())
+        self.assertTrue((output / "Model" / "FILE" / "notes.cw").is_file())
+        self.assertTrue((output / "Assets" / "FILE" / "%23FILE%3Anotes.weird").is_file())
+        dr = json.loads((output / "Format" / "DR.json").read_text(encoding="utf-8"))
+        self.assertTrue(any(item.get("extensions") == [".weird"] for item in dr["asset_file_types"]))
 
     def test_CW_FILE_TREE_010_excluded_dependency_directory_does_not_enter_tree(self):
         cw, _, _ = self._import({"app.py": "VALUE = 1\n", "node_modules/pkg/index.js": "module.exports = 1;\n"})
