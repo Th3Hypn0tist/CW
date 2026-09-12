@@ -1,0 +1,56 @@
+{
+  "title": "Ultralight CMS Runtime Notes",
+  "source": "Consolidated runtime and logic commentary from the CW/UltralightCMS project conversations.",
+  "sections": [
+    {
+      "id": "data_lifecycle",
+      "points": [
+        "A Data Property defines a typed runtime slot contract; runtime state lives in an execution context and does not mutate the canonical .cw artifact.",
+        "value:null means UNBOUND. UNBOUND is not schema-invalid and does not satisfy ready conditions.",
+        "READY means non-null and schema-valid when schema_ref exists.",
+        "INVALID means a non-null candidate violates its Schema or another declared constraint.",
+        "Package validity is not runtime READY state."
+      ]
+    },
+    {
+      "id": "events_and_context",
+      "points": [
+        "Function boundaries are Event-mediated; function_call Links and logic op=call are forbidden.",
+        "One emitted Event occurrence preserves the current execution context.",
+        "event_condition with condition_mode=ready guards an Event occurrence against the actual Data slot.",
+        "An emitted Event with unsatisfied guards remains pending and dispatches exactly once when all guards become satisfied.",
+        "No parallel *_READY Data truth is used."
+      ]
+    },
+    {
+      "id": "function_interfaces",
+      "points": [
+        "Function.input_refs contains canonical Properties actually read by the modeled Function logic.",
+        "Function.output_refs contains canonical Properties actually written or produced by the modeled Function logic.",
+        "Execution-context Data visible around a Function is not automatically a Function input.",
+        "FUNCTION_OPEN_PAGE is intentionally a pure causal relay with empty input_refs and output_refs."
+      ]
+    },
+    {
+      "id": "routing",
+      "points": [
+        "Page routing identity is PageContent.id; title is presentation only.",
+        "The content collection is a list of records containing required id, title and body.",
+        "id values are unique and a READY content collection contains exactly one item with id=index.",
+        "Resolution first looks up the requested page_id and falls back to id=index on zero matches.",
+        "The fallback key index is a mechanism constant, while its title may be Home, Etusivu or any other presentation text.",
+        "If the required index invariant is nevertheless violated at execution time, the Function fails with INVALID_CONTENT_SOURCE rather than writing null forward."
+      ]
+    },
+    {
+      "id": "lookup_and_render",
+      "points": [
+        "lookup executes only against a READY collection; UNBOUND or INVALID source is INVALID execution rather than a null lookup result.",
+        "Zero matches in a READY collection returns null; more than one match is INVALID.",
+        "The style slot is a raw string contract because the physical Asset is CSS; no artificial {css:...} wrapper is introduced.",
+        "Compose writes a structured rendered-document draft and finalize produces the published document.",
+        "The final publish Effect replaces the index document target using explicit event_effect and effect_target Links."
+      ]
+    }
+  ]
+}
