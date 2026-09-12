@@ -16,6 +16,7 @@ class EventTriggerRule:
     evidence_kind: str
     evidence_value: str
     event_type_ref: str
+    identity_keyword: str | None = None
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,7 @@ class EventCandidate:
     trigger_evidence_kind: str
     trigger_evidence_value: str
     span: dict[str, Any]
+    event_identity: str | None = None
     canonical_ready: bool = False
     authority: str = "implementation_evidence"
 
@@ -45,12 +47,16 @@ def _rule(record: EventTriggerRule | dict[str, Any]) -> EventTriggerRule:
         return record
     if not isinstance(record, dict):
         raise EventLogicError("event trigger rule must be an object")
+    identity_keyword = record.get("identity_keyword")
+    if identity_keyword is not None and (not isinstance(identity_keyword, str) or not identity_keyword):
+        raise EventLogicError("identity_keyword must be a non-empty string when present")
     return EventTriggerRule(
         rule_id=_text(record.get("rule_id"), "rule_id"),
         language_id=_text(record.get("language_id"), "language_id"),
         evidence_kind=_text(record.get("evidence_kind"), "evidence_kind"),
         evidence_value=_text(record.get("evidence_value"), "evidence_value"),
         event_type_ref=_text(record.get("event_type_ref"), "event_type_ref"),
+        identity_keyword=identity_keyword,
     )
 
 
@@ -64,6 +70,18 @@ def _function_records(symbols: Iterable[dict[str, Any]]) -> Iterable[dict[str, A
             yield from _function_records(symbol.get("nested_functions", []))
         elif kind == "class":
             yield from _function_records(symbol.get("methods", []))
+
+
+def _module_literals(symbols: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for symbol in symbols:
+        if not isinstance(symbol, dict) or symbol.get("kind") != "variable" or "literal_value" not in symbol:
+            continue
+        names = symbol.get("names")
+        if not isinstance(names, list) or len(names) != 1 or not isinstance(names[0], str) or not names[0]:
+            continue
+        result[names[0]] = symbol["literal_value"]
+    return result
 
 
 def _evidence_values(function: dict[str, Any], evidence_kind: str) -> tuple[str, ...]:
@@ -86,12 +104,24 @@ def _ast_name(node: ast.AST | None) -> str | None:
     return None
 
 
-def _registration_handler_symbol(function: dict[str, Any], constructor: str) -> str | None:
-    """Return handler=<symbol> from an explicit returned constructor call.
+def _resolve_literal_node(node: ast.AST, module_literals: dict[str, Any]) -> str | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value:
+        return node.value
+    if isinstance(node, ast.Name):
+        value = module_literals.get(node.id)
+        if isinstance(value, str) and value:
+            return value
+    return None
 
-    This inspects only the archived source of the candidate factory Function. It
-    does not infer runtime registration from naming, directories, or call graphs.
-    """
+
+def _registration_binding(
+    function: dict[str, Any],
+    constructor: str,
+    *,
+    identity_keyword: str | None,
+    module_literals: dict[str, Any],
+) -> tuple[str, str | None] | None:
+    """Return explicit handler and optional source-backed identity from a returned constructor call."""
     source = function.get("source")
     if not isinstance(source, str) or not source.strip():
         return None
@@ -108,10 +138,20 @@ def _registration_handler_symbol(function: dict[str, Any], constructor: str) -> 
         call = statement.value
         if _ast_name(call.func) != constructor:
             continue
-        for keyword in call.keywords:
-            if keyword.arg != "handler":
+        keywords = {kw.arg: kw.value for kw in call.keywords if isinstance(kw.arg, str)}
+        handler_node = keywords.get("handler")
+        handler_symbol = _ast_name(handler_node)
+        if not isinstance(handler_symbol, str) or not handler_symbol:
+            continue
+        event_identity = None
+        if identity_keyword is not None:
+            identity_node = keywords.get(identity_keyword)
+            if identity_node is None:
                 continue
-            return _ast_name(keyword.value)
+            event_identity = _resolve_literal_node(identity_node, module_literals)
+            if event_identity is None:
+                continue
+        return handler_symbol, event_identity
     return None
 
 
@@ -122,6 +162,7 @@ def _candidate_from_function(
     rule: EventTriggerRule,
     evidence_kind: str,
     evidence_value: str,
+    event_identity: str | None = None,
 ) -> EventCandidate | None:
     name = function.get("name")
     qualified_name = function.get("qualified_name")
@@ -129,8 +170,9 @@ def _candidate_from_function(
         return None
     function_owner = function.get("owner") if isinstance(function.get("owner"), str) and function.get("owner") else None
     span = function.get("span") if isinstance(function.get("span"), dict) else {}
+    identity_part = f"::{event_identity}" if event_identity is not None else ""
     return EventCandidate(
-        candidate_id=f"EVENT_CANDIDATE::{owner_entity_ref}::{qualified_name}::{rule.rule_id}",
+        candidate_id=f"EVENT_CANDIDATE::{owner_entity_ref}::{qualified_name}::{rule.rule_id}{identity_part}",
         owner_entity_ref=owner_entity_ref,
         function_qualified_name=qualified_name,
         function_name=name,
@@ -140,6 +182,7 @@ def _candidate_from_function(
         trigger_evidence_kind=evidence_kind,
         trigger_evidence_value=evidence_value,
         span=dict(span),
+        event_identity=event_identity,
     )
 
 
@@ -147,14 +190,7 @@ def detect_event_candidates(
     ir: dict[str, Any],
     rules: Iterable[EventTriggerRule | dict[str, Any]],
 ) -> tuple[EventCandidate, ...]:
-    """Detect externally-triggerable function surfaces from explicit evidence rules only.
-
-    Supported evidence kinds:
-      decorator_exact      exact Function decorator text
-      registration_handler
-        a Function explicitly returns the configured constructor and binds its
-        handler= keyword to another Function in the same canonical #FILE Entity
-    """
+    """Detect externally-triggerable Function surfaces from explicit evidence rules only."""
     if not isinstance(ir, dict):
         raise EventLogicError("Code IR must be an object")
 
@@ -164,7 +200,7 @@ def detect_event_candidates(
         raise EventLogicError("duplicate event trigger rule_id")
 
     candidates: list[EventCandidate] = []
-    seen: set[tuple[str, str, str]] = set()
+    seen: set[tuple[str, str, str, str | None]] = set()
 
     files = ir.get("files", [])
     if not isinstance(files, list):
@@ -186,7 +222,9 @@ def detect_event_candidates(
             continue
         language_id = language_ir.get("language_id")
         owner_entity_ref = canonical_owner_ref
-        functions = list(_function_records(language_ir.get("symbols", [])))
+        symbols = language_ir.get("symbols", []) if isinstance(language_ir.get("symbols"), list) else []
+        functions = list(_function_records(symbols))
+        module_literals = _module_literals(symbols)
         top_level_by_name = {
             function.get("name"): function
             for function in functions
@@ -199,9 +237,15 @@ def detect_event_candidates(
             for factory in functions:
                 if factory.get("owner"):
                     continue
-                handler_symbol = _registration_handler_symbol(factory, rule.evidence_value)
-                if not isinstance(handler_symbol, str) or not handler_symbol:
+                binding = _registration_binding(
+                    factory,
+                    rule.evidence_value,
+                    identity_keyword=rule.identity_keyword,
+                    module_literals=module_literals,
+                )
+                if binding is None:
                     continue
+                handler_symbol, event_identity = binding
                 handler = top_level_by_name.get(handler_symbol)
                 if not isinstance(handler, dict):
                     continue
@@ -211,10 +255,11 @@ def detect_event_candidates(
                     rule=rule,
                     evidence_kind=rule.evidence_kind,
                     evidence_value=rule.evidence_value,
+                    event_identity=event_identity,
                 )
                 if candidate is None:
                     continue
-                semantic_key = (owner_entity_ref, candidate.function_qualified_name, rule.rule_id)
+                semantic_key = (owner_entity_ref, candidate.function_qualified_name, rule.rule_id, event_identity)
                 if semantic_key in seen:
                     continue
                 seen.add(semantic_key)
@@ -231,7 +276,7 @@ def detect_event_candidates(
                 values = _evidence_values(function, rule.evidence_kind)
                 if rule.evidence_value not in values:
                     continue
-                semantic_key = (owner_entity_ref, qualified_name, rule.rule_id)
+                semantic_key = (owner_entity_ref, qualified_name, rule.rule_id, None)
                 if semantic_key in seen:
                     continue
                 seen.add(semantic_key)
