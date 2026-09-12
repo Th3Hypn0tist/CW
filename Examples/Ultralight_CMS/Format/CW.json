@@ -1,7 +1,7 @@
 {
   "id": "CANONICAL_WIREFRAME_PACKAGE_FORMAT",
   "name": "CanonicalWireframe Package Format",
-  "version": "2.0.1-reference",
+  "version": "2.0.2-reference",
   "status": "unlocked",
   "ccf_ref": "./CCF.json",
   "dr_ref": "./DR.json",
@@ -13,23 +13,19 @@
   "version_dimensions": {
     "ccf_format_version": {
       "source": "CCF.json.version",
-      "meaning": "Canonical Contract Format version used by Model artifacts through format.format_version.",
-      "current": "2.4.3"
+      "meaning": "Canonical Contract Format version used by Model artifacts through format.format_version."
     },
     "cw_package_format_version": {
       "source": "CW.json.version",
-      "meaning": "Version of the self-contained CanonicalWireframe package interpretation contract.",
-      "current": "2.0.1-reference"
+      "meaning": "Version of the self-contained CanonicalWireframe package interpretation contract."
     },
     "dependency_rules_version": {
       "source": "DR.json.version",
-      "meaning": "Version of the Property/Link/logic semantic ruleset closure.",
-      "current": "4.0.2-reference"
+      "meaning": "Version of the Property/Link/logic semantic ruleset closure."
     },
     "model_release_version": {
       "source": "Model/model.cw.identity.version",
-      "meaning": "Version of this modeled system/reference fixture, independent of CCF/CW/DR versions.",
-      "current": "2.0.1-reference"
+      "meaning": "Version of the modeled system/reference fixture, independent of CCF/CW/DR versions."
     }
   },
   "ontology": {
@@ -63,6 +59,18 @@
     "asset_cardinality": "0..1",
     "rule": "Every Node may group any number of canonical members and may own at most one physical Asset."
   },
+  "model_closure": {
+    "manifest": "../Model/model.cw.shards",
+    "authority": "manifest",
+    "rules": [
+      "Model/model.cw is the root manifest and is not itself a shard.",
+      "Every canonical .cw artifact below Model/ other than Model/model.cw MUST appear exactly once in shards[].",
+      "Every shards[].artifact_ref MUST resolve to exactly one regular .cw file below Model/.",
+      "Every shards[].entity_ref MUST equal the root Entity.id declared by its artifact_ref.",
+      "Duplicate entity_ref or artifact_ref entries are invalid.",
+      "A .cw file present below Model/ but absent from shards[] is not part of the canonical Model closure and makes the package invalid."
+    ]
+  },
   "asset_model": {
     "root": "../Assets/",
     "family_directory": "Assets/<IDENTITY_FAMILY_WITHOUT_#>/",
@@ -80,9 +88,20 @@
     "validator_non_scope": [
       "payload content parsing",
       "payload semantic interpretation",
+      "runtime payload schema validation",
       "MIME sniffing",
       "renderer-specific validation"
     ]
+  },
+  "filesystem_contract": {
+    "text_encoding": "UTF-8",
+    "unicode_normalization": "NFC",
+    "canonical_path_separator": "/",
+    "path_refs": "Package references are relative canonical paths only. Absolute paths, backslashes, empty segments, '.' segments and '..' segments are invalid.",
+    "case_rule": "Canonical paths are case-sensitive, but the package MUST reject two paths that collide after NFC normalization plus Unicode case-folding so the closure is portable to case-insensitive filesystems.",
+    "percent_encoding": "Encode the UTF-8 bytes of every character outside RFC3986 unreserved [A-Za-z0-9-._~] as percent followed by two uppercase hexadecimal digits.",
+    "symlinks": "Symbolic links are not canonical package members. Canonical Format, Model and Asset paths MUST resolve to regular files/directories inside the package without following symlinks.",
+    "escape_rule": "No resolved canonical path may escape its declared package root."
   },
   "provenance": {
     "unlocked": "A local Format closure may evolve together with the package.",

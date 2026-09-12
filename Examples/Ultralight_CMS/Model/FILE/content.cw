@@ -4,51 +4,9 @@
   "entity_type_ref":"FILE",
   "status":"unlocked",
   "properties":[
-    {
-      "id":"ASSET::#FILE:content",
-      "property_type_ref":"asset",
-      "ruleset_ref":"RULESET_ASSET",
-      "status":"unlocked",
-      "value":{"asset_ref":"Assets/FILE/%23FILE%3Acontent.json","file_type_ref":"json","properties":{}}
-    },
-    {
-      "id":"SCHEMA_PAGE_CONTENT",
-      "property_type_ref":"schema",
-      "ruleset_ref":"RULESET_SCHEMA",
-      "status":"unlocked",
-      "value":{
-        "schema_type_ref":"record",
-        "definition":{
-          "fields":{
-            "title":{"type":"string","required":true},
-            "body":{"type":"string","required":true}
-          }
-        },
-        "properties":{}
-      }
-    },
-    {
-      "id":"SCHEMA_CONTENT_COLLECTION",
-      "property_type_ref":"schema",
-      "ruleset_ref":"RULESET_SCHEMA",
-      "status":"unlocked",
-      "value":{
-        "schema_type_ref":"map",
-        "definition":{"key_type_ref":"string","item_schema_ref":"SCHEMA_PAGE_CONTENT"},
-        "properties":{}
-      }
-    },
-    {
-      "id":"DATA_CONTENT_COLLECTION",
-      "property_type_ref":"data",
-      "ruleset_ref":"RULESET_DATA",
-      "status":"unlocked",
-      "value":{
-        "data_type_ref":"content_collection",
-        "value":null,
-        "schema_ref":"SCHEMA_CONTENT_COLLECTION",
-        "properties":{}
-      }
-    }
+    {"id":"ASSET::#FILE:content","property_type_ref":"asset","ruleset_ref":"RULESET_ASSET","status":"unlocked","value":{"asset_ref":"Assets/FILE/%23FILE%3Acontent.json","file_type_ref":"json","properties":{}}},
+    {"id":"SCHEMA_PAGE_CONTENT","property_type_ref":"schema","ruleset_ref":"RULESET_SCHEMA","status":"unlocked","value":{"schema_type_ref":"record","definition":{"fields":{"id":{"type":"string","required":true},"title":{"type":"string","required":true},"body":{"type":"string","required":true}}},"properties":{}}},
+    {"id":"SCHEMA_CONTENT_COLLECTION","property_type_ref":"schema","ruleset_ref":"RULESET_SCHEMA","status":"unlocked","value":{"schema_type_ref":"list","definition":{"item_schema_ref":"SCHEMA_PAGE_CONTENT","unique_by":"id","required_items":[{"field":"id","value":"index"}]},"properties":{}}},
+    {"id":"DATA_CONTENT_COLLECTION","property_type_ref":"data","ruleset_ref":"RULESET_DATA","status":"unlocked","value":{"data_type_ref":"content_collection","value":null,"schema_ref":"SCHEMA_CONTENT_COLLECTION","properties":{}}}
   ]
 }

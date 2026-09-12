@@ -1,7 +1,7 @@
 {
   "id": "CW_DEPENDENCY_RULES",
   "name": "CanonicalWireframe Dependency Rules",
-  "version": "4.0.2-reference",
+  "version": "4.0.3-reference",
   "status": "unlocked",
   "principles": [
     "Entity and Property are the only canonical atoms.",
@@ -12,7 +12,8 @@
     "Function boundary crossing is Event-mediated.",
     "function_call and logic op=call are forbidden.",
     "Assets are opaque payloads; canonical meaning remains in Entity + Property.",
-    "Property ownership and Link endpoint semantics are separate concerns."
+    "Property ownership and Link endpoint semantics are separate concerns.",
+    "Runtime state belongs to an execution context and does not mutate the canonical Model artifact."
   ],
   "reference_resolution": {
     "entity_ref": {
@@ -29,11 +30,37 @@
       "ambiguity_rule": "Zero matches or more than one match is invalid. No local-first, nearest-file, family-local or naming-convention fallback is permitted."
     }
   },
+  "data_state_model": {
+    "canonical_role": "A Data Property defines a typed runtime slot contract and its canonical initial binding marker.",
+    "runtime_scope": "Runtime Data values are held per execution context. Reads, writes, Event conditions, caused Events and Effects operate within the same execution context unless another contract explicitly states otherwise.",
+    "states": {
+      "UNBOUND": "value is null. UNBOUND is not a schema violation and does not satisfy ready conditions.",
+      "READY": "value is non-null and, when schema_ref is present, the value conforms to that Schema.",
+      "INVALID": "a non-null binding candidate fails its Schema or another declared Data constraint. INVALID does not satisfy ready conditions."
+    },
+    "binding_rule": "Schema required-field constraints apply only to non-null binding candidates. A canonical value:null therefore represents an unbound slot rather than an invalid record.",
+    "mutation_rule": "Runtime write/bind operations change execution-context state only; they MUST NOT rewrite the canonical .cw artifact."
+  },
+  "schema_semantics": {
+    "record": "definition.fields declares field contracts; required applies when validating a non-null record value.",
+    "string": "a non-null value MUST be a string.",
+    "list": "definition.item_schema_ref declares the item Schema. definition.unique_by optionally names an item field whose non-null values MUST be unique. definition.required_items optionally requires list items matching explicit field/value pairs.",
+    "required_items": "Each required_items entry has field and value. A conforming list MUST contain at least one item whose named field equals the declared value.",
+    "runtime_boundary": "Opaque Asset payload contents are not parsed by the CW package validator. An adapter/runtime that binds payload-derived values into Data slots MUST validate the resulting non-null value against schema_ref before the slot becomes READY."
+  },
+  "event_execution_model": {
+    "context": "Every Event occurrence belongs to one execution context and caused Events preserve that context.",
+    "condition_rule": "event_condition Links are guards on an Event occurrence, not independent Event sources.",
+    "pending_rule": "An emitted Event occurrence with unsatisfied conditions remains pending in its execution context. It dispatches exactly once when all its conditions become satisfied.",
+    "no_replay_rule": "Condition transitions do not create additional Event occurrences. One emit creates at most one dispatch.",
+    "handler_rule": "When an Event occurrence dispatches, its linked handler/effect semantics execute in the same context."
+  },
   "link_property_model": {
     "ownership": "A Link is a Property and is owned by exactly one Entity through ordinary Entity.properties[] containment.",
+    "declarer_semantics": "The owning Entity is the declarer of the relation: it canonically asserts that the Link exists. Link ownership is therefore meaningful even though it is independent from endpoint direction.",
     "endpoint_semantics": "parent_ref and child_ref define the semantic endpoints of the Link independently of which Entity owns the Link Property.",
     "cross_entity_rule": "A Link Property MAY connect Properties or Entities owned by other Entities. Link ownership MUST NOT be interpreted as an implicit endpoint.",
-    "storage_rule": "Moving a Link Property between Entity.properties[] collections changes Property ownership and therefore is a canonical change; it MUST NOT be done merely to imitate endpoint direction.",
+    "storage_rule": "Moving a Link Property between Entity.properties[] collections changes its declarer and is therefore a canonical semantic change; it MUST NOT be done merely to imitate endpoint direction.",
     "validation_rule": "Link validity is determined from the resolved endpoint refs and the selected Link Ruleset, not from co-location with either endpoint."
   },
   "asset_file_types": [
@@ -73,7 +100,9 @@
       "property_type_ref":"schema",
       "required_fields":["schema_type_ref","definition","properties"],
       "constraints":[
-        "Any schema_ref or item_schema_ref inside definition MUST resolve to a Property whose property_type_ref is schema."
+        "Any schema_ref or item_schema_ref inside definition MUST resolve to a Property whose property_type_ref is schema.",
+        "For schema_type_ref=list, unique_by when present MUST name a field in the item record Schema.",
+        "For schema_type_ref=list, required_items when present MUST be an array of explicit field/value requirements."
       ]
     },
     {
@@ -81,117 +110,46 @@
       "property_type_ref":"data",
       "optional_fields":["schema_ref"],
       "constraints":[
-        "schema_ref, when present, MUST resolve to a Property whose property_type_ref is schema."
+        "schema_ref, when present, MUST resolve to a Property whose property_type_ref is schema.",
+        "value:null means UNBOUND and is valid as a slot state regardless of required fields in schema_ref.",
+        "A non-null runtime binding becomes READY only after schema validation succeeds."
       ]
     },
     {"id":"RULESET_EVENT","property_type_ref":"event"},
     {"id":"RULESET_FUNCTION","property_type_ref":"function","optional_fields":["input_refs","output_refs","logic"]},
-    {
-      "id":"RULESET_EFFECT",
-      "property_type_ref":"effect",
-      "optional_fields":["input_refs"],
-      "constraints":[
-        "input_refs, when present, MUST resolve through canonical Property reference resolution."
-      ]
-    },
+    {"id":"RULESET_EFFECT","property_type_ref":"effect","optional_fields":["input_refs"]},
     {"id":"RULESET_REPRESENTATION","property_type_ref":"representation"},
     {"id":"RULESET_TRANSFORM","property_type_ref":"transform"}
   ],
   "link_rulesets": [
-    {
-      "id":"RULESET_LINK_DEPENDENCY",
-      "property_type_ref":"link",
-      "link_type_ref":"dependency",
-      "parent_role":"provider/dependency",
-      "child_role":"dependent/consumer",
-      "direction":"provider -> dependent",
-      "rule":"dependency is structural only and MUST NOT imply causal execution."
-    },
-    {
-      "id":"RULESET_LINK_EVENT_INPUT",
-      "property_type_ref":"link",
-      "link_type_ref":"event_input",
-      "parent_role":"input Data/Property",
-      "child_role":"Event",
-      "direction":"input -> Event"
-    },
-    {
-      "id":"RULESET_LINK_EVENT_OUTPUT",
-      "property_type_ref":"link",
-      "link_type_ref":"event_output",
-      "parent_role":"Event",
-      "child_role":"output Data/Property",
-      "direction":"Event -> output"
-    },
-    {
-      "id":"RULESET_LINK_EVENT_HANDLER",
-      "property_type_ref":"link",
-      "link_type_ref":"event_handler",
-      "parent_role":"Event",
-      "child_role":"Function",
-      "direction":"Event -> handler Function"
-    },
-    {
-      "id":"RULESET_LINK_EVENT_CAUSE",
-      "property_type_ref":"link",
-      "link_type_ref":"event_cause",
-      "parent_role":"Function",
-      "child_role":"Event",
-      "direction":"Function -> caused Event",
-      "rule":"The Link Property may be owned by any canonical Entity. Causal source identity is parent_ref, not Link Property ownership."
-    },
-    {
-      "id":"RULESET_LINK_EVENT_CONDITION",
-      "property_type_ref":"link",
-      "link_type_ref":"event_condition",
-      "parent_role":"condition Data/Property",
-      "child_role":"Event",
-      "direction":"condition -> Event",
-      "rule":"All modeled conditions targeting an Event MUST be satisfied before that Event may dispatch its handler/effect semantics."
-    },
-    {
-      "id":"RULESET_LINK_EVENT_EFFECT",
-      "property_type_ref":"link",
-      "link_type_ref":"event_effect",
-      "parent_role":"Event",
-      "child_role":"Effect",
-      "direction":"Event -> Effect"
-    },
-    {
-      "id":"RULESET_LINK_EFFECT_TARGET",
-      "property_type_ref":"link",
-      "link_type_ref":"effect_target",
-      "parent_role":"Effect",
-      "child_role":"target Data/Entity",
-      "direction":"Effect -> target"
-    }
+    {"id":"RULESET_LINK_DEPENDENCY","property_type_ref":"link","link_type_ref":"dependency","parent_role":"provider/dependency","child_role":"dependent/consumer","direction":"provider -> dependent","rule":"dependency is structural only and MUST NOT imply causal execution."},
+    {"id":"RULESET_LINK_EVENT_INPUT","property_type_ref":"link","link_type_ref":"event_input","parent_role":"input Data/Property","child_role":"Event","direction":"input -> Event"},
+    {"id":"RULESET_LINK_EVENT_OUTPUT","property_type_ref":"link","link_type_ref":"event_output","parent_role":"Event","child_role":"output Data/Property","direction":"Event -> output"},
+    {"id":"RULESET_LINK_EVENT_HANDLER","property_type_ref":"link","link_type_ref":"event_handler","parent_role":"Event","child_role":"Function","direction":"Event -> handler Function"},
+    {"id":"RULESET_LINK_EVENT_CAUSE","property_type_ref":"link","link_type_ref":"event_cause","parent_role":"Function","child_role":"Event","direction":"Function -> caused Event","rule":"The Link Property may be owned by any canonical Entity. Causal source identity is parent_ref, not Link Property ownership."},
+    {"id":"RULESET_LINK_EVENT_CONDITION","property_type_ref":"link","link_type_ref":"event_condition","parent_role":"condition Data","child_role":"Event","direction":"condition -> Event","required_fields":["condition_mode"],"supported_condition_modes":["ready"],"rule":"condition_mode=ready is satisfied exactly when parent_ref resolves to a Data Property in READY state in the Event occurrence execution context."},
+    {"id":"RULESET_LINK_EVENT_EFFECT","property_type_ref":"link","link_type_ref":"event_effect","parent_role":"Event","child_role":"Effect","direction":"Event -> Effect"},
+    {"id":"RULESET_LINK_EFFECT_TARGET","property_type_ref":"link","link_type_ref":"effect_target","parent_role":"Effect","child_role":"target Data/Entity","direction":"Effect -> target"}
   ],
   "effect_types": [
-    {
-      "id":"replace_target",
-      "input_cardinality":1,
-      "rule":"On dispatch, copy the single input Data value to every explicitly linked effect_target without changing canonical identity."
-    }
+    {"id":"replace_target","input_cardinality":1,"rule":"On dispatch, copy the single input Data value to every explicitly linked effect_target in the same execution context without changing canonical identity."}
   ],
   "logic_primitive_set": {
     "id": "CW_LOGIC_PRIMITIVES",
     "primitives": ["read","write","assign","lookup","concat","emit","return","if","while","loop","and","or","xor","not","eq","ne","lt","lte","gt","gte"],
     "forbidden": ["call"],
     "semantics": {
-      "read":"Read canonical Data/Property value by exact ref; optional path selects a nested value.",
-      "write":"Write a value to the canonical target Property ref explicitly named by target.",
-      "assign":"Bind a transient local_ref inside the containing Function.logic scope.",
-      "lookup":"Read one keyed member from a canonical or local collection without creating canonical identity.",
+      "read":"Read a canonical Data/Property value in the current execution context by exact ref; optional path selects a nested value.",
+      "write":"Write a value to the canonical target Data/Property slot in the current execution context. Non-null Data writes MUST satisfy schema_ref before the slot becomes READY.",
+      "assign":"Bind a transient local_ref inside the containing Function.logic execution scope.",
+      "lookup":"Read one item from a READY collection. For a list, key_field selects the compared item field and key is matched by exact equality; zero matches returns null and more than one match is invalid. A list Schema unique_by constraint can guarantee at most one match.",
       "concat":"Concatenate ordered scalar/string expressions into one scalar/string value.",
-      "emit":"cause_ref MUST resolve to an event_cause Link whose parent_ref resolves to the containing Function Property.id. The Link Property itself does not need to be owned by the containing Function's Entity.",
+      "emit":"cause_ref MUST resolve to an event_cause Link whose parent_ref resolves to the containing Function Property.id. The emitted Event occurrence preserves the current execution context.",
       "return":"Return from local Function logic; return alone does not create cross-Function causality.",
       "if":"Select exactly one local logic branch from an explicit boolean condition."
     }
   },
-  "link_types": [
-    "dependency", "event_input", "event_output", "event_handler",
-    "event_cause", "event_condition", "event_effect", "effect_target"
-  ],
+  "link_types": ["dependency","event_input","event_output","event_handler","event_cause","event_condition","event_effect","effect_target"],
   "forbidden_link_types": ["function_call"],
   "causal_patterns": {
     "function_boundary": ["Function","event_cause","Event","event_handler","Function"],
