@@ -16,6 +16,7 @@ from .api_core import ImportBundle, ImportResult
 from .cw import ingest_cw
 from .cw_version import finalize_cw_for_write, has_entity_version, next_version_timestamp, same_entity_payload, serialize_entity, verify_cw_versions
 from .package_pipeline import materialize_package
+from .profiles import profile_options
 
 
 class ToolchainValidationError(ValueError):
@@ -246,6 +247,7 @@ def import_folder(
     cw_root: str | Path | None = None,
     spec_set: str | Path | None = None,
     format_template: str | Path | None = None,
+    profile: str | None = None,
     validate_tools: bool = True,
     **kwargs: Any,
 ) -> ImportResult:
@@ -263,6 +265,12 @@ def import_folder(
         raise ValueError(f"CW output path exists and is not a directory: {target}")
     if target.exists() and not force:
         raise ValueError(f"CW output folder already exists: {target}; use --force to update it")
+
+    profile_kwargs = profile_options(profile)
+    for key, value in profile_kwargs.items():
+        if key in kwargs:
+            raise ValueError(f"CIC profile {profile!r} and explicit {key} cannot both be supplied")
+        kwargs[key] = value
 
     root = resolve_cw_root(cw_root)
     template = _resolve_format_template(root, format_template)
