@@ -15,6 +15,7 @@ from . import api_core as _core
 from .api_core import ImportBundle, ImportResult
 from .cw import ingest_cw
 from .cw_version import finalize_cw_for_write, has_entity_version, next_version_timestamp, same_entity_payload, serialize_entity, verify_cw_versions
+from .module_discovery import detect_module_candidates
 from .package_pipeline import materialize_package
 from .profiles import profile_options
 
@@ -239,6 +240,14 @@ def _retarget(result: ImportResult, target: Path) -> ImportResult:
     )
 
 
+def _apply_noncanonical_profile_evidence(ir_path: Path, module_discovery_rules: list[dict[str, Any]]) -> None:
+    if not module_discovery_rules:
+        return
+    ir = json.loads(ir_path.read_text(encoding="utf-8"))
+    ir["module_candidates"] = detect_module_candidates(ir, module_discovery_rules)
+    ir_path.write_text(json.dumps(ir, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 def import_folder(
     code_folder: str | Path,
     cw_folder: str | Path,
@@ -267,6 +276,7 @@ def import_folder(
         raise ValueError(f"CW output folder already exists: {target}; use --force to update it")
 
     profile_kwargs = profile_options(profile)
+    module_discovery_rules = profile_kwargs.pop("module_discovery_rules", [])
     for key, value in profile_kwargs.items():
         if key in kwargs:
             raise ValueError(f"CIC profile {profile!r} and explicit {key} cannot both be supplied")
@@ -286,6 +296,7 @@ def import_folder(
     result = None
     try:
         result = _core.import_folder(source, staged, force=False, **kwargs)
+        _apply_noncanonical_profile_evidence(result.ir_path, module_discovery_rules)
         cw_path, ir_path, shard_count = materialize_package(staged, source, template)
         result = replace(result, cw_path=cw_path, ir_path=ir_path, shard_count=shard_count)
         _semantic_validate(staged, cw_root=root)
