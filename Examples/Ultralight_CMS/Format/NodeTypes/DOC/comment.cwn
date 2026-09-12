@@ -1,0 +1,15 @@
+{
+  "id":"CWN::DOC::comment",
+  "name":"DOC/comment",
+  "entity_type_ref":"CW_NODE_TEMPLATE",
+  "status":"unlocked",
+  "properties":[
+    {
+      "id":"CWN::DOC::comment::EXTENDS",
+      "property_type_ref":"data",
+      "ruleset_ref":"RULESET_NODETYPE_EXTENDS",
+      "status":"unlocked",
+      "value":{"data_type_ref":"nodetype_extends","value":["DOC"],"properties":{}}
+    }
+  ]
+}
