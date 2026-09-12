@@ -1,0 +1,59 @@
+{
+  "id": "CW_DEPENDENCY_RULES",
+  "name": "CanonicalWireframe Dependency Rules",
+  "version": "4.0.0-reference",
+  "status": "unlocked",
+  "principles": [
+    "Entity and Property are the only canonical atoms.",
+    "Every Node is an abstraction; families are predefined abstraction contracts.",
+    "ABS is the least opinionated standard family.",
+    "Properties are unbounded and NodeType reads are not whitelists.",
+    "Function, Event, Effect, Data, Schema, Asset, Members and Required Link are Properties.",
+    "Function boundary crossing is Event-mediated.",
+    "function_call and logic op=call are forbidden.",
+    "Assets are opaque payloads; canonical meaning remains in Entity + Property."
+  ],
+  "asset_file_types": [
+    {"id":"html","extensions":[".html"]},
+    {"id":"javascript","extensions":[".js"]},
+    {"id":"json","extensions":[".json"]},
+    {"id":"css","extensions":[".css"]},
+    {"id":"svg","extensions":[".svg"]},
+    {"id":"pdf","extensions":[".pdf"]},
+    {"id":"jpg","extensions":[".jpg",".jpeg"]},
+    {"id":"png","extensions":[".png"]}
+  ],
+  "node_ruleset": {
+    "id": "RULESET_NODE",
+    "universal_reads": ["members", "link", "asset"],
+    "rule": "A valid Property remains valid even when its Property type is not present in effective reads."
+  },
+  "property_rulesets": [
+    {"id":"RULESET_NODETYPE_READS","property_type_ref":"data"},
+    {"id":"RULESET_NODETYPE_EXTENDS","property_type_ref":"data"},
+    {"id":"RULESET_MEMBERS","property_type_ref":"members","required_fields":["member_refs","properties"]},
+    {"id":"RULESET_ASSET","property_type_ref":"asset","required_fields":["asset_ref","file_type_ref","properties"]},
+    {"id":"RULESET_REQUIRED_LINK","property_type_ref":"required_link","required_fields":["link_type_ref","self_endpoint","min","properties"]},
+    {"id":"RULESET_SCHEMA","property_type_ref":"schema","required_fields":["schema_type_ref","definition","properties"]},
+    {"id":"RULESET_DATA","property_type_ref":"data","optional_fields":["schema_ref"]},
+    {"id":"RULESET_EVENT","property_type_ref":"event"},
+    {"id":"RULESET_FUNCTION","property_type_ref":"function","optional_fields":["input_refs","output_refs","logic"]},
+    {"id":"RULESET_EFFECT","property_type_ref":"effect"},
+    {"id":"RULESET_REPRESENTATION","property_type_ref":"representation"},
+    {"id":"RULESET_TRANSFORM","property_type_ref":"transform"}
+  ],
+  "logic_primitive_set": {
+    "id": "CW_LOGIC_PRIMITIVES",
+    "primitives": ["read","write","assign","emit","return","if","while","loop","and","or","xor","not","eq","ne","lt","lte","gt","gte"],
+    "forbidden": ["call"],
+    "emit": "cause_ref MUST resolve to an event_cause Link owned by the containing Function."
+  },
+  "link_types": [
+    "dependency","event_input","event_output","event_handler","event_cause","event_condition","event_effect","effect_target"
+  ],
+  "forbidden_link_types": ["function_call"],
+  "causal_patterns": {
+    "function_boundary": ["Function","event_cause","Event","event_handler","Function"],
+    "effect": ["Event","event_effect","Effect","effect_target","Data/Entity"]
+  }
+}

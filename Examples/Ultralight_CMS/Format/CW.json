@@ -1,0 +1,70 @@
+{
+  "id": "CANONICAL_WIREFRAME_PACKAGE_FORMAT",
+  "name": "CanonicalWireframe Package Format",
+  "version": "2.0.0-reference",
+  "status": "unlocked",
+  "ccf_ref": "./CCF.json",
+  "dr_ref": "./DR.json",
+  "nodetypes_ref": "./NodeTypes/",
+  "model_root": "../Model/",
+  "assets_root": "../Assets/",
+  "primary_family_ref": "#FILE",
+  "core_principle": "One truth. Many topologies. No duplicate truth.",
+  "ontology": {
+    "canonical_atoms": ["Entity", "Property"],
+    "node": "An interpreted Entity.",
+    "abstraction": "Every Node is an abstraction. ABS is the least opinionated predefined abstraction family.",
+    "family": "A predefined abstraction contract selecting default interpretation/projection behavior."
+  },
+  "family_registry": {
+    "root": "./NodeTypes/",
+    "discovery": "direct_child_directories",
+    "family_identity": "#<DIRECTORY_NAME>",
+    "open": true,
+    "hardcoded_complete_family_list": false
+  },
+  "nodetype_registry": {
+    "artifact_extension": ".cwn",
+    "base_artifact": "index.cwn",
+    "base_id": "<FAMILY>",
+    "subtype_id": "<FAMILY>/<relative-path-without-.cwn>",
+    "template_shape": "Entity + Properties",
+    "path_authority_scope": "Format/NodeTypes only",
+    "reads_ruleset_ref": "RULESET_NODETYPE_READS",
+    "extends_ruleset_ref": "RULESET_NODETYPE_EXTENDS",
+    "rule": "NodeType reads select default projection surfaces and never whitelist canonical Properties."
+  },
+  "universal_node": {
+    "id": "CW_NODE",
+    "reads": ["members", "link", "asset"],
+    "member_cardinality": "0..N",
+    "asset_cardinality": "0..1",
+    "rule": "Every Node may group any number of canonical members and may own at most one physical Asset."
+  },
+  "asset_model": {
+    "root": "../Assets/",
+    "family_directory": "Assets/<IDENTITY_FAMILY_WITHOUT_#>/",
+    "filename": "percent_encode(Entity.id) + registered extension",
+    "property_type_ref": "asset",
+    "ruleset_ref": "RULESET_ASSET",
+    "validator_scope": [
+      "asset_ref resolves to a regular file below Assets/",
+      "asset is under the owner Entity identity-family directory",
+      "asset basename stem equals percent-encoded owner Entity.id",
+      "file_type_ref resolves a registered asset file type",
+      "actual extension is allowed by file_type_ref",
+      "an Entity owns at most one asset Property"
+    ],
+    "validator_non_scope": [
+      "payload content parsing",
+      "payload semantic interpretation",
+      "MIME sniffing",
+      "renderer-specific validation"
+    ]
+  },
+  "provenance": {
+    "unlocked": "A local Format closure may evolve together with the package.",
+    "locked": "The complete Format closure MUST be immutably content-addressed before the model may become locked.",
+    "locked_closure": ["CW.json", "CCF.json", "DR.json", "NodeTypes/**/*.cwn"]
+  }
+}

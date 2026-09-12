@@ -1,0 +1,7 @@
+{
+  "id":"#FILE:content","name":"content","entity_type_ref":"FILE","status":"unlocked","properties":[
+    {"id":"ASSET::#FILE:content","property_type_ref":"asset","ruleset_ref":"RULESET_ASSET","status":"unlocked","value":{"asset_ref":"Assets/FILE/%23FILE%3Acontent.json","file_type_ref":"json","properties":{}}},
+    {"id":"SCHEMA_PAGE_CONTENT","property_type_ref":"schema","ruleset_ref":"RULESET_SCHEMA","status":"unlocked","value":{"schema_type_ref":"record","definition":{"fields":{"title":{"type":"string","required":true},"body":{"type":"string","required":true}}},"properties":{}}},
+    {"id":"DATA_CONTENT_DOCUMENT","property_type_ref":"data","ruleset_ref":"RULESET_DATA","status":"unlocked","value":{"data_type_ref":"page_content","value":{"title":"Ultralight CMS","body":"Hello from canonical CW."},"schema_ref":"SCHEMA_PAGE_CONTENT","properties":{}}}
+  ]
+}

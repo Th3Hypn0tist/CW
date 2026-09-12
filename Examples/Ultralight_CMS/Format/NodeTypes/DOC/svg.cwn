@@ -1,0 +1,7 @@
+{
+  "id":"CWN::DOC::svg","name":"DOC/svg","entity_type_ref":"CW_NODE_TEMPLATE","status":"unlocked",
+  "properties":[
+    {"id":"CWN::DOC::svg::READS","property_type_ref":"data","ruleset_ref":"RULESET_NODETYPE_READS","status":"unlocked","value":{"data_type_ref":"nodetype_reads","value":["transform"],"properties":{}}},
+    {"id":"CWN::DOC::svg::EXTENDS","property_type_ref":"data","ruleset_ref":"RULESET_NODETYPE_EXTENDS","status":"unlocked","value":{"data_type_ref":"nodetype_extends","value":["DOC"],"properties":{}}}
+  ]
+}

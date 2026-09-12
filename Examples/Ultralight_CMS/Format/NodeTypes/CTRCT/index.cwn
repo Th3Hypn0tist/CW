@@ -1,0 +1,4 @@
+{
+  "id":"CWN::CTRCT","name":"CTRCT","entity_type_ref":"CW_NODE_TEMPLATE","status":"unlocked",
+  "properties":[{"id":"CWN::CTRCT::READS","property_type_ref":"data","ruleset_ref":"RULESET_NODETYPE_READS","status":"unlocked","value":{"data_type_ref":"nodetype_reads","value":[],"properties":{}}}]
+}
