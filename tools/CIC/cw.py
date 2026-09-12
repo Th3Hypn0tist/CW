@@ -16,6 +16,7 @@ CW_EXTENSION = ".cw"
 JSON_EXTENSION = ".json"
 MONOLITHIC_EXTENSIONS = frozenset({CW_EXTENSION, JSON_EXTENSION})
 CW_FOLDER_ENTRY = "model.cw"
+PACKAGE_MODEL_ENTRY = PurePosixPath("Model/model.cw")
 
 
 def _parse_cw_json_text(content: str, label: str) -> dict[str, Any]:
@@ -66,16 +67,12 @@ def _validated_manifest_record(record: Any) -> tuple[str, str]:
 
 def _validate_direct_entity_shard(shard: dict[str, Any], entity_ref: str, artifact_ref: str) -> dict[str, Any]:
     if isinstance(shard.get("format"), dict) or "entities" in shard:
-        raise CWValidationError(
-            f"CW shard must be one direct canonical Entity, not a contract wrapper: {artifact_ref}"
-        )
+        raise CWValidationError(f"CW shard must be one direct canonical Entity, not a contract wrapper: {artifact_ref}")
     shard_id = shard.get("id")
     if not isinstance(shard_id, str) or not shard_id:
         raise CWValidationError(f"CW shard Entity id missing: {artifact_ref}")
     if shard_id != entity_ref:
-        raise CWValidationError(
-            f"CW shard identity mismatch: manifest {entity_ref!r}, shard {shard_id!r}"
-        )
+        raise CWValidationError(f"CW shard identity mismatch: manifest {entity_ref!r}, shard {shard_id!r}")
     if not isinstance(shard.get("properties"), list):
         raise CWValidationError(f"CW shard Entity properties must be an array: {artifact_ref}")
     return shard
@@ -87,7 +84,6 @@ def _compose_manifest(manifest: dict[str, Any], shard_loader) -> dict[str, Any]:
         return manifest
     if not isinstance(shards, list):
         raise CWValidationError("CW manifest shards must be an array")
-
     inline_entities = manifest.get("entities")
     if not isinstance(inline_entities, list):
         raise CWValidationError("sharded CW manifest entities must be an array")
@@ -102,8 +98,7 @@ def _compose_manifest(manifest: dict[str, Any], shard_loader) -> dict[str, Any]:
         if artifact_ref in seen_artifacts:
             raise CWValidationError(f"duplicate CW shard artifact_ref: {artifact_ref}")
         seen_artifacts.add(artifact_ref)
-        shard = shard_loader(artifact_ref)
-        entity = _validate_direct_entity_shard(shard, entity_ref, artifact_ref)
+        entity = _validate_direct_entity_shard(shard_loader(artifact_ref), entity_ref, artifact_ref)
         if entity_ref in seen_entities:
             raise CWValidationError(f"duplicate canonical shard Entity: {entity_ref}")
         seen_entities.add(entity_ref)
@@ -118,7 +113,6 @@ def _compose_manifest(manifest: dict[str, Any], shard_loader) -> dict[str, Any]:
 def _assemble_sharded_model(manifest_path: Path, manifest: dict[str, Any]) -> dict[str, Any]:
     if manifest.get("shards") is not None and manifest_path.suffix.lower() != CW_EXTENSION:
         raise CWValidationError("sharded CW requires model.cw and .cw Entity shards; .json is monolithic-only")
-
     root = manifest_path.parent.resolve()
 
     def load_shard(artifact_ref: str) -> dict[str, Any]:
@@ -129,6 +123,16 @@ def _assemble_sharded_model(manifest_path: Path, manifest: dict[str, Any]) -> di
         return _read_cw_shard(shard_path)
 
     return _compose_manifest(manifest, load_shard)
+
+
+def _package_manifest(candidate: Path) -> Path:
+    package = candidate / Path(*PACKAGE_MODEL_ENTRY.parts)
+    legacy = candidate / CW_FOLDER_ENTRY
+    if package.is_file():
+        return package
+    if legacy.is_file():
+        return legacy
+    raise CWValidationError(f"CW folder contains neither {PACKAGE_MODEL_ENTRY} nor {CW_FOLDER_ENTRY}: {candidate}")
 
 
 def _normalize_uploaded_path(value: Any, *, allowed_extensions: frozenset[str]) -> str:
@@ -145,11 +149,10 @@ def _normalize_uploaded_path(value: Any, *, allowed_extensions: frozenset[str]) 
 
 
 def ingest_cw_files(files: Any) -> dict[str, Any]:
-    """Compose uploaded CW without duplicating CW semantic validation.
+    """Compose a monolithic or Model-only uploaded CW representation.
 
-    A single monolithic artifact may use .cw or .json serialization. Sharded CW
-    remains the native .cw representation: model.cw plus direct Entity .cw shards.
-    JSON is therefore an interoperability envelope for monolithic CW only.
+    Full self-contained package validation belongs to linter/cw_package_validate.py.
+    This ingress composes canonical Model artifacts only.
     """
     if not isinstance(files, list) or not files:
         raise CWValidationError("CW ingress requires a non-empty files array")
@@ -167,8 +170,6 @@ def ingest_cw_files(files: Any) -> dict[str, Any]:
             raise CWValidationError(".json CW input is monolithic-only and must not declare shards")
         if document.get("shards") is None:
             return validate_cw(document)
-        if PurePosixPath(path).name != CW_FOLDER_ENTRY:
-            raise CWValidationError(f"sharded CW upload requires {CW_FOLDER_ENTRY}")
         raise CWValidationError("sharded CW upload is missing declared .cw Entity shards")
 
     uploaded: dict[str, str] = {}
@@ -185,10 +186,7 @@ def ingest_cw_files(files: Any) -> dict[str, Any]:
 
     manifest_paths = [path for path in uploaded if PurePosixPath(path).name == CW_FOLDER_ENTRY]
     if len(manifest_paths) != 1:
-        raise CWValidationError(
-            f"sharded CW upload must contain exactly one {CW_FOLDER_ENTRY}; found {len(manifest_paths)}"
-        )
-
+        raise CWValidationError(f"sharded CW upload must contain exactly one {CW_FOLDER_ENTRY}; found {len(manifest_paths)}")
     manifest_path = PurePosixPath(manifest_paths[0])
     root = manifest_path.parent
     manifest = _parse_cw_json_text(uploaded[str(manifest_path)], str(manifest_path))
@@ -205,14 +203,14 @@ def ingest_cw_files(files: Any) -> dict[str, Any]:
     assembled = _compose_manifest(manifest, load_shard)
     extras = sorted(set(uploaded) - required_paths)
     if extras:
-        raise CWValidationError(f"CW upload contains artifacts outside the manifest closure: {extras}")
+        raise CWValidationError(f"CW upload contains artifacts outside the Model manifest closure: {extras}")
     return validate_cw(assembled)
 
 
 def load_cw(path: str | Path) -> dict[str, Any]:
     candidate = Path(path)
     if candidate.is_dir():
-        candidate = candidate / CW_FOLDER_ENTRY
+        candidate = _package_manifest(candidate)
         manifest = _read_serialized_object(candidate, allowed_extensions=frozenset({CW_EXTENSION}))
         return _assemble_sharded_model(candidate, manifest)
 
@@ -226,25 +224,17 @@ def load_cw(path: str | Path) -> dict[str, Any]:
 
 
 def validate_cw(document: dict[str, Any]) -> dict[str, Any]:
-    """Validate only the lossless CW representation/identity closure.
-
-    This intentionally does not implement CCF, NodeType, Ruleset, Property,
-    Link, Function, Event, Required Link, or readiness semantics. Those are
-    validated only by the selected immutable CW specification set after binding.
-    """
+    """Validate lossless Model representation and package-global identity closure only."""
     if not isinstance(document, dict):
         raise CWValidationError("CW document must be an object")
     if not isinstance(document.get("format"), dict):
         raise CWValidationError("CW format block missing")
-
     identity = document.get("identity")
     if not isinstance(identity, dict) or not isinstance(identity.get("id"), str) or not identity.get("id"):
         raise CWValidationError("CW identity.id missing")
-
     specification_ref = document.get("specification_ref")
     if specification_ref is not None and (not isinstance(specification_ref, str) or not specification_ref.strip()):
         raise CWValidationError("CW specification_ref must be a non-empty string when bound")
-
     entities = document.get("entities")
     if not isinstance(entities, list):
         raise CWValidationError("CW entities must be an array")
@@ -259,7 +249,6 @@ def validate_cw(document: dict[str, Any]) -> dict[str, Any]:
         if entity_id in identities:
             raise CWValidationError(f"duplicate canonical identity: {entity_id}")
         identities.add(entity_id)
-
         properties = entity.get("properties")
         if not isinstance(properties, list):
             raise CWValidationError(f"CW entity {entity_id} properties must be an array")
@@ -272,7 +261,6 @@ def validate_cw(document: dict[str, Any]) -> dict[str, Any]:
             if prop_id in identities:
                 raise CWValidationError(f"duplicate canonical identity: {prop_id}")
             identities.add(prop_id)
-
     return document
 
 
@@ -324,9 +312,7 @@ def _tree_lines(tree: dict[str, Any], prefix: str = "") -> list[str]:
 
 
 def format_filetree(document: dict[str, Any]) -> str:
-    tree = filetree(document)
-    lines = ["#FILE"]
-    lines.extend(_tree_lines(tree))
+    lines = ["#FILE", *_tree_lines(filetree(document))]
     return "\n".join(lines)
 
 
@@ -353,9 +339,8 @@ def links(document: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def format_links(document: dict[str, Any]) -> str:
-    records = links(document)
     blocks: list[str] = []
-    for item in records:
+    for item in links(document):
         blocks.append("\n".join([
             f"LINK {item['id']}",
             f"  type: {item['link_type_ref']}",
