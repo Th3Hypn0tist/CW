@@ -39,6 +39,8 @@ A Data Property defines a runtime slot contract. Runtime values live in an execu
 - `event_condition` with `condition_mode: ready` waits on the actual Data slot. No parallel `*_READY` Data Properties exist.
 - One `emit` creates one Event occurrence. If its conditions are not ready, that occurrence waits and dispatches exactly once when they become ready.
 
+Package validity and runtime readiness are different dimensions. A package may validly declare `DATA_CONTENT_COLLECTION` with `value: null`; this proves the slot contract is valid, not that a runtime execution context has already bound the collection or made it READY.
+
 `lookup` has an explicit boundary: its source collection MUST already be `READY`. Calling `lookup` against an `UNBOUND` or `INVALID` source is INVALID execution, not a `null` result. Against a READY collection, zero matches returns `null`; more than one match is INVALID.
 
 ## Function interfaces and control relays
