@@ -1,7 +1,7 @@
 {
   "id": "CW_DEPENDENCY_RULES",
   "name": "CanonicalWireframe Dependency Rules",
-  "version": "4.0.1-reference",
+  "version": "4.0.2-reference",
   "status": "unlocked",
   "principles": [
     "Entity and Property are the only canonical atoms.",
@@ -11,7 +11,8 @@
     "Function, Event, Effect, Data, Schema, Asset, Members and Required Link are Properties.",
     "Function boundary crossing is Event-mediated.",
     "function_call and logic op=call are forbidden.",
-    "Assets are opaque payloads; canonical meaning remains in Entity + Property."
+    "Assets are opaque payloads; canonical meaning remains in Entity + Property.",
+    "Property ownership and Link endpoint semantics are separate concerns."
   ],
   "reference_resolution": {
     "entity_ref": {
@@ -24,9 +25,16 @@
       "syntax": "exact Property.id",
       "identity_rule": "Every active Property.id MUST be unique across the complete Model/ closure.",
       "resolution_rule": "A bare canonical Property reference MUST resolve by exact Property.id across the complete Model/ closure.",
-      "owner_rule": "The owning Entity is determined from the resolved Property definition; consumers MUST NOT infer ownership from Property naming, file location or convention.",
+      "owner_rule": "The owning Entity is the Entity whose properties[] contains the resolved Property definition. Consumers MUST NOT infer Property ownership from Property naming, file location, endpoint direction or convention.",
       "ambiguity_rule": "Zero matches or more than one match is invalid. No local-first, nearest-file, family-local or naming-convention fallback is permitted."
     }
+  },
+  "link_property_model": {
+    "ownership": "A Link is a Property and is owned by exactly one Entity through ordinary Entity.properties[] containment.",
+    "endpoint_semantics": "parent_ref and child_ref define the semantic endpoints of the Link independently of which Entity owns the Link Property.",
+    "cross_entity_rule": "A Link Property MAY connect Properties or Entities owned by other Entities. Link ownership MUST NOT be interpreted as an implicit endpoint.",
+    "storage_rule": "Moving a Link Property between Entity.properties[] collections changes Property ownership and therefore is a canonical change; it MUST NOT be done merely to imitate endpoint direction.",
+    "validation_rule": "Link validity is determined from the resolved endpoint refs and the selected Link Ruleset, not from co-location with either endpoint."
   },
   "asset_file_types": [
     {"id":"html","extensions":[".html"]},
@@ -129,7 +137,8 @@
       "link_type_ref":"event_cause",
       "parent_role":"Function",
       "child_role":"Event",
-      "direction":"Function -> caused Event"
+      "direction":"Function -> caused Event",
+      "rule":"The Link Property may be owned by any canonical Entity. Causal source identity is parent_ref, not Link Property ownership."
     },
     {
       "id":"RULESET_LINK_EVENT_CONDITION",
@@ -174,7 +183,7 @@
       "assign":"Bind a transient local_ref inside the containing Function.logic scope.",
       "lookup":"Read one keyed member from a canonical or local collection without creating canonical identity.",
       "concat":"Concatenate ordered scalar/string expressions into one scalar/string value.",
-      "emit":"cause_ref MUST resolve to an event_cause Link whose parent_ref is the containing Function Property.id.",
+      "emit":"cause_ref MUST resolve to an event_cause Link whose parent_ref resolves to the containing Function Property.id. The Link Property itself does not need to be owned by the containing Function's Entity.",
       "return":"Return from local Function logic; return alone does not create cross-Function causality.",
       "if":"Select exactly one local logic branch from an explicit boolean condition."
     }
