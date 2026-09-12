@@ -39,6 +39,7 @@
       "INVALID": "a non-null binding candidate fails its Schema or another declared Data constraint. INVALID does not satisfy ready conditions."
     },
     "binding_rule": "Schema required-field constraints apply only to non-null binding candidates. A canonical value:null therefore represents an unbound slot rather than an invalid record.",
+    "package_validation_rule": "A valid package or valid Data slot contract MUST NOT be interpreted as a READY runtime Data value. READY exists only for a concrete execution-context binding after runtime validation.",
     "mutation_rule": "Runtime write/bind operations change execution-context state only; they MUST NOT rewrite the canonical .cw artifact."
   },
   "schema_semantics": {
