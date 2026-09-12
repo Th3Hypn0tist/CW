@@ -12,6 +12,7 @@ from pathlib import Path
 
 from . import format_filetree, format_links, import_folder, ingest_cw, report_cw, scan_folder, validate_toolchain
 from .cw_version import verify_cw_versions
+from .profiles import list_profiles
 from .report import format_cw_report
 
 
@@ -162,6 +163,7 @@ def main(argv=None) -> int:
     imp.add_argument("code_folder")
     imp.add_argument("cw_folder")
     imp.add_argument("--force", action="store_true")
+    imp.add_argument("--profile", choices=list_profiles())
     _add_authority_args(imp)
 
     report = sub.add_parser("report")
@@ -209,6 +211,7 @@ def main(argv=None) -> int:
             cw_root=args.cw_root,
             spec_set=args.spec_set,
             format_template=args.format_template,
+            profile=args.profile,
         )
         print(json.dumps({
             "status": "OK",
@@ -220,6 +223,7 @@ def main(argv=None) -> int:
             "files_seen": result.files_seen,
             "files_imported": result.files_imported,
             "diagnostics": result.diagnostic_summary,
+            "profile": args.profile,
             "specification_ref": "LOCAL_FORMAT:Format",
             "package_shape": "Format/Model/Assets",
             "version_stamped": True,
