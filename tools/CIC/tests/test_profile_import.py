@@ -51,6 +51,8 @@ def register():
             ]
             self.assertEqual(len(events), 1)
             self.assertEqual(events[0]["value"]["event_type_ref"], "command")
+            self.assertEqual(events[0]["value"]["properties"]["event_identity"], "q")
+            self.assertIn("::command::q::", events[0]["id"])
             self.assertEqual(len(handlers), 1)
             self.assertEqual(handlers[0]["value"]["parent_ref"], events[0]["id"])
             self.assertEqual(
