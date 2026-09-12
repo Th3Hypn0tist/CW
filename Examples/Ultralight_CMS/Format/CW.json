@@ -1,7 +1,7 @@
 {
   "id": "CANONICAL_WIREFRAME_PACKAGE_FORMAT",
   "name": "CanonicalWireframe Package Format",
-  "version": "2.0.0-reference",
+  "version": "2.0.1-reference",
   "status": "unlocked",
   "ccf_ref": "./CCF.json",
   "dr_ref": "./DR.json",
@@ -10,6 +10,28 @@
   "assets_root": "../Assets/",
   "primary_family_ref": "#FILE",
   "core_principle": "One truth. Many topologies. No duplicate truth.",
+  "version_dimensions": {
+    "ccf_format_version": {
+      "source": "CCF.json.version",
+      "meaning": "Canonical Contract Format version used by Model artifacts through format.format_version.",
+      "current": "2.4.3"
+    },
+    "cw_package_format_version": {
+      "source": "CW.json.version",
+      "meaning": "Version of the self-contained CanonicalWireframe package interpretation contract.",
+      "current": "2.0.1-reference"
+    },
+    "dependency_rules_version": {
+      "source": "DR.json.version",
+      "meaning": "Version of the Property/Link/logic semantic ruleset closure.",
+      "current": "4.0.2-reference"
+    },
+    "model_release_version": {
+      "source": "Model/model.cw.identity.version",
+      "meaning": "Version of this modeled system/reference fixture, independent of CCF/CW/DR versions.",
+      "current": "2.0.1-reference"
+    }
+  },
   "ontology": {
     "canonical_atoms": ["Entity", "Property"],
     "node": "An interpreted Entity.",
