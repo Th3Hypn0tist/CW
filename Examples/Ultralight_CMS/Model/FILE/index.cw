@@ -1,8 +1,12 @@
 {
-  "id":"#FILE:index","name":"index","entity_type_ref":"FILE","status":"unlocked","properties":[
+  "id":"#FILE:index",
+  "name":"index",
+  "entity_type_ref":"FILE",
+  "status":"unlocked",
+  "properties":[
     {"id":"ASSET::#FILE:index","property_type_ref":"asset","ruleset_ref":"RULESET_ASSET","status":"unlocked","value":{"asset_ref":"Assets/FILE/%23FILE%3Aindex.html","file_type_ref":"html","properties":{}}},
     {"id":"SCHEMA_PAGE_REQUEST","property_type_ref":"schema","ruleset_ref":"RULESET_SCHEMA","status":"unlocked","value":{"schema_type_ref":"record","definition":{"fields":{"page_id":{"type":"string","required":true}}},"properties":{}}},
-    {"id":"SCHEMA_RENDERED_DOCUMENT","property_type_ref":"schema","ruleset_ref":"RULESET_SCHEMA","status":"unlocked","value":{"schema_type_ref":"record","definition":{"fields":{"html":{"type":"string","required":true}}},"properties":{}}},
+    {"id":"SCHEMA_RENDERED_DOCUMENT","property_type_ref":"schema","ruleset_ref":"RULESET_SCHEMA","status":"unlocked","value":{"schema_type_ref":"record","definition":{"fields":{"html":{"type":"string","required":true},"status":{"type":"string","required":true}}},"properties":{}}},
     {"id":"DATA_PAGE_REQUEST","property_type_ref":"data","ruleset_ref":"RULESET_DATA","status":"unlocked","value":{"data_type_ref":"page_request","value":{"page_id":"home"},"schema_ref":"SCHEMA_PAGE_REQUEST","properties":{}}},
     {"id":"DATA_INDEX_DOCUMENT","property_type_ref":"data","ruleset_ref":"RULESET_DATA","status":"unlocked","value":{"data_type_ref":"rendered_document","value":null,"schema_ref":"SCHEMA_RENDERED_DOCUMENT","properties":{}}},
     {"id":"EVENT_OPEN_PAGE","property_type_ref":"event","ruleset_ref":"RULESET_EVENT","status":"unlocked","value":{"event_type_ref":"open_page","properties":{}}},

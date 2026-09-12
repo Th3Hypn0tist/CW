@@ -1,6 +1,6 @@
 {
-  "format":{"contract_format":"CANONICAL_CONTRACT","format_version":"2.1"},
-  "identity":{"id":"ULTRALIGHT_CMS_GOLDEN","name":"Ultralight CMS Golden Reference","type":"system_architecture","version":"2.0.0-reference"},
+  "format":{"contract_format":"CANONICAL_CONTRACT","format_version":"2.4.3"},
+  "identity":{"id":"ULTRALIGHT_CMS_GOLDEN","name":"Ultralight CMS Golden Reference","type":"system_architecture","version":"2.0.1-reference"},
   "specification_ref":"LOCAL_FORMAT:../Format",
   "status":"unlocked",
   "purpose":"Golden-reference CW package for the self-contained package, NodeType, Event-boundary, Asset and abstraction model.",
@@ -16,10 +16,15 @@
   ],
   "constraints":{"invariants":[
     {"id":"GOLDEN_ENTITY_PROPERTY_ONLY","rule":"Canonical semantic truth is represented as Entities and Properties."},
+    {"id":"GOLDEN_PROPERTY_ID_GLOBAL","rule":"Every active Property.id is unique across the complete Model closure and every bare Property reference resolves by exact package-global Property.id."},
     {"id":"GOLDEN_NO_FUNCTION_CALL","rule":"No function_call Link or logic call primitive exists."},
     {"id":"GOLDEN_ASSET_CARDINALITY","rule":"Every Entity owns zero or one Asset Property."},
     {"id":"GOLDEN_ABSTRACTION","rule":"Every Node is an abstraction; ABS is the least opinionated standard family."},
-    {"id":"GOLDEN_OVERLAP","rule":"The same canonical Entity may be a member of multiple abstraction Nodes without duplication."}
+    {"id":"GOLDEN_OVERLAP","rule":"The same canonical Entity may be a member of multiple abstraction Nodes without duplication."},
+    {"id":"GOLDEN_DEPENDENCY_DIRECTION","rule":"dependency parent_ref is the provider/dependency and child_ref is the dependent/consumer."},
+    {"id":"GOLDEN_SUCCESS_AND_FAILURE","rule":"The golden fixture contains explicit successful publish and content-not-found failure paths."}
   ]},
-  "references":[],"gaps":[],"prose":{"summary":"Normative target fixture for the next CW toolchain generation."}
+  "references":[],
+  "gaps":[],
+  "prose":{"summary":"Normative target fixture for the next CW toolchain generation."}
 }

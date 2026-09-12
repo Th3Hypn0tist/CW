@@ -1,7 +1,7 @@
 {
   "id": "CW_DEPENDENCY_RULES",
   "name": "CanonicalWireframe Dependency Rules",
-  "version": "4.0.0-reference",
+  "version": "4.0.1-reference",
   "status": "unlocked",
   "principles": [
     "Entity and Property are the only canonical atoms.",
@@ -13,6 +13,21 @@
     "function_call and logic op=call are forbidden.",
     "Assets are opaque payloads; canonical meaning remains in Entity + Property."
   ],
+  "reference_resolution": {
+    "entity_ref": {
+      "scope": "active Model closure",
+      "syntax": "canonical Entity.id",
+      "rule": "An Entity reference MUST resolve to exactly one active Entity.id in Model/."
+    },
+    "property_ref": {
+      "scope": "active Model closure",
+      "syntax": "exact Property.id",
+      "identity_rule": "Every active Property.id MUST be unique across the complete Model/ closure.",
+      "resolution_rule": "A bare canonical Property reference MUST resolve by exact Property.id across the complete Model/ closure.",
+      "owner_rule": "The owning Entity is determined from the resolved Property definition; consumers MUST NOT infer ownership from Property naming, file location or convention.",
+      "ambiguity_rule": "Zero matches or more than one match is invalid. No local-first, nearest-file, family-local or naming-convention fallback is permitted."
+    }
+  },
   "asset_file_types": [
     {"id":"html","extensions":[".html"]},
     {"id":"javascript","extensions":[".js"]},
@@ -33,23 +48,140 @@
     {"id":"RULESET_NODETYPE_EXTENDS","property_type_ref":"data"},
     {"id":"RULESET_MEMBERS","property_type_ref":"members","required_fields":["member_refs","properties"]},
     {"id":"RULESET_ASSET","property_type_ref":"asset","required_fields":["asset_ref","file_type_ref","properties"]},
-    {"id":"RULESET_REQUIRED_LINK","property_type_ref":"required_link","required_fields":["link_type_ref","self_endpoint","min","properties"]},
-    {"id":"RULESET_SCHEMA","property_type_ref":"schema","required_fields":["schema_type_ref","definition","properties"]},
-    {"id":"RULESET_DATA","property_type_ref":"data","optional_fields":["schema_ref"]},
+    {
+      "id":"RULESET_REQUIRED_LINK",
+      "property_type_ref":"required_link",
+      "required_fields":["link_type_ref","self_endpoint","min","properties"],
+      "constraints":[
+        "self_endpoint MUST be parent_ref or child_ref.",
+        "min MUST be a non-negative integer.",
+        "max, when present, MUST be an integer greater than or equal to min.",
+        "A Link.required_link_ref MUST resolve to exactly one required_link Property.",
+        "The Required Link Property MUST be owned by the Entity occupying the Link endpoint selected by self_endpoint."
+      ]
+    },
+    {
+      "id":"RULESET_SCHEMA",
+      "property_type_ref":"schema",
+      "required_fields":["schema_type_ref","definition","properties"],
+      "constraints":[
+        "Any schema_ref or item_schema_ref inside definition MUST resolve to a Property whose property_type_ref is schema."
+      ]
+    },
+    {
+      "id":"RULESET_DATA",
+      "property_type_ref":"data",
+      "optional_fields":["schema_ref"],
+      "constraints":[
+        "schema_ref, when present, MUST resolve to a Property whose property_type_ref is schema."
+      ]
+    },
     {"id":"RULESET_EVENT","property_type_ref":"event"},
     {"id":"RULESET_FUNCTION","property_type_ref":"function","optional_fields":["input_refs","output_refs","logic"]},
-    {"id":"RULESET_EFFECT","property_type_ref":"effect"},
+    {
+      "id":"RULESET_EFFECT",
+      "property_type_ref":"effect",
+      "optional_fields":["input_refs"],
+      "constraints":[
+        "input_refs, when present, MUST resolve through canonical Property reference resolution."
+      ]
+    },
     {"id":"RULESET_REPRESENTATION","property_type_ref":"representation"},
     {"id":"RULESET_TRANSFORM","property_type_ref":"transform"}
   ],
+  "link_rulesets": [
+    {
+      "id":"RULESET_LINK_DEPENDENCY",
+      "property_type_ref":"link",
+      "link_type_ref":"dependency",
+      "parent_role":"provider/dependency",
+      "child_role":"dependent/consumer",
+      "direction":"provider -> dependent",
+      "rule":"dependency is structural only and MUST NOT imply causal execution."
+    },
+    {
+      "id":"RULESET_LINK_EVENT_INPUT",
+      "property_type_ref":"link",
+      "link_type_ref":"event_input",
+      "parent_role":"input Data/Property",
+      "child_role":"Event",
+      "direction":"input -> Event"
+    },
+    {
+      "id":"RULESET_LINK_EVENT_OUTPUT",
+      "property_type_ref":"link",
+      "link_type_ref":"event_output",
+      "parent_role":"Event",
+      "child_role":"output Data/Property",
+      "direction":"Event -> output"
+    },
+    {
+      "id":"RULESET_LINK_EVENT_HANDLER",
+      "property_type_ref":"link",
+      "link_type_ref":"event_handler",
+      "parent_role":"Event",
+      "child_role":"Function",
+      "direction":"Event -> handler Function"
+    },
+    {
+      "id":"RULESET_LINK_EVENT_CAUSE",
+      "property_type_ref":"link",
+      "link_type_ref":"event_cause",
+      "parent_role":"Function",
+      "child_role":"Event",
+      "direction":"Function -> caused Event"
+    },
+    {
+      "id":"RULESET_LINK_EVENT_CONDITION",
+      "property_type_ref":"link",
+      "link_type_ref":"event_condition",
+      "parent_role":"condition Data/Property",
+      "child_role":"Event",
+      "direction":"condition -> Event",
+      "rule":"All modeled conditions targeting an Event MUST be satisfied before that Event may dispatch its handler/effect semantics."
+    },
+    {
+      "id":"RULESET_LINK_EVENT_EFFECT",
+      "property_type_ref":"link",
+      "link_type_ref":"event_effect",
+      "parent_role":"Event",
+      "child_role":"Effect",
+      "direction":"Event -> Effect"
+    },
+    {
+      "id":"RULESET_LINK_EFFECT_TARGET",
+      "property_type_ref":"link",
+      "link_type_ref":"effect_target",
+      "parent_role":"Effect",
+      "child_role":"target Data/Entity",
+      "direction":"Effect -> target"
+    }
+  ],
+  "effect_types": [
+    {
+      "id":"replace_target",
+      "input_cardinality":1,
+      "rule":"On dispatch, copy the single input Data value to every explicitly linked effect_target without changing canonical identity."
+    }
+  ],
   "logic_primitive_set": {
     "id": "CW_LOGIC_PRIMITIVES",
-    "primitives": ["read","write","assign","emit","return","if","while","loop","and","or","xor","not","eq","ne","lt","lte","gt","gte"],
+    "primitives": ["read","write","assign","lookup","concat","emit","return","if","while","loop","and","or","xor","not","eq","ne","lt","lte","gt","gte"],
     "forbidden": ["call"],
-    "emit": "cause_ref MUST resolve to an event_cause Link owned by the containing Function."
+    "semantics": {
+      "read":"Read canonical Data/Property value by exact ref; optional path selects a nested value.",
+      "write":"Write a value to the canonical target Property ref explicitly named by target.",
+      "assign":"Bind a transient local_ref inside the containing Function.logic scope.",
+      "lookup":"Read one keyed member from a canonical or local collection without creating canonical identity.",
+      "concat":"Concatenate ordered scalar/string expressions into one scalar/string value.",
+      "emit":"cause_ref MUST resolve to an event_cause Link whose parent_ref is the containing Function Property.id.",
+      "return":"Return from local Function logic; return alone does not create cross-Function causality.",
+      "if":"Select exactly one local logic branch from an explicit boolean condition."
+    }
   },
   "link_types": [
-    "dependency","event_input","event_output","event_handler","event_cause","event_condition","event_effect","effect_target"
+    "dependency", "event_input", "event_output", "event_handler",
+    "event_cause", "event_condition", "event_effect", "effect_target"
   ],
   "forbidden_link_types": ["function_call"],
   "causal_patterns": {

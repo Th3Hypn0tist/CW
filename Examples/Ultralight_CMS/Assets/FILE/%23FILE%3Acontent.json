@@ -1,4 +1,4 @@
 {
-  "title": "Ultralight CMS",
-  "body": "Hello from canonical CW."
+  "home":{"title":"Ultralight CMS","body":"Hello from canonical CW."},
+  "about":{"title":"About Ultralight CMS","body":"A self-contained CanonicalWireframe golden reference."}
 }
