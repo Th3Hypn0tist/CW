@@ -1,0 +1,359 @@
+{
+  "format": {
+    "contract_format": "CANONICAL_CONTRACT",
+    "format_version": "2.1"
+  },
+  "identity": {
+    "id": "ULTRALIGHT_CMS",
+    "name": "Ultralight CMS",
+    "type": "system_architecture",
+    "version": "1.5.0"
+  },
+  "specification_ref": "CW_CORE@1.1.0",
+  "status": "unlocked",
+  "purpose": "Define a minimal ultralight CMS as one abstraction over index.html, renderer.js, content.json and style.css, with the page-request Event owned by index.html and explicit Function semantics for querying source data and rendering the page.",
+  "scope": {
+    "owns": [
+      "Ultralight CMS abstraction membership",
+      "file identities",
+      "structural dependencies",
+      "page-request Event",
+      "query and render Function Properties",
+      "explicit Function inputs and outputs",
+      "event-to-handler binding",
+      "query-to-render call site"
+    ],
+    "does_not_own": [
+      "runtime HTTP transport",
+      "site content values",
+      "CSS styling values",
+      "browser implementation details",
+      "runtime execution traces"
+    ]
+  },
+  "entities": [
+    {
+      "id": "#ABS:UltralightCMS",
+      "name": "Ultralight CMS",
+      "entity_type_ref": "abs",
+      "status": "unlocked",
+      "properties": [
+        {
+          "id": "LINK_ABS_INDEX",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "#ABS:UltralightCMS",
+            "parent_ref": "#ABS:UltralightCMS",
+            "child_ref": "#FILE:index.html",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_ABS_RENDERER",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "#ABS:UltralightCMS",
+            "parent_ref": "#ABS:UltralightCMS",
+            "child_ref": "#FILE:renderer.js",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_ABS_CONTENT",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "#ABS:UltralightCMS",
+            "parent_ref": "#ABS:UltralightCMS",
+            "child_ref": "#FILE:content.json",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_ABS_STYLE",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "#ABS:UltralightCMS",
+            "parent_ref": "#ABS:UltralightCMS",
+            "child_ref": "#FILE:style.css",
+            "properties": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "#FILE:index.html",
+      "name": "index.html",
+      "entity_type_ref": "code",
+      "status": "unlocked",
+      "required_links": [],
+      "properties": [
+        {
+          "id": "DATA_PAGE_REQUEST",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "page_request",
+            "value": null,
+            "properties": {}
+          }
+        },
+        {
+          "id": "DATA_INDEX_DOCUMENT",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "html_document",
+            "value": null,
+            "properties": {}
+          }
+        },
+        {
+          "id": "EVENT_PAGE_REQUEST",
+          "property_type_ref": "event",
+          "ruleset_ref": "RULESET_EVENT",
+          "status": "unlocked",
+          "value": {
+            "event_type_ref": "page_request",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_PAGE_REQUEST_INPUT",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_EVENT_INPUT",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "event_input",
+            "parent_ref": "DATA_PAGE_REQUEST",
+            "child_ref": "EVENT_PAGE_REQUEST",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_PAGE_REQUEST_HANDLER",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_EVENT_HANDLER",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "event_handler",
+            "parent_ref": "EVENT_PAGE_REQUEST",
+            "child_ref": "FUNCTION_QUERY",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_INDEX_RENDERER_DEPENDENCY",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_DEPENDENCY",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "dependency",
+            "parent_ref": "#FILE:renderer.js",
+            "child_ref": "#FILE:index.html",
+            "properties": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "#FILE:renderer.js",
+      "name": "renderer.js",
+      "entity_type_ref": "code",
+      "status": "unlocked",
+      "required_links": [],
+      "properties": [
+        {
+          "id": "DATA_QUERY_CONTENT",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "loaded_content",
+            "value": null,
+            "properties": {}
+          }
+        },
+        {
+          "id": "DATA_QUERY_STYLE",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "loaded_style",
+            "value": null,
+            "properties": {}
+          }
+        },
+        {
+          "id": "FUNCTION_QUERY",
+          "property_type_ref": "function",
+          "ruleset_ref": "RULESET_FUNCTION",
+          "status": "unlocked",
+          "value": {
+            "function_type_ref": "query",
+            "input_refs": [
+              "DATA_PAGE_REQUEST",
+              "DATA_CONTENT_DOCUMENT",
+              "DATA_STYLE_STYLESHEET"
+            ],
+            "output_refs": [
+              "DATA_QUERY_CONTENT",
+              "DATA_QUERY_STYLE"
+            ],
+            "properties": {}
+          }
+        },
+        {
+          "id": "FUNCTION_RENDER",
+          "property_type_ref": "function",
+          "ruleset_ref": "RULESET_FUNCTION",
+          "status": "unlocked",
+          "value": {
+            "function_type_ref": "render",
+            "input_refs": [
+              "DATA_QUERY_CONTENT",
+              "DATA_QUERY_STYLE"
+            ],
+            "output_refs": [
+              "DATA_INDEX_DOCUMENT"
+            ],
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_QUERY_CALLS_RENDER",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_FUNCTION_CALL",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "function_call",
+            "parent_ref": "FUNCTION_QUERY",
+            "child_ref": "FUNCTION_RENDER",
+            "input_refs": [
+              "DATA_QUERY_CONTENT",
+              "DATA_QUERY_STYLE"
+            ],
+            "output_refs": [
+              "DATA_INDEX_DOCUMENT"
+            ],
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_CONTENT_RENDERER_DEPENDENCY",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_DEPENDENCY",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "dependency",
+            "parent_ref": "#FILE:content.json",
+            "child_ref": "#FILE:renderer.js",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_STYLE_RENDERER_DEPENDENCY",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_DEPENDENCY",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "dependency",
+            "parent_ref": "#FILE:style.css",
+            "child_ref": "#FILE:renderer.js",
+            "properties": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "#FILE:content.json",
+      "name": "content.json",
+      "entity_type_ref": "code",
+      "status": "unlocked",
+      "required_links": [],
+      "properties": [
+        {
+          "id": "DATA_CONTENT_DOCUMENT",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "json_document",
+            "value": null,
+            "properties": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "#FILE:style.css",
+      "name": "style.css",
+      "entity_type_ref": "code",
+      "status": "unlocked",
+      "required_links": [],
+      "properties": [
+        {
+          "id": "DATA_STYLE_STYLESHEET",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "css_stylesheet",
+            "value": null,
+            "properties": {}
+          }
+        }
+      ]
+    }
+  ],
+  "constraints": {
+    "invariants": [
+      {
+        "id": "CMS_ROOT_IS_ABSTRACTION",
+        "rule": "#ABS:UltralightCMS is an Abstraction Node and owns no Event or Function Property."
+      },
+      {
+        "id": "PAGE_REQUEST_EVENT_IS_INDEX",
+        "rule": "EVENT_PAGE_REQUEST belongs to #FILE:index.html."
+      },
+      {
+        "id": "QUERY_READS_CANONICAL_SOURCES",
+        "rule": "FUNCTION_QUERY explicitly consumes DATA_CONTENT_DOCUMENT and DATA_STYLE_STYLESHEET and exposes loaded content/style surfaces."
+      },
+      {
+        "id": "RENDER_WRITES_INDEX_DOCUMENT",
+        "rule": "FUNCTION_RENDER explicitly consumes the query outputs and exposes DATA_INDEX_DOCUMENT as its output."
+      },
+      {
+        "id": "DEPENDENCY_CHAIN_EXPLICIT",
+        "rule": "index.html depends on renderer.js; renderer.js depends on content.json and style.css."
+      },
+      {
+        "id": "NO_CAUSAL_INFERENCE_FROM_DEPENDENCY",
+        "rule": "Dependency Links remain structural semantics and do not replace the explicit Event handler or Function-call semantics."
+      }
+    ]
+  },
+  "references": [
+    {
+      "id": "REF_CW_CORE",
+      "target_ref": "CW_CORE@1.1.0",
+      "purpose": "Immutable CW Core specification set v1.1.0 defining Canonical Contract Format 2.4.3, CanonicalWireframe NodeTypes 1.18.0 and CanonicalWireframe Dependency Rules 3.14.0 used to interpret this artifact."
+    }
+  ],
+  "gaps": [],
+  "prose": {
+    "summary": "Ultralight CMS is modeled as one #ABS abstraction containing four #FILE Nodes. index.html owns the page-request Event. The Event is explicitly bound to renderer.js FUNCTION_QUERY, which consumes content.json and style.css data surfaces. FUNCTION_QUERY calls FUNCTION_RENDER, and FUNCTION_RENDER exposes the rendered index document as output.",
+    "notes": "This revision intentionally fixes canonical Function and Event ownership before any renderer animation behavior is changed. Dependency direction is structural: content.json/style.css -> renderer.js -> index.html by dependency parent_ref -> child_ref semantics. Event, handler and function-call semantics remain explicit separate canonical Links."
+  }
+}
