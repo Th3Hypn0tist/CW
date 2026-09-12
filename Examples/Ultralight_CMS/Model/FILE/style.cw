@@ -1,7 +1,11 @@
 {
-  "id":"#FILE:style","name":"style","entity_type_ref":"FILE","status":"unlocked","properties":[
+  "id":"#FILE:style",
+  "name":"style",
+  "entity_type_ref":"FILE",
+  "status":"unlocked",
+  "properties":[
     {"id":"ASSET::#FILE:style","property_type_ref":"asset","ruleset_ref":"RULESET_ASSET","status":"unlocked","value":{"asset_ref":"Assets/FILE/%23FILE%3Astyle.css","file_type_ref":"css","properties":{}}},
     {"id":"SCHEMA_STYLE_SHEET","property_type_ref":"schema","ruleset_ref":"RULESET_SCHEMA","status":"unlocked","value":{"schema_type_ref":"record","definition":{"fields":{"css":{"type":"string","required":true}}},"properties":{}}},
-    {"id":"DATA_STYLE_STYLESHEET","property_type_ref":"data","ruleset_ref":"RULESET_DATA","status":"unlocked","value":{"data_type_ref":"style_sheet","value":{"css":"body { font-family: sans-serif; }"},"schema_ref":"SCHEMA_STYLE_SHEET","properties":{}}}
+    {"id":"DATA_STYLE_STYLESHEET","property_type_ref":"data","ruleset_ref":"RULESET_DATA","status":"unlocked","value":{"data_type_ref":"style_sheet","value":null,"schema_ref":"SCHEMA_STYLE_SHEET","properties":{}}}
   ]
 }

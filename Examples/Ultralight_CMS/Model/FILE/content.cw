@@ -45,10 +45,7 @@
       "status":"unlocked",
       "value":{
         "data_type_ref":"content_collection",
-        "value":{
-          "home":{"title":"Ultralight CMS","body":"Hello from canonical CW."},
-          "about":{"title":"About Ultralight CMS","body":"A self-contained CanonicalWireframe golden reference."}
-        },
+        "value":null,
         "schema_ref":"SCHEMA_CONTENT_COLLECTION",
         "properties":{}
       }
