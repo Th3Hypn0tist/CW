@@ -23,8 +23,8 @@ def _write_json(path: Path, value: dict[str, Any]) -> None:
     path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def _safe_fragment(value: str) -> str:
-    return "".join(char if char.isalnum() or char in "._:-" else "_" for char in value)
+def _id_fragment(value: str) -> str:
+    return quote(value, safe="-._~")
 
 
 def _asset_extension(source_path: str) -> str:
@@ -100,7 +100,7 @@ def _dependency_properties(ir: dict[str, Any]) -> dict[str, list[dict[str, Any]]
 
     by_owner: dict[str, list[dict[str, Any]]] = {}
     for (consumer, provider), evidence_refs in sorted(grouped.items()):
-        prop_id = f"LINK::DEPENDENCY::{_safe_fragment(consumer)}::{_safe_fragment(provider)}"
+        prop_id = f"LINK::DEPENDENCY::{_id_fragment(consumer)}::{_id_fragment(provider)}"
         by_owner.setdefault(consumer, []).append({
             "id": prop_id,
             "property_type_ref": "link",
