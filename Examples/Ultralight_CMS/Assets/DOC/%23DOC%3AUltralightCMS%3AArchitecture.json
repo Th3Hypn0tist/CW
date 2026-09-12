@@ -1,0 +1,53 @@
+{
+  "title": "Ultralight CMS Architecture Notes",
+  "source": "Consolidated design commentary from the CW/UltralightCMS project conversations.",
+  "sections": [
+    {
+      "id": "origin",
+      "points": [
+        "The original task is to build an ultralight CMS, not a disconnected CW feature showcase.",
+        "Every example Node, Property, document and contract exists because the CMS needs it or because it explains the CMS model.",
+        "The golden fixture is a normative target for tooling while it remains unlocked."
+      ]
+    },
+    {
+      "id": "ontology",
+      "points": [
+        "Entity and Property are the only canonical atoms.",
+        "A Node is an interpreted Entity; every Node is therefore an abstraction.",
+        "ABS is the least opinionated standard family; other families are predefined abstraction contracts.",
+        "Properties carry semantics. Function, Event, Effect, Data, Schema, Asset, Members, Required Link and Link are Properties.",
+        "One truth. Many topologies. No duplicate truth."
+      ]
+    },
+    {
+      "id": "families",
+      "points": [
+        "FILE is the primary implementation family in this fixture.",
+        "DOC provides semantic document scope through members; its Asset is presentation/explanation payload only.",
+        "CTRCT owns reusable CMS contracts such as schemas; implementation FILE Nodes reference those contracts rather than duplicating them.",
+        "NodeType reads choose default projection surfaces and never whitelist all valid Properties.",
+        "The same canonical Entity may belong to multiple abstractions through members without cloning identity."
+      ]
+    },
+    {
+      "id": "package",
+      "points": [
+        "Format defines how the package is interpreted.",
+        "Model contains canonical semantic truth and the authoritative shard manifest.",
+        "Assets contain physical payloads owned by Entities and remain opaque to the CW package validator.",
+        ".cw is the canonical model artifact extension and .cwn is the package-local NodeType template extension."
+      ]
+    },
+    {
+      "id": "topology",
+      "points": [
+        "Filesystem topology derives from identities and physical package structure.",
+        "Dependency topology derives from dependency Link Properties.",
+        "Runtime causal topology derives from Event, Function, Effect and their Link Properties.",
+        "Abstraction/document scope derives from members Properties.",
+        "A topology is projected from the canonical model; it is not stored as a second graph truth."
+      ]
+    }
+  ]
+}
