@@ -4,7 +4,7 @@ import copy
 import hashlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable
 
 from CIC.cw import CWValidationError, validate_cw
@@ -13,6 +13,7 @@ from CIC.cw import CWValidationError, validate_cw
 TIMESTAMP_RE = re.compile(r"^\d{14}$")
 HASH_RE = re.compile(r"^[0-9a-f]{32}$")
 VERSION_FIELDS = frozenset({"timestamp", "hash"})
+_TIMESTAMP_FORMAT = "%Y%m%d%H%M%S"
 
 
 def serialize_entity(entity: dict[str, Any]) -> str:
@@ -46,8 +47,28 @@ def calculate_entity_hash(entity: dict[str, Any]) -> str:
 
 
 def _timestamp_now() -> str:
-    # Stored form is timezone-free by design; CIC uses UTC so lexical order is global.
-    return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    return datetime.now(timezone.utc).strftime(_TIMESTAMP_FORMAT)
+
+
+def next_version_timestamp(previous_timestamps: Iterable[str], *, now: str | None = None) -> str:
+    """Return a timestamp strictly newer than every supplied previous version.
+
+    CW Node timestamps have one-second resolution. A real change can therefore
+    occur inside the same wall-clock second as the previous version. In that
+    case, advance the version clock by one second instead of collapsing two
+    distinct versions onto the same timestamp/hash pair.
+    """
+    current = now or _timestamp_now()
+    if not TIMESTAMP_RE.fullmatch(current):
+        raise CWValidationError("CW version timestamp must use YYYYMMDDhhmmss")
+    candidate = datetime.strptime(current, _TIMESTAMP_FORMAT).replace(tzinfo=timezone.utc)
+    for value in previous_timestamps:
+        if not isinstance(value, str) or not TIMESTAMP_RE.fullmatch(value):
+            raise CWValidationError(f"invalid previous CW version timestamp: {value!r}")
+        previous = datetime.strptime(value, _TIMESTAMP_FORMAT).replace(tzinfo=timezone.utc)
+        if candidate <= previous:
+            candidate = previous + timedelta(seconds=1)
+    return candidate.strftime(_TIMESTAMP_FORMAT)
 
 
 def stamp_entity_version(entity: dict[str, Any], *, timestamp: str | None = None) -> dict[str, Any]:
@@ -55,7 +76,6 @@ def stamp_entity_version(entity: dict[str, Any], *, timestamp: str | None = None
     value = timestamp or _timestamp_now()
     if not TIMESTAMP_RE.fullmatch(value):
         raise CWValidationError("CW version timestamp must use YYYYMMDDhhmmss")
-
     stamped = copy.deepcopy(entity)
     stamped["timestamp"] = value
     stamped["hash"] = ""
