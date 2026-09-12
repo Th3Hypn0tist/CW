@@ -1,0 +1,22 @@
+{
+  "id":"CWN::CTRCT::schema",
+  "name":"CTRCT/schema",
+  "entity_type_ref":"CW_NODE_TEMPLATE",
+  "status":"unlocked",
+  "properties":[
+    {
+      "id":"CWN::CTRCT::schema::READS",
+      "property_type_ref":"data",
+      "ruleset_ref":"RULESET_NODETYPE_READS",
+      "status":"unlocked",
+      "value":{"data_type_ref":"nodetype_reads","value":["schema"],"properties":{}}
+    },
+    {
+      "id":"CWN::CTRCT::schema::EXTENDS",
+      "property_type_ref":"data",
+      "ruleset_ref":"RULESET_NODETYPE_EXTENDS",
+      "status":"unlocked",
+      "value":{"data_type_ref":"nodetype_extends","value":["CTRCT"],"properties":{}}
+    }
+  ]
+}
