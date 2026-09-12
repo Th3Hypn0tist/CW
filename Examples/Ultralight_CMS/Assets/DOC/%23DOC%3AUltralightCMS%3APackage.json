@@ -1,0 +1,64 @@
+{
+  "title": "Ultralight CMS Package Notes",
+  "source": "Consolidated package, validation and closure commentary from the CW/UltralightCMS project conversations.",
+  "sections": [
+    {
+      "id": "closure",
+      "points": [
+        "Model/model.cw.shards[] is the authoritative canonical Model closure.",
+        "Every non-root canonical .cw shard appears exactly once in shards[].",
+        "A listed missing shard or an unlisted .cw shard makes the package invalid.",
+        "Property identifiers are package-global in the active Model closure and bare Property references resolve by exact id."
+      ]
+    },
+    {
+      "id": "links",
+      "points": [
+        "A Link is a Property owned by exactly one Entity.",
+        "The owner is the declarer of the relation, while parent_ref and child_ref define semantic endpoints independently.",
+        "dependency parent_ref is the provider/dependency and child_ref is the dependent/consumer.",
+        "dependency is structural and does not imply execution."
+      ]
+    },
+    {
+      "id": "assets",
+      "points": [
+        "Each Entity owns zero or one Asset Property.",
+        "The physical Asset filename is derived deterministically from the percent-encoded Entity.id and a registered extension.",
+        "The Asset family directory matches the owner Entity family.",
+        "The CW package validator checks path, existence, file type, extension and cardinality only.",
+        "The validator does not parse payload content, infer payload semantics, MIME-sniff or perform runtime payload schema validation.",
+        "An adapter/runtime may decode an Asset and bind resulting values into Data slots, but the non-null binding must satisfy its Schema before becoming READY."
+      ]
+    },
+    {
+      "id": "paths",
+      "points": [
+        "Canonical text is UTF-8 normalized to NFC and canonical paths use slash separators.",
+        "Path-bearing fields resolve against explicit bases declared by Format.",
+        "Absolute paths, backslashes, empty segments, dot segments and parent traversals are invalid path values.",
+        "Case-fold collisions are rejected for portability and symlinks are not canonical package members.",
+        "Percent encoding uses UTF-8 bytes and uppercase hexadecimal for every character outside RFC3986 unreserved characters."
+      ]
+    },
+    {
+      "id": "versions_and_locking",
+      "points": [
+        "CCF version, CW package-format version, Dependency Rules version and modeled-system release version are independent dimensions.",
+        "Version sources are referenced rather than duplicated as secondary current values.",
+        "CCF 2.4.3 remains unchanged.",
+        "The golden remains unlocked until package-aware validation and CIC output converge on the same self-contained structure.",
+        "A locked model requires an immutable content-addressed Format closure."
+      ]
+    },
+    {
+      "id": "tooling_direction",
+      "points": [
+        "The specification defines the tools; existing tools do not define the specification.",
+        "The package-aware linter validates the golden first.",
+        "CIC then emits the same package structure and validates its own output against its local Format.",
+        "Topology and TUI consume only canonical Model shards plus the separate Format registry and derive views without creating duplicate truth."
+      ]
+    }
+  ]
+}
