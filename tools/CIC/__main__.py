@@ -15,17 +15,23 @@ from .cw_version import verify_cw_versions
 from .report import format_cw_report
 
 
-def _selftest(cw_root=None, spec_set=None) -> dict:
+def _selftest(cw_root=None, spec_set=None, format_template=None) -> dict:
     with tempfile.TemporaryDirectory(prefix="cw-cic-selftest-") as tmp:
         root = Path(tmp)
         source = root / "source"
-        target = root / "model"
+        target = root / "package"
         source.mkdir()
         (source / "main.py").write_text(
             "def enabled(flag: bool):\n    if flag:\n        return True\n    return False\n",
             encoding="utf-8",
         )
-        result = import_folder(source, target, cw_root=cw_root, spec_set=spec_set)
+        result = import_folder(
+            source,
+            target,
+            cw_root=cw_root,
+            spec_set=spec_set,
+            format_template=format_template,
+        )
         document = ingest_cw(target)
         verify_cw_versions(document)
         versioned = [
@@ -37,15 +43,22 @@ def _selftest(cw_root=None, spec_set=None) -> dict:
         ]
         if len(versioned) != len(document.get("entities", [])):
             raise RuntimeError("selftest produced unversioned Entity")
-        if "specification_ref" in document:
-            raise RuntimeError("CIC persisted temporary validation binding")
+        if document.get("specification_ref") != "LOCAL_FORMAT:Format":
+            raise RuntimeError("CIC package did not bind its local Format closure")
+        if not (target / "Format" / "CW.json").is_file():
+            raise RuntimeError("CIC package missing Format/CW.json")
+        if not (target / "Model" / "model.cw").is_file():
+            raise RuntimeError("CIC package missing Model/model.cw")
+        if not any((target / "Assets" / "FILE").iterdir()):
+            raise RuntimeError("CIC package missing source Asset")
         return {
             "status": "PASS",
             "files_imported": result.files_imported,
             "shards": result.shard_count,
             "entities": len(document.get("entities", [])),
             "version_stamps": "verified",
-            "specification_bound": False,
+            "specification_ref": "LOCAL_FORMAT:Format",
+            "package_shape": "Format/Model/Assets",
         }
 
 
@@ -55,7 +68,6 @@ def _forbidden_import_modules(path: Path) -> list[str]:
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     except (OSError, SyntaxError) as exc:
         raise RuntimeError(f"cannot inspect CIC Python source {path}: {exc}") from exc
-
     hits: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -70,12 +82,14 @@ def _forbidden_import_modules(path: Path) -> list[str]:
     return sorted(hits)
 
 
-def _release_check(cw_root=None, spec_set=None) -> dict:
+def _release_check(cw_root=None, spec_set=None, format_template=None) -> dict:
     root = Path(cw_root).expanduser().resolve() if cw_root else next(
-        parent for parent in Path(__file__).resolve().parents if (parent / "spec_sets").is_dir() and (parent / "linter").is_dir()
+        parent
+        for parent in Path(__file__).resolve().parents
+        if (parent / "Examples" / "Ultralight_CMS" / "Format" / "CW.json").is_file()
+        and (parent / "linter" / "cw_package_validate.py").is_file()
     )
     cic_root = Path(__file__).resolve().parent
-
     forbidden_files = [path for path in (cic_root / "api_legacy.py", cic_root / "structuretree.py") if path.exists()]
     forbidden_imports: list[str] = []
     for path in cic_root.rglob("*.py"):
@@ -86,12 +100,9 @@ def _release_check(cw_root=None, spec_set=None) -> dict:
             f"CIC release contains forbidden duplicate/domain remnants: files={forbidden_files}, imports={forbidden_imports}"
         )
 
-    tool_report = validate_toolchain(cw_root=root, spec_set=spec_set)
-    selftest_report = _selftest(root, spec_set)
+    tool_report = validate_toolchain(cw_root=root, spec_set=spec_set, format_template=format_template)
+    selftest_report = _selftest(root, spec_set, format_template)
 
-    # The same regression suite must run from the CW SSOT location and from a
-    # synchronized top-level CIC consumer. Propagate the resolved CW authority
-    # for tests that intentionally call the public importer without cw_root.
     previous_cw_root = os.environ.get("CW_ROOT")
     os.environ["CW_ROOT"] = str(root)
     try:
@@ -112,17 +123,23 @@ def _release_check(cw_root=None, spec_set=None) -> dict:
 
     return {
         "status": "PASS",
-        "toolchain": "validated",
+        "toolchain": "package-aware",
         "selftest": selftest_report,
         "tests_run": result.testsRun,
         "failures": len(result.failures),
         "errors": len(result.errors),
         "forbidden_files": 0,
         "forbidden_imports": 0,
-        "specification_bound": False,
+        "format_authority": "package_local",
         "cw_root": str(root),
-        "spec_report": tool_report,
+        "tool_report": tool_report,
     }
+
+
+def _add_authority_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--cw-root")
+    parser.add_argument("--format-template")
+    parser.add_argument("--spec-set", help="legacy compatibility argument; package-local Format is authoritative")
 
 
 def main(argv=None) -> int:
@@ -130,16 +147,13 @@ def main(argv=None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     check = sub.add_parser("validate-tools")
-    check.add_argument("--cw-root")
-    check.add_argument("--spec-set")
+    _add_authority_args(check)
 
     selftest = sub.add_parser("selftest")
-    selftest.add_argument("--cw-root")
-    selftest.add_argument("--spec-set")
+    _add_authority_args(selftest)
 
     release_check = sub.add_parser("release-check")
-    release_check.add_argument("--cw-root")
-    release_check.add_argument("--spec-set")
+    _add_authority_args(release_check)
 
     scan = sub.add_parser("scan")
     scan.add_argument("code_folder")
@@ -148,8 +162,7 @@ def main(argv=None) -> int:
     imp.add_argument("code_folder")
     imp.add_argument("cw_folder")
     imp.add_argument("--force", action="store_true")
-    imp.add_argument("--cw-root")
-    imp.add_argument("--spec-set")
+    _add_authority_args(imp)
 
     report = sub.add_parser("report")
     report.add_argument("cw_input")
@@ -169,20 +182,34 @@ def main(argv=None) -> int:
 
     args = parser.parse_args(argv)
     if args.command == "validate-tools":
-        print(json.dumps({"status": "PASS", "report": validate_toolchain(cw_root=args.cw_root, spec_set=args.spec_set)}, ensure_ascii=False, indent=2))
+        print(json.dumps({
+            "status": "PASS",
+            "report": validate_toolchain(
+                cw_root=args.cw_root,
+                spec_set=args.spec_set,
+                format_template=args.format_template,
+            ),
+        }, ensure_ascii=False, indent=2))
         return 0
     if args.command == "selftest":
-        print(json.dumps(_selftest(args.cw_root, args.spec_set), ensure_ascii=False, indent=2))
+        print(json.dumps(_selftest(args.cw_root, args.spec_set, args.format_template), ensure_ascii=False, indent=2))
         return 0
     if args.command == "release-check":
-        print(json.dumps(_release_check(args.cw_root, args.spec_set), ensure_ascii=False, indent=2))
+        print(json.dumps(_release_check(args.cw_root, args.spec_set, args.format_template), ensure_ascii=False, indent=2))
         return 0
     if args.command == "scan":
         result = scan_folder(Path(args.code_folder))
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result["cw_gate_b"]["status"] == "PASS" else 1
     if args.command == "import":
-        result = import_folder(Path(args.code_folder), Path(args.cw_folder), force=args.force, cw_root=args.cw_root, spec_set=args.spec_set)
+        result = import_folder(
+            Path(args.code_folder),
+            Path(args.cw_folder),
+            force=args.force,
+            cw_root=args.cw_root,
+            spec_set=args.spec_set,
+            format_template=args.format_template,
+        )
         print(json.dumps({
             "status": "OK",
             "code_folder": str(result.code_folder),
@@ -193,7 +220,8 @@ def main(argv=None) -> int:
             "files_seen": result.files_seen,
             "files_imported": result.files_imported,
             "diagnostics": result.diagnostic_summary,
-            "specification_bound": False,
+            "specification_ref": "LOCAL_FORMAT:Format",
+            "package_shape": "Format/Model/Assets",
             "version_stamped": True,
         }, ensure_ascii=False, indent=2))
         return 0
