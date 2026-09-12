@@ -14,7 +14,7 @@ from typing import Any
 from . import api_core as _core
 from .api_core import ImportBundle, ImportResult
 from .cw import ingest_cw
-from .cw_version import finalize_cw_for_write, has_entity_version, same_entity_payload, serialize_entity, verify_cw_versions
+from .cw_version import finalize_cw_for_write, has_entity_version, next_version_timestamp, same_entity_payload, serialize_entity, verify_cw_versions
 from .package_pipeline import materialize_package
 
 
@@ -95,8 +95,6 @@ def validate_toolchain(
     spec_set: str | Path | None = None,
     format_template: str | Path | None = None,
 ) -> dict[str, Any]:
-    # spec_set is retained as a compatibility argument only. The current
-    # package pipeline takes semantic authority from package-local Format/.
     del spec_set
     root = resolve_cw_root(cw_root)
     template = _resolve_format_template(root, format_template)
@@ -199,6 +197,7 @@ def _finalize_updated(package_root: Path, previous_root: Path, previous: dict[st
     prior = _entities_by_id(previous)
     reconciled = copy.deepcopy(candidate)
     changed: set[str] = set()
+    previous_changed_timestamps: list[str] = []
     for index, entity in enumerate(reconciled.get("entities", [])):
         if not isinstance(entity, dict) or not isinstance(entity.get("id"), str):
             continue
@@ -213,9 +212,12 @@ def _finalize_updated(package_root: Path, previous_root: Path, previous: dict[st
             reconciled["entities"][index] = copy.deepcopy(old)
         else:
             changed.add(entity["id"])
+            if old is not None and isinstance(old.get("timestamp"), str):
+                previous_changed_timestamps.append(old["timestamp"])
+    version_time = next_version_timestamp(previous_changed_timestamps) if changed else None
     _write_finalized_shards(
         package_root,
-        finalize_cw_for_write(reconciled, changed_entity_refs=changed),
+        finalize_cw_for_write(reconciled, changed_entity_refs=changed, timestamp=version_time),
     )
 
 
