@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from dataclasses import dataclass
 from typing import Any, Iterable
 
@@ -74,11 +75,86 @@ def _evidence_values(function: dict[str, Any], evidence_kind: str) -> tuple[str,
     return ()
 
 
+def _ast_name(node: ast.AST | None) -> str | None:
+    if node is None:
+        return None
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        base = _ast_name(node.value)
+        return f"{base}.{node.attr}" if base else node.attr
+    return None
+
+
+def _registration_handler_symbol(function: dict[str, Any], constructor: str) -> str | None:
+    """Return handler=<symbol> from an explicit returned constructor call.
+
+    This inspects only the archived source of the candidate factory Function. It
+    does not infer runtime registration from naming, directories, or call graphs.
+    """
+    source = function.get("source")
+    if not isinstance(source, str) or not source.strip():
+        return None
+    try:
+        tree = ast.parse(source, type_comments=True)
+    except SyntaxError:
+        return None
+    if len(tree.body) != 1 or not isinstance(tree.body[0], (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return None
+    node = tree.body[0]
+    for statement in node.body:
+        if not isinstance(statement, ast.Return) or not isinstance(statement.value, ast.Call):
+            continue
+        call = statement.value
+        if _ast_name(call.func) != constructor:
+            continue
+        for keyword in call.keywords:
+            if keyword.arg != "handler":
+                continue
+            return _ast_name(keyword.value)
+    return None
+
+
+def _candidate_from_function(
+    *,
+    owner_entity_ref: str,
+    function: dict[str, Any],
+    rule: EventTriggerRule,
+    evidence_kind: str,
+    evidence_value: str,
+) -> EventCandidate | None:
+    name = function.get("name")
+    qualified_name = function.get("qualified_name")
+    if not isinstance(name, str) or not name or not isinstance(qualified_name, str) or not qualified_name:
+        return None
+    function_owner = function.get("owner") if isinstance(function.get("owner"), str) and function.get("owner") else None
+    span = function.get("span") if isinstance(function.get("span"), dict) else {}
+    return EventCandidate(
+        candidate_id=f"EVENT_CANDIDATE::{owner_entity_ref}::{qualified_name}::{rule.rule_id}",
+        owner_entity_ref=owner_entity_ref,
+        function_qualified_name=qualified_name,
+        function_name=name,
+        function_owner=function_owner,
+        event_type_ref=rule.event_type_ref,
+        trigger_rule_ref=rule.rule_id,
+        trigger_evidence_kind=evidence_kind,
+        trigger_evidence_value=evidence_value,
+        span=dict(span),
+    )
+
+
 def detect_event_candidates(
     ir: dict[str, Any],
     rules: Iterable[EventTriggerRule | dict[str, Any]],
 ) -> tuple[EventCandidate, ...]:
-    """Detect externally-triggerable function surfaces from explicit evidence rules only."""
+    """Detect externally-triggerable function surfaces from explicit evidence rules only.
+
+    Supported evidence kinds:
+      decorator_exact      exact Function decorator text
+      registration_handler
+        a Function explicitly returns the configured constructor and binds its
+        handler= keyword to another Function in the same canonical #FILE Entity
+    """
     if not isinstance(ir, dict):
         raise EventLogicError("Code IR must be an object")
 
@@ -110,17 +186,47 @@ def detect_event_candidates(
             continue
         language_id = language_ir.get("language_id")
         owner_entity_ref = canonical_owner_ref
+        functions = list(_function_records(language_ir.get("symbols", [])))
+        top_level_by_name = {
+            function.get("name"): function
+            for function in functions
+            if isinstance(function.get("name"), str) and not function.get("owner")
+        }
 
-        for function in _function_records(language_ir.get("symbols", [])):
+        for rule in normalized_rules:
+            if rule.language_id != language_id or rule.evidence_kind != "registration_handler":
+                continue
+            for factory in functions:
+                if factory.get("owner"):
+                    continue
+                handler_symbol = _registration_handler_symbol(factory, rule.evidence_value)
+                if not isinstance(handler_symbol, str) or not handler_symbol:
+                    continue
+                handler = top_level_by_name.get(handler_symbol)
+                if not isinstance(handler, dict):
+                    continue
+                candidate = _candidate_from_function(
+                    owner_entity_ref=owner_entity_ref,
+                    function=handler,
+                    rule=rule,
+                    evidence_kind=rule.evidence_kind,
+                    evidence_value=rule.evidence_value,
+                )
+                if candidate is None:
+                    continue
+                semantic_key = (owner_entity_ref, candidate.function_qualified_name, rule.rule_id)
+                if semantic_key in seen:
+                    continue
+                seen.add(semantic_key)
+                candidates.append(candidate)
+
+        for function in functions:
             name = function.get("name")
             qualified_name = function.get("qualified_name")
             if not isinstance(name, str) or not name or not isinstance(qualified_name, str) or not qualified_name:
                 continue
-            function_owner = function.get("owner") if isinstance(function.get("owner"), str) and function.get("owner") else None
-            span = function.get("span") if isinstance(function.get("span"), dict) else {}
-
             for rule in normalized_rules:
-                if rule.language_id != language_id:
+                if rule.language_id != language_id or rule.evidence_kind == "registration_handler":
                     continue
                 values = _evidence_values(function, rule.evidence_kind)
                 if rule.evidence_value not in values:
@@ -129,17 +235,14 @@ def detect_event_candidates(
                 if semantic_key in seen:
                     continue
                 seen.add(semantic_key)
-                candidates.append(EventCandidate(
-                    candidate_id=f"EVENT_CANDIDATE::{owner_entity_ref}::{qualified_name}::{rule.rule_id}",
+                candidate = _candidate_from_function(
                     owner_entity_ref=owner_entity_ref,
-                    function_qualified_name=qualified_name,
-                    function_name=name,
-                    function_owner=function_owner,
-                    event_type_ref=rule.event_type_ref,
-                    trigger_rule_ref=rule.rule_id,
-                    trigger_evidence_kind=rule.evidence_kind,
-                    trigger_evidence_value=rule.evidence_value,
-                    span=dict(span),
-                ))
+                    function=function,
+                    rule=rule,
+                    evidence_kind=rule.evidence_kind,
+                    evidence_value=rule.evidence_value,
+                )
+                if candidate is not None:
+                    candidates.append(candidate)
 
     return tuple(sorted(candidates, key=lambda item: item.candidate_id))
