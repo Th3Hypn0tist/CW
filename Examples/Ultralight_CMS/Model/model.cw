@@ -1,7 +1,7 @@
 {
   "format":{"contract_format":"CANONICAL_CONTRACT","format_version":"2.4.3"},
-  "identity":{"id":"ULTRALIGHT_CMS_GOLDEN","name":"Ultralight CMS Golden Reference","type":"system_architecture","version":"2.0.3-reference"},
-  "specification_ref":"LOCAL_FORMAT:../Format",
+  "identity":{"id":"ULTRALIGHT_CMS_GOLDEN","name":"Ultralight CMS Golden Reference","type":"system_architecture","version":"2.0.4-reference"},
+  "specification_ref":"LOCAL_FORMAT:Format",
   "status":"unlocked",
   "purpose":"Golden-reference mechanism-only CW package for the self-contained package, NodeType, Event-boundary, Asset and abstraction model.",
   "entities":[],
@@ -19,13 +19,16 @@
     {"id":"GOLDEN_PROPERTY_ID_GLOBAL","rule":"Every active Property.id is unique across the complete Model closure and every bare Property reference resolves by exact package-global Property.id."},
     {"id":"GOLDEN_MECHANISM_ONLY","rule":"The golden Model describes mechanism, contracts, runtime slot definitions and causal structure only. Runtime/example payload values MUST NOT be canonical Model truth."},
     {"id":"GOLDEN_DERIVED_READINESS","rule":"Readiness is derived from Data slot state and schema conformance. No parallel *_READY Data truth is permitted."},
-    {"id":"GOLDEN_FALLBACK_INDEX","rule":"Page resolution looks up the requested page by PageContent.id and falls back to id=index. A READY content collection is schema-guaranteed to contain exactly one index item."},
+    {"id":"GOLDEN_FALLBACK_INDEX","rule":"Page resolution looks up the requested page by PageContent.id and falls back to id=index. A READY content collection is schema-guaranteed to contain exactly one index item. If that invariant is nevertheless violated at execution time, resolution fails with INVALID_CONTENT_SOURCE rather than writing null forward."},
+    {"id":"GOLDEN_LOOKUP_READY_ONLY","rule":"lookup executes only against READY collections. UNBOUND or INVALID lookup sources are INVALID execution, not a null lookup result."},
+    {"id":"GOLDEN_FUNCTION_INTERFACE_EXACT","rule":"Function input_refs and output_refs describe canonical Properties actually read and written by modeled Function logic. Pure causal relay Functions may declare empty interfaces."},
     {"id":"GOLDEN_NO_FUNCTION_CALL","rule":"No function_call Link or logic call primitive exists."},
     {"id":"GOLDEN_ASSET_CARDINALITY","rule":"Every Entity owns zero or one Asset Property."},
     {"id":"GOLDEN_ABSTRACTION","rule":"Every Node is an abstraction; ABS is the least opinionated standard family."},
     {"id":"GOLDEN_OVERLAP","rule":"The same canonical Entity may be a member of multiple abstraction Nodes without duplication."},
     {"id":"GOLDEN_DEPENDENCY_DIRECTION","rule":"dependency parent_ref is the provider/dependency and child_ref is the dependent/consumer."},
-    {"id":"GOLDEN_SHARD_CLOSURE","rule":"Model/model.cw.shards[] is the authoritative canonical Model closure; every non-root .cw shard is listed exactly once and no listed shard may be missing."}
+    {"id":"GOLDEN_SHARD_CLOSURE","rule":"Model/model.cw.shards[] is the authoritative canonical Model closure; every non-root .cw shard is listed exactly once and no listed shard may be missing."},
+    {"id":"GOLDEN_CTRCT_SCOPE","rule":"This golden fixture does not demonstrate the CTRCT family. Registered NodeType families are open-ended and an unused registered family does not require a fixture Entity."}
   ]},
   "references":[],
   "gaps":[],
