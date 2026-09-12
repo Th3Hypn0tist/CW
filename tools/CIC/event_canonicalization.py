@@ -72,6 +72,7 @@ def propose_canonical_event(mapping: EventMappingProposal) -> CanonicalEventProp
     event_type_ref = mapping.event_type_ref
     trigger_rule_ref = mapping.trigger_rule_ref
     qualified_name = mapping.target_function_qualified_name
+    event_identity = mapping.event_identity
 
     for value, label in (
         (owner_ref, "owner_entity_ref"),
@@ -82,12 +83,23 @@ def propose_canonical_event(mapping: EventMappingProposal) -> CanonicalEventProp
     ):
         if not isinstance(value, str) or not value:
             raise EventCanonicalizationError(f"Event canonicalization {label} missing")
+    if event_identity is not None and (not isinstance(event_identity, str) or not event_identity):
+        raise EventCanonicalizationError("Event event_identity must be a non-empty string when present")
 
     if not owner_ref.startswith("#FILE:"):
         raise EventCanonicalizationError(f"Event owner must be canonical #FILE identity: {owner_ref}")
 
-    event_id = f"EVENT::{_safe_fragment(owner_ref)}::{qualified_name}::{trigger_rule_ref}"
+    semantic_name = event_identity if event_identity is not None else qualified_name
+    event_id = f"EVENT::{_safe_fragment(owner_ref)}::{event_type_ref}::{_safe_fragment(semantic_name)}::{trigger_rule_ref}"
     handler_id = f"LINK::EVENT_HANDLER::{_safe_fragment(event_id)}"
+
+    event_properties = {
+        "implementation_evidence_ref": mapping.proposal_id,
+        "trigger_rule_ref": trigger_rule_ref,
+        "target_function_qualified_name": qualified_name,
+    }
+    if event_identity is not None:
+        event_properties["event_identity"] = event_identity
 
     event_property = {
         "id": event_id,
@@ -96,11 +108,7 @@ def propose_canonical_event(mapping: EventMappingProposal) -> CanonicalEventProp
         "status": "unlocked",
         "value": {
             "event_type_ref": event_type_ref,
-            "properties": {
-                "implementation_evidence_ref": mapping.proposal_id,
-                "trigger_rule_ref": trigger_rule_ref,
-                "target_function_qualified_name": qualified_name,
-            },
+            "properties": event_properties,
         },
     }
 
