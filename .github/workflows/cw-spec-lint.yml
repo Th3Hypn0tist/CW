@@ -69,15 +69,15 @@ jobs:
       - name: Emit machine-readable reports
         if: always()
         run: |
-          mkdir -p .artifacts
-          python linter/cw_spec_lint.py --json > .artifacts/cw-spec-lint-report.json || true
-          python linter/cw_package_validate.py Examples/Ultralight_CMS --json > .artifacts/cw-package-report.json || true
-          python -m tools.CIC release-check > .artifacts/cic-release-report.json || true
+          mkdir -p artifacts
+          python linter/cw_spec_lint.py --json > artifacts/cw-spec-lint-report.json || true
+          python linter/cw_package_validate.py Examples/Ultralight_CMS --json > artifacts/cw-package-report.json || true
+          python -m tools.CIC release-check > artifacts/cic-release-report.json || true
 
       - name: Upload integrity reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cw-integrity-reports
-          path: .artifacts/*.json
+          path: artifacts/*.json
           if-no-files-found: error
