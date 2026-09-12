@@ -16,8 +16,27 @@ _PROFILES: dict[str, dict[str, Any]] = {
                 "evidence_kind": "registration_handler",
                 "evidence_value": "CommandDef",
                 "event_type_ref": "command",
+                "identity_keyword": "command",
             }
-        ]
+        ],
+        "module_discovery_rules": [
+            {
+                "rule_id": "AIGMOS_INPUT_MODULE_DISCOVERY",
+                "language_id": "python",
+                "registry_path": "system/inputs/registry.py",
+                "role": "input",
+                "package_binding_names": ["_CORE_PACKAGE", "_EXT_PACKAGE"],
+                "skip_binding_name": "_SKIP_MODULES",
+            },
+            {
+                "rule_id": "AIGMOS_ADAPTER_MODULE_DISCOVERY",
+                "language_id": "python",
+                "registry_path": "system/adapters/registry.py",
+                "role": "adapter",
+                "package_binding_names": ["_CORE_PACKAGE", "_EXT_PACKAGE"],
+                "skip_binding_name": "_SKIP_MODULES",
+            },
+        ],
     }
 }
 
@@ -37,4 +56,5 @@ def profile_options(name: str | None) -> dict[str, Any]:
         raise CICProfileError(f"unknown CIC profile: {name!r}; available: {', '.join(list_profiles())}")
     return {
         "event_rules": [dict(item) for item in profile.get("event_rules", [])],
+        "module_discovery_rules": [dict(item) for item in profile.get("module_discovery_rules", [])],
     }
