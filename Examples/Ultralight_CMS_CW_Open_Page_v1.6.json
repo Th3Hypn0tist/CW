@@ -1,0 +1,565 @@
+{
+  "format": {
+    "contract_format": "CANONICAL_CONTRACT",
+    "format_version": "2.1"
+  },
+  "identity": {
+    "id": "ULTRALIGHT_CMS",
+    "name": "Ultralight CMS",
+    "type": "system_architecture",
+    "version": "1.6.0"
+  },
+  "specification_ref": "CW_CORE@1.1.0",
+  "status": "unlocked",
+  "purpose": "Define the complete canonical structure and open-page causality of a minimal ultralight CMS over index.html, renderer.js, content.json and style.css.",
+  "scope": {
+    "owns": [
+      "Ultralight CMS abstraction topology",
+      "file identities",
+      "structural dependencies",
+      "page-request Event",
+      "open_page, render_page, read_content and read_style Functions",
+      "render-page Effect",
+      "explicit Event handler, Function calls and Effect target",
+      "explicit Function inputs and outputs"
+    ],
+    "does_not_own": [
+      "runtime HTTP transport",
+      "site content values",
+      "CSS styling values",
+      "browser implementation details",
+      "runtime execution traces",
+      "animation behavior"
+    ]
+  },
+  "entities": [
+    {
+      "id": "#ABS:UltralightCMS",
+      "name": "Ultralight CMS",
+      "entity_type_ref": "abs",
+      "status": "unlocked",
+      "properties": [
+        {
+          "id": "LINK_ABS_INDEX",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "#ABS:UltralightCMS",
+            "parent_ref": "#ABS:UltralightCMS",
+            "child_ref": "#FILE:index.html",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_ABS_RENDERER",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "#ABS:UltralightCMS",
+            "parent_ref": "#ABS:UltralightCMS",
+            "child_ref": "#FILE:renderer.js",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_ABS_CONTENT",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "#ABS:UltralightCMS",
+            "parent_ref": "#ABS:UltralightCMS",
+            "child_ref": "#FILE:content.json",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_ABS_STYLE",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "#ABS:UltralightCMS",
+            "parent_ref": "#ABS:UltralightCMS",
+            "child_ref": "#FILE:style.css",
+            "properties": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "#FILE:index.html",
+      "name": "index.html",
+      "entity_type_ref": "code",
+      "status": "unlocked",
+      "required_links": [],
+      "properties": [
+        {
+          "id": "DATA_PAGE_REQUEST",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "page_request",
+            "value": null,
+            "properties": {}
+          }
+        },
+        {
+          "id": "DATA_INDEX_DOCUMENT",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "html_document",
+            "value": null,
+            "properties": {}
+          }
+        },
+        {
+          "id": "EVENT_OPEN_PAGE",
+          "property_type_ref": "event",
+          "ruleset_ref": "RULESET_EVENT",
+          "status": "unlocked",
+          "value": {
+            "event_type_ref": "open_page",
+            "properties": {}
+          }
+        },
+        {
+          "id": "FUNCTION_OPEN_PAGE",
+          "property_type_ref": "function",
+          "ruleset_ref": "RULESET_FUNCTION",
+          "status": "unlocked",
+          "value": {
+            "function_type_ref": "open_page",
+            "input_refs": [
+              "DATA_PAGE_REQUEST"
+            ],
+            "output_refs": [
+              "DATA_INDEX_DOCUMENT"
+            ],
+            "logic": {
+              "primitive_set_ref": "CW_LOGIC_PRIMITIVES",
+              "body": [
+                {
+                  "op": "call",
+                  "call_ref": "LINK_OPEN_PAGE_CALLS_RENDER_PAGE"
+                },
+                {
+                  "op": "return",
+                  "value": {
+                    "ref": "DATA_INDEX_DOCUMENT"
+                  }
+                }
+              ]
+            },
+            "properties": {
+              "name": "open_page",
+              "qualified_name": "index.html:open_page"
+            }
+          }
+        },
+        {
+          "id": "LINK_PAGE_REQUEST_INPUT",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_EVENT_INPUT",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "event_input",
+            "parent_ref": "DATA_PAGE_REQUEST",
+            "child_ref": "EVENT_OPEN_PAGE",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_OPEN_PAGE_HANDLER",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_EVENT_HANDLER",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "event_handler",
+            "parent_ref": "EVENT_OPEN_PAGE",
+            "child_ref": "FUNCTION_OPEN_PAGE",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_OPEN_PAGE_CALLS_RENDER_PAGE",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_FUNCTION_CALL",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "function_call",
+            "parent_ref": "FUNCTION_OPEN_PAGE",
+            "child_ref": "FUNCTION_RENDER_PAGE",
+            "input_refs": [
+              "DATA_PAGE_REQUEST"
+            ],
+            "output_refs": [
+              "DATA_INDEX_DOCUMENT"
+            ],
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_OPEN_PAGE_TO_RENDER_EFFECT",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_EVENT_EFFECT",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "event_effect",
+            "parent_ref": "EVENT_OPEN_PAGE",
+            "child_ref": "EFFECT_RENDER_PAGE",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_INDEX_RENDERER_DEPENDENCY",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_DEPENDENCY",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "dependency",
+            "parent_ref": "#FILE:renderer.js",
+            "child_ref": "#FILE:index.html",
+            "properties": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "#FILE:renderer.js",
+      "name": "renderer.js",
+      "entity_type_ref": "code",
+      "status": "unlocked",
+      "required_links": [],
+      "properties": [
+        {
+          "id": "DATA_READ_CONTENT",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "loaded_content",
+            "value": null,
+            "properties": {}
+          }
+        },
+        {
+          "id": "DATA_READ_STYLE",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "loaded_style",
+            "value": null,
+            "properties": {}
+          }
+        },
+        {
+          "id": "FUNCTION_READ_CONTENT",
+          "property_type_ref": "function",
+          "ruleset_ref": "RULESET_FUNCTION",
+          "status": "unlocked",
+          "value": {
+            "function_type_ref": "read_content",
+            "input_refs": [
+              "DATA_CONTENT_DOCUMENT"
+            ],
+            "output_refs": [
+              "DATA_READ_CONTENT"
+            ],
+            "logic": {
+              "primitive_set_ref": "CW_LOGIC_PRIMITIVES",
+              "body": [
+                {
+                  "op": "write",
+                  "target": "DATA_READ_CONTENT",
+                  "value": {
+                    "op": "read",
+                    "source": {
+                      "ref": "DATA_CONTENT_DOCUMENT"
+                    }
+                  }
+                },
+                {
+                  "op": "return",
+                  "value": {
+                    "ref": "DATA_READ_CONTENT"
+                  }
+                }
+              ]
+            },
+            "properties": {
+              "name": "read_content",
+              "qualified_name": "renderer.js:read_content"
+            }
+          }
+        },
+        {
+          "id": "FUNCTION_READ_STYLE",
+          "property_type_ref": "function",
+          "ruleset_ref": "RULESET_FUNCTION",
+          "status": "unlocked",
+          "value": {
+            "function_type_ref": "read_style",
+            "input_refs": [
+              "DATA_STYLE_STYLESHEET"
+            ],
+            "output_refs": [
+              "DATA_READ_STYLE"
+            ],
+            "logic": {
+              "primitive_set_ref": "CW_LOGIC_PRIMITIVES",
+              "body": [
+                {
+                  "op": "write",
+                  "target": "DATA_READ_STYLE",
+                  "value": {
+                    "op": "read",
+                    "source": {
+                      "ref": "DATA_STYLE_STYLESHEET"
+                    }
+                  }
+                },
+                {
+                  "op": "return",
+                  "value": {
+                    "ref": "DATA_READ_STYLE"
+                  }
+                }
+              ]
+            },
+            "properties": {
+              "name": "read_style",
+              "qualified_name": "renderer.js:read_style"
+            }
+          }
+        },
+        {
+          "id": "FUNCTION_RENDER_PAGE",
+          "property_type_ref": "function",
+          "ruleset_ref": "RULESET_FUNCTION",
+          "status": "unlocked",
+          "value": {
+            "function_type_ref": "render_page",
+            "input_refs": [
+              "DATA_PAGE_REQUEST"
+            ],
+            "output_refs": [
+              "DATA_INDEX_DOCUMENT"
+            ],
+            "logic": {
+              "primitive_set_ref": "CW_LOGIC_PRIMITIVES",
+              "body": [
+                {
+                  "op": "call",
+                  "call_ref": "LINK_RENDER_PAGE_CALLS_READ_CONTENT"
+                },
+                {
+                  "op": "call",
+                  "call_ref": "LINK_RENDER_PAGE_CALLS_READ_STYLE"
+                },
+                {
+                  "op": "return",
+                  "value": {
+                    "ref": "DATA_INDEX_DOCUMENT"
+                  }
+                }
+              ]
+            },
+            "properties": {
+              "name": "render_page",
+              "qualified_name": "renderer.js:render_page"
+            }
+          }
+        },
+        {
+          "id": "EFFECT_RENDER_PAGE",
+          "property_type_ref": "effect",
+          "ruleset_ref": "RULESET_EFFECT",
+          "status": "unlocked",
+          "value": {
+            "effect_type_ref": "render_page",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_RENDER_PAGE_CALLS_READ_CONTENT",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_FUNCTION_CALL",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "function_call",
+            "parent_ref": "FUNCTION_RENDER_PAGE",
+            "child_ref": "FUNCTION_READ_CONTENT",
+            "input_refs": [
+              "DATA_CONTENT_DOCUMENT"
+            ],
+            "output_refs": [
+              "DATA_READ_CONTENT"
+            ],
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_RENDER_PAGE_CALLS_READ_STYLE",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_FUNCTION_CALL",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "function_call",
+            "parent_ref": "FUNCTION_RENDER_PAGE",
+            "child_ref": "FUNCTION_READ_STYLE",
+            "input_refs": [
+              "DATA_STYLE_STYLESHEET"
+            ],
+            "output_refs": [
+              "DATA_READ_STYLE"
+            ],
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_RENDER_EFFECT_TO_INDEX_DOCUMENT",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_EFFECT_TARGET",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "effect_target",
+            "parent_ref": "EFFECT_RENDER_PAGE",
+            "child_ref": "DATA_INDEX_DOCUMENT",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_CONTENT_RENDERER_DEPENDENCY",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_DEPENDENCY",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "dependency",
+            "parent_ref": "#FILE:content.json",
+            "child_ref": "#FILE:renderer.js",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_STYLE_RENDERER_DEPENDENCY",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_DEPENDENCY",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "dependency",
+            "parent_ref": "#FILE:style.css",
+            "child_ref": "#FILE:renderer.js",
+            "properties": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "#FILE:content.json",
+      "name": "content.json",
+      "entity_type_ref": "code",
+      "status": "unlocked",
+      "required_links": [],
+      "properties": [
+        {
+          "id": "DATA_CONTENT_DOCUMENT",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "json_document",
+            "value": null,
+            "properties": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "#FILE:style.css",
+      "name": "style.css",
+      "entity_type_ref": "code",
+      "status": "unlocked",
+      "required_links": [],
+      "properties": [
+        {
+          "id": "DATA_STYLE_STYLESHEET",
+          "property_type_ref": "data",
+          "ruleset_ref": "RULESET_DATA",
+          "status": "unlocked",
+          "value": {
+            "data_type_ref": "css_stylesheet",
+            "value": null,
+            "properties": {}
+          }
+        }
+      ]
+    }
+  ],
+  "constraints": {
+    "invariants": [
+      {
+        "id": "CMS_ROOT_IS_ABSTRACTION",
+        "rule": "#ABS:UltralightCMS is an Abstraction Node and owns no Event, Effect, Data or Function Property."
+      },
+      {
+        "id": "OPEN_PAGE_EVENT_IS_INDEX",
+        "rule": "EVENT_OPEN_PAGE belongs to #FILE:index.html and is handled by FUNCTION_OPEN_PAGE on the same Node."
+      },
+      {
+        "id": "OPEN_PAGE_CALLS_RENDER_PAGE",
+        "rule": "FUNCTION_OPEN_PAGE explicitly calls FUNCTION_RENDER_PAGE on #FILE:renderer.js."
+      },
+      {
+        "id": "RENDER_PAGE_CALLS_READERS",
+        "rule": "FUNCTION_RENDER_PAGE explicitly calls FUNCTION_READ_CONTENT and FUNCTION_READ_STYLE."
+      },
+      {
+        "id": "READ_CONTENT_READS_CONTENT_JSON",
+        "rule": "FUNCTION_READ_CONTENT explicitly reads DATA_CONTENT_DOCUMENT from #FILE:content.json and exposes DATA_READ_CONTENT."
+      },
+      {
+        "id": "READ_STYLE_READS_STYLE_CSS",
+        "rule": "FUNCTION_READ_STYLE explicitly reads DATA_STYLE_STYLESHEET from #FILE:style.css and exposes DATA_READ_STYLE."
+      },
+      {
+        "id": "OPEN_PAGE_CAUSES_RENDER_EFFECT",
+        "rule": "EVENT_OPEN_PAGE explicitly causes EFFECT_RENDER_PAGE on #FILE:renderer.js through event_effect."
+      },
+      {
+        "id": "RENDER_EFFECT_TARGETS_INDEX",
+        "rule": "EFFECT_RENDER_PAGE explicitly targets DATA_INDEX_DOCUMENT on #FILE:index.html."
+      },
+      {
+        "id": "DEPENDENCY_CHAIN_EXPLICIT",
+        "rule": "index.html depends on renderer.js; renderer.js depends on content.json and style.css."
+      },
+      {
+        "id": "REQUEST_AND_EFFECT_CROSS_DEPENDENCY_OPPOSITE_DIRECTIONS",
+        "rule": "The open-page Event-to-Effect causal edge crosses from dependent index.html toward dependency renderer.js, while the render Effect target crosses from renderer.js back toward dependent index.html."
+      },
+      {
+        "id": "NO_CAUSAL_INFERENCE_FROM_DEPENDENCY",
+        "rule": "Dependency Links remain structural semantics. Event, handler, Function-call, Effect and target semantics remain explicit canonical Properties."
+      }
+    ]
+  },
+  "references": [
+    {
+      "id": "REF_CW_CORE",
+      "target_ref": "CW_CORE@1.1.0",
+      "purpose": "Immutable CW Core specification set v1.1.0 defining Canonical Contract Format 2.4.3, CanonicalWireframe NodeTypes 1.18.0 and CanonicalWireframe Dependency Rules 3.14.0 used to interpret this artifact."
+    }
+  ],
+  "gaps": [],
+  "prose": {
+    "summary": "Ultralight CMS is one #ABS abstraction over four #FILE Nodes. index.html owns the open_page Event and handler Function. The handler calls renderer.js render_page; render_page calls read_content and read_style, whose Data inputs resolve to content.json and style.css. The Event explicitly causes a render_page Effect on renderer.js, and that Effect explicitly targets the index.html document.",
+    "notes": "Causality and dependency remain separate canonical truths. The dependency graph is content.json/style.css -> renderer.js -> index.html. The open-page causal request crosses index.html -> renderer.js, opposite the renderer dependency edge, and the render Effect returns renderer.js -> index.html through its explicit effect_target. Animation is intentionally not defined by this example."
+  }
+}
