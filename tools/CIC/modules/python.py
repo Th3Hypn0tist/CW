@@ -31,6 +31,33 @@ def _name(node: ast.AST | None) -> str | None:
     return None
 
 
+def _literal_value(node: ast.AST | None) -> tuple[bool, Any]:
+    if node is None:
+        return False, None
+    if isinstance(node, ast.Constant) and isinstance(node.value, (str, int, float, bool, type(None))):
+        return True, node.value
+    if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+        values: list[Any] = []
+        for item in node.elts:
+            ok, value = _literal_value(item)
+            if not ok:
+                return False, None
+            values.append(value)
+        if isinstance(node, ast.Set):
+            values = sorted(values, key=lambda item: repr(item))
+        return True, values
+    if isinstance(node, ast.Dict):
+        result: dict[str, Any] = {}
+        for key_node, value_node in zip(node.keys, node.values):
+            ok_key, key = _literal_value(key_node)
+            ok_value, value = _literal_value(value_node)
+            if not ok_key or not ok_value or not isinstance(key, str):
+                return False, None
+            result[key] = value
+        return True, result
+    return False, None
+
+
 def _operator(node: ast.AST) -> str:
     return node.__class__.__name__
 
@@ -53,8 +80,6 @@ class _FunctionFacts(ast.NodeVisitor):
         self.yields: list[dict[str, Any]] = []
         self.lambdas: list[dict[str, Any]] = []
 
-    # Nested lexical scopes are extracted separately. Their bodies must not be
-    # attributed to the parent function's observable logic.
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         return None
 
@@ -66,8 +91,6 @@ class _FunctionFacts(ast.NodeVisitor):
 
     def visit_Lambda(self, node: ast.Lambda) -> None:
         self.lambdas.append({"span": _span(node)})
-        # Lambda expression body executes only when the lambda is invoked, so it
-        # is not folded into the enclosing function's direct execution facts.
         return None
 
     def visit_Name(self, node: ast.Name) -> None:
@@ -299,12 +322,17 @@ def extract_python(path: str, source: str) -> dict[str, Any]:
             })
         elif isinstance(node, (ast.Assign, ast.AnnAssign)):
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            symbols.append({
+            record: dict[str, Any] = {
                 "kind": "variable",
                 "names": [_name(target) for target in targets],
                 "annotation": ast.unparse(node.annotation) if isinstance(node, ast.AnnAssign) and node.annotation is not None else None,
                 "span": _span(node),
-            })
+            }
+            value_node = node.value
+            ok, literal_value = _literal_value(value_node)
+            if ok:
+                record["literal_value"] = literal_value
+            symbols.append(record)
         else:
             evidence.append({"kind": node.__class__.__name__, "span": _span(node)})
 
