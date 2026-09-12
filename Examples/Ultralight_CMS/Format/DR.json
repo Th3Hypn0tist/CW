@@ -1,7 +1,7 @@
 {
   "id": "CW_DEPENDENCY_RULES",
   "name": "CanonicalWireframe Dependency Rules",
-  "version": "4.0.3-reference",
+  "version": "4.0.4-reference",
   "status": "unlocked",
   "principles": [
     "Entity and Property are the only canonical atoms.",
@@ -54,6 +54,12 @@
     "pending_rule": "An emitted Event occurrence with unsatisfied conditions remains pending in its execution context. It dispatches exactly once when all its conditions become satisfied.",
     "no_replay_rule": "Condition transitions do not create additional Event occurrences. One emit creates at most one dispatch.",
     "handler_rule": "When an Event occurrence dispatches, its linked handler/effect semantics execute in the same context."
+  },
+  "function_interface_model": {
+    "input_refs": "Function.input_refs is the exact set of canonical Property refs read by that Function's modeled logic. Execution-context Data visible around the Function is not an input unless the Function actually reads it.",
+    "output_refs": "Function.output_refs is the exact set of canonical Property refs written/produced by that Function's modeled logic.",
+    "relay_rule": "A Function may have empty input_refs and output_refs when its modeled purpose is purely causal control such as emitting another Event.",
+    "validation_rule": "Generic tooling SHOULD verify that modeled canonical reads are declared in input_refs, modeled canonical writes are declared in output_refs, and unused declared refs are rejected unless another explicit Function contract permits them."
   },
   "link_property_model": {
     "ownership": "A Link is a Property and is owned by exactly one Entity through ordinary Entity.properties[] containment.",
@@ -116,7 +122,16 @@
       ]
     },
     {"id":"RULESET_EVENT","property_type_ref":"event"},
-    {"id":"RULESET_FUNCTION","property_type_ref":"function","optional_fields":["input_refs","output_refs","logic"]},
+    {
+      "id":"RULESET_FUNCTION",
+      "property_type_ref":"function",
+      "optional_fields":["input_refs","output_refs","logic"],
+      "constraints":[
+        "input_refs and output_refs, when present, MUST resolve through canonical Property reference resolution.",
+        "input_refs describe canonical Properties actually read by modeled Function logic, not all Data visible in the execution context.",
+        "output_refs describe canonical Properties actually written or produced by modeled Function logic."
+      ]
+    },
     {"id":"RULESET_EFFECT","property_type_ref":"effect","optional_fields":["input_refs"]},
     {"id":"RULESET_REPRESENTATION","property_type_ref":"representation"},
     {"id":"RULESET_TRANSFORM","property_type_ref":"transform"}
@@ -136,16 +151,17 @@
   ],
   "logic_primitive_set": {
     "id": "CW_LOGIC_PRIMITIVES",
-    "primitives": ["read","write","assign","lookup","concat","emit","return","if","while","loop","and","or","xor","not","eq","ne","lt","lte","gt","gte"],
+    "primitives": ["read","write","assign","lookup","concat","emit","return","fail","if","while","loop","and","or","xor","not","eq","ne","lt","lte","gt","gte"],
     "forbidden": ["call"],
     "semantics": {
       "read":"Read a canonical Data/Property value in the current execution context by exact ref; optional path selects a nested value.",
       "write":"Write a value to the canonical target Data/Property slot in the current execution context. Non-null Data writes MUST satisfy schema_ref before the slot becomes READY.",
       "assign":"Bind a transient local_ref inside the containing Function.logic execution scope.",
-      "lookup":"Read one item from a READY collection. For a list, key_field selects the compared item field and key is matched by exact equality; zero matches returns null and more than one match is invalid. A list Schema unique_by constraint can guarantee at most one match.",
+      "lookup":"Read one item from a READY collection. The source MUST be READY before lookup executes; lookup against UNBOUND or INVALID source is INVALID execution, never null. For a list, key_field selects the compared item field and key is matched by exact equality; zero matches in a READY collection returns null and more than one match is INVALID. A list Schema unique_by constraint can guarantee at most one match.",
       "concat":"Concatenate ordered scalar/string expressions into one scalar/string value.",
       "emit":"cause_ref MUST resolve to an event_cause Link whose parent_ref resolves to the containing Function Property.id. The emitted Event occurrence preserves the current execution context.",
       "return":"Return from local Function logic; return alone does not create cross-Function causality.",
+      "fail":"Terminate the current Function execution as INVALID using an explicit machine-readable code. fail MUST NOT emit subsequent Events from the terminated control path.",
       "if":"Select exactly one local logic branch from an explicit boolean condition."
     }
   },
