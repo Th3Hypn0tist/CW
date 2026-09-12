@@ -11,17 +11,20 @@
   },
   "specification_ref": "CW_CORE@1.1.0",
   "status": "unlocked",
-  "purpose": "Define a minimal ultralight CMS as one abstraction over index.html, renderer.js, content.json and style.css, with the page-request Event owned by index.html and explicit Function semantics for querying source data and rendering the page.",
+  "purpose": "Define a minimal ultralight CMS as one abstraction over index.html, renderer.js, content.json and style.css, with the page-request Event owned by index.html and an explicit open_page -> render_page -> read_content/read_style Function topology.",
   "scope": {
     "owns": [
       "Ultralight CMS abstraction membership",
       "file identities",
       "structural dependencies",
       "page-request Event",
-      "query and render Function Properties",
+      "open_page Function",
+      "render_page Function",
+      "read_content Function",
+      "read_style Function",
       "explicit Function inputs and outputs",
       "event-to-handler binding",
-      "query-to-render call site"
+      "explicit Function-call sites"
     ],
     "does_not_own": [
       "runtime HTTP transport",
@@ -118,12 +121,43 @@
           }
         },
         {
-          "id": "EVENT_PAGE_REQUEST",
+          "id": "EVENT_OPEN_PAGE",
           "property_type_ref": "event",
           "ruleset_ref": "RULESET_EVENT",
           "status": "unlocked",
           "value": {
-            "event_type_ref": "page_request",
+            "event_type_ref": "open_page",
+            "properties": {}
+          }
+        },
+        {
+          "id": "FUNCTION_OPEN_PAGE",
+          "property_type_ref": "function",
+          "ruleset_ref": "RULESET_FUNCTION",
+          "status": "unlocked",
+          "value": {
+            "function_type_ref": "open_page",
+            "input_refs": [
+              "DATA_PAGE_REQUEST"
+            ],
+            "output_refs": [
+              "DATA_INDEX_DOCUMENT"
+            ],
+            "logic": {
+              "primitive_set_ref": "CW_LOGIC_PRIMITIVES",
+              "body": [
+                {
+                  "op": "call",
+                  "call_ref": "LINK_OPEN_PAGE_CALLS_RENDER_PAGE"
+                },
+                {
+                  "op": "return",
+                  "value": {
+                    "ref": "DATA_INDEX_DOCUMENT"
+                  }
+                }
+              ]
+            },
             "properties": {}
           }
         },
@@ -135,19 +169,37 @@
           "value": {
             "link_type_ref": "event_input",
             "parent_ref": "DATA_PAGE_REQUEST",
-            "child_ref": "EVENT_PAGE_REQUEST",
+            "child_ref": "EVENT_OPEN_PAGE",
             "properties": {}
           }
         },
         {
-          "id": "LINK_PAGE_REQUEST_HANDLER",
+          "id": "LINK_OPEN_PAGE_HANDLER",
           "property_type_ref": "link",
           "ruleset_ref": "RULESET_LINK_EVENT_HANDLER",
           "status": "unlocked",
           "value": {
             "link_type_ref": "event_handler",
-            "parent_ref": "EVENT_PAGE_REQUEST",
-            "child_ref": "FUNCTION_QUERY",
+            "parent_ref": "EVENT_OPEN_PAGE",
+            "child_ref": "FUNCTION_OPEN_PAGE",
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_OPEN_PAGE_CALLS_RENDER_PAGE",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_FUNCTION_CALL",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "function_call",
+            "parent_ref": "FUNCTION_OPEN_PAGE",
+            "child_ref": "FUNCTION_RENDER_PAGE",
+            "input_refs": [
+              "DATA_PAGE_REQUEST"
+            ],
+            "output_refs": [
+              "DATA_INDEX_DOCUMENT"
+            ],
             "properties": {}
           }
         },
@@ -173,7 +225,7 @@
       "required_links": [],
       "properties": [
         {
-          "id": "DATA_QUERY_CONTENT",
+          "id": "DATA_READ_CONTENT",
           "property_type_ref": "data",
           "ruleset_ref": "RULESET_DATA",
           "status": "unlocked",
@@ -184,7 +236,7 @@
           }
         },
         {
-          "id": "DATA_QUERY_STYLE",
+          "id": "DATA_READ_STYLE",
           "property_type_ref": "data",
           "ruleset_ref": "RULESET_DATA",
           "status": "unlocked",
@@ -195,56 +247,146 @@
           }
         },
         {
-          "id": "FUNCTION_QUERY",
+          "id": "FUNCTION_READ_CONTENT",
           "property_type_ref": "function",
           "ruleset_ref": "RULESET_FUNCTION",
           "status": "unlocked",
           "value": {
-            "function_type_ref": "query",
+            "function_type_ref": "read_content",
             "input_refs": [
-              "DATA_PAGE_REQUEST",
-              "DATA_CONTENT_DOCUMENT",
-              "DATA_STYLE_STYLESHEET"
+              "DATA_CONTENT_DOCUMENT"
             ],
             "output_refs": [
-              "DATA_QUERY_CONTENT",
-              "DATA_QUERY_STYLE"
+              "DATA_READ_CONTENT"
             ],
+            "logic": {
+              "primitive_set_ref": "CW_LOGIC_PRIMITIVES",
+              "body": [
+                {
+                  "op": "write",
+                  "target": "DATA_READ_CONTENT",
+                  "value": {
+                    "op": "read",
+                    "source": {
+                      "ref": "DATA_CONTENT_DOCUMENT"
+                    }
+                  }
+                },
+                {
+                  "op": "return",
+                  "value": {
+                    "ref": "DATA_READ_CONTENT"
+                  }
+                }
+              ]
+            },
             "properties": {}
           }
         },
         {
-          "id": "FUNCTION_RENDER",
+          "id": "FUNCTION_READ_STYLE",
           "property_type_ref": "function",
           "ruleset_ref": "RULESET_FUNCTION",
           "status": "unlocked",
           "value": {
-            "function_type_ref": "render",
+            "function_type_ref": "read_style",
             "input_refs": [
-              "DATA_QUERY_CONTENT",
-              "DATA_QUERY_STYLE"
+              "DATA_STYLE_STYLESHEET"
+            ],
+            "output_refs": [
+              "DATA_READ_STYLE"
+            ],
+            "logic": {
+              "primitive_set_ref": "CW_LOGIC_PRIMITIVES",
+              "body": [
+                {
+                  "op": "write",
+                  "target": "DATA_READ_STYLE",
+                  "value": {
+                    "op": "read",
+                    "source": {
+                      "ref": "DATA_STYLE_STYLESHEET"
+                    }
+                  }
+                },
+                {
+                  "op": "return",
+                  "value": {
+                    "ref": "DATA_READ_STYLE"
+                  }
+                }
+              ]
+            },
+            "properties": {}
+          }
+        },
+        {
+          "id": "FUNCTION_RENDER_PAGE",
+          "property_type_ref": "function",
+          "ruleset_ref": "RULESET_FUNCTION",
+          "status": "unlocked",
+          "value": {
+            "function_type_ref": "render_page",
+            "input_refs": [
+              "DATA_PAGE_REQUEST"
             ],
             "output_refs": [
               "DATA_INDEX_DOCUMENT"
             ],
+            "logic": {
+              "primitive_set_ref": "CW_LOGIC_PRIMITIVES",
+              "body": [
+                {
+                  "op": "call",
+                  "call_ref": "LINK_RENDER_PAGE_CALLS_READ_CONTENT"
+                },
+                {
+                  "op": "call",
+                  "call_ref": "LINK_RENDER_PAGE_CALLS_READ_STYLE"
+                },
+                {
+                  "op": "return",
+                  "value": {
+                    "ref": "DATA_INDEX_DOCUMENT"
+                  }
+                }
+              ]
+            },
             "properties": {}
           }
         },
         {
-          "id": "LINK_QUERY_CALLS_RENDER",
+          "id": "LINK_RENDER_PAGE_CALLS_READ_CONTENT",
           "property_type_ref": "link",
           "ruleset_ref": "RULESET_LINK_FUNCTION_CALL",
           "status": "unlocked",
           "value": {
             "link_type_ref": "function_call",
-            "parent_ref": "FUNCTION_QUERY",
-            "child_ref": "FUNCTION_RENDER",
+            "parent_ref": "FUNCTION_RENDER_PAGE",
+            "child_ref": "FUNCTION_READ_CONTENT",
             "input_refs": [
-              "DATA_QUERY_CONTENT",
-              "DATA_QUERY_STYLE"
+              "DATA_CONTENT_DOCUMENT"
             ],
             "output_refs": [
-              "DATA_INDEX_DOCUMENT"
+              "DATA_READ_CONTENT"
+            ],
+            "properties": {}
+          }
+        },
+        {
+          "id": "LINK_RENDER_PAGE_CALLS_READ_STYLE",
+          "property_type_ref": "link",
+          "ruleset_ref": "RULESET_LINK_FUNCTION_CALL",
+          "status": "unlocked",
+          "value": {
+            "link_type_ref": "function_call",
+            "parent_ref": "FUNCTION_RENDER_PAGE",
+            "child_ref": "FUNCTION_READ_STYLE",
+            "input_refs": [
+              "DATA_STYLE_STYLESHEET"
+            ],
+            "output_refs": [
+              "DATA_READ_STYLE"
             ],
             "properties": {}
           }
@@ -323,16 +465,24 @@
         "rule": "#ABS:UltralightCMS is an Abstraction Node and owns no Event or Function Property."
       },
       {
-        "id": "PAGE_REQUEST_EVENT_IS_INDEX",
-        "rule": "EVENT_PAGE_REQUEST belongs to #FILE:index.html."
+        "id": "OPEN_PAGE_EVENT_IS_INDEX",
+        "rule": "EVENT_OPEN_PAGE belongs to #FILE:index.html and is handled by FUNCTION_OPEN_PAGE on the same Node."
       },
       {
-        "id": "QUERY_READS_CANONICAL_SOURCES",
-        "rule": "FUNCTION_QUERY explicitly consumes DATA_CONTENT_DOCUMENT and DATA_STYLE_STYLESHEET and exposes loaded content/style surfaces."
+        "id": "OPEN_PAGE_CALLS_RENDER_PAGE",
+        "rule": "FUNCTION_OPEN_PAGE explicitly calls FUNCTION_RENDER_PAGE."
       },
       {
-        "id": "RENDER_WRITES_INDEX_DOCUMENT",
-        "rule": "FUNCTION_RENDER explicitly consumes the query outputs and exposes DATA_INDEX_DOCUMENT as its output."
+        "id": "RENDER_PAGE_CALLS_READERS",
+        "rule": "FUNCTION_RENDER_PAGE explicitly calls FUNCTION_READ_CONTENT and FUNCTION_READ_STYLE."
+      },
+      {
+        "id": "READ_CONTENT_READS_CONTENT_JSON",
+        "rule": "FUNCTION_READ_CONTENT explicitly reads DATA_CONTENT_DOCUMENT and exposes DATA_READ_CONTENT."
+      },
+      {
+        "id": "READ_STYLE_READS_STYLE_CSS",
+        "rule": "FUNCTION_READ_STYLE explicitly reads DATA_STYLE_STYLESHEET and exposes DATA_READ_STYLE."
       },
       {
         "id": "DEPENDENCY_CHAIN_EXPLICIT",
@@ -340,7 +490,7 @@
       },
       {
         "id": "NO_CAUSAL_INFERENCE_FROM_DEPENDENCY",
-        "rule": "Dependency Links remain structural semantics and do not replace the explicit Event handler or Function-call semantics."
+        "rule": "Dependency Links remain structural semantics and do not replace Event-handler or Function-call semantics."
       }
     ]
   },
@@ -353,7 +503,7 @@
   ],
   "gaps": [],
   "prose": {
-    "summary": "Ultralight CMS is modeled as one #ABS abstraction containing four #FILE Nodes. index.html owns the page-request Event. The Event is explicitly bound to renderer.js FUNCTION_QUERY, which consumes content.json and style.css data surfaces. FUNCTION_QUERY calls FUNCTION_RENDER, and FUNCTION_RENDER exposes the rendered index document as output.",
-    "notes": "This revision intentionally fixes canonical Function and Event ownership before any renderer animation behavior is changed. Dependency direction is structural: content.json/style.css -> renderer.js -> index.html by dependency parent_ref -> child_ref semantics. Event, handler and function-call semantics remain explicit separate canonical Links."
+    "summary": "Ultralight CMS is modeled as one #ABS abstraction containing four #FILE Nodes. index.html owns EVENT_OPEN_PAGE and FUNCTION_OPEN_PAGE. open_page calls renderer.js render_page; render_page calls read_content and read_style; those reader Functions explicitly consume content.json and style.css data surfaces.",
+    "notes": "The older .cw labels shown in the historical diagram are represented here by the actual implementation identities index.html, renderer.js, content.json and style.css. This revision fixes canonical Function/Event structure only; renderer animation behavior is intentionally outside this example revision."
   }
 }
