@@ -1,7 +1,7 @@
 {
   "id": "CW_DEPENDENCY_RULES",
   "name": "CanonicalWireframe Dependency Rules",
-  "version": "4.0.5-reference",
+  "version": "4.0.6-reference",
   "status": "unlocked",
   "principles": [
     "Entity and Property are the only canonical atoms.",
@@ -42,12 +42,13 @@
     "package_validation_rule": "A valid package or valid Data slot contract MUST NOT be interpreted as a READY runtime Data value. READY exists only for a concrete execution-context binding after runtime validation.",
     "mutation_rule": "Runtime write/bind operations change execution-context state only; they MUST NOT rewrite the canonical .cw artifact."
   },
-  "schema_types": ["record", "string", "integer", "list"],
+  "schema_types": ["record", "string", "integer", "list", "map"],
   "schema_semantics": {
     "record": "definition.fields declares field contracts; required applies when validating a non-null record value.",
     "string": "a non-null value MUST be a string.",
     "integer": "a non-null value MUST be an integer value and MUST NOT be a boolean value.",
     "list": "definition.item_schema_ref declares the item Schema. definition.unique_by optionally names an item field whose non-null values MUST be unique. definition.required_items optionally requires list items matching explicit field/value pairs.",
+    "map": "a non-null value MUST be a string-keyed mapping. definition.value_schema_ref declares the Schema that every map value MUST satisfy.",
     "required_items": "Each required_items entry has field and value. A conforming list MUST contain at least one item whose named field equals the declared value.",
     "runtime_boundary": "Opaque Asset payload contents are not parsed by the CW package validator. An adapter/runtime that binds payload-derived values into Data slots MUST validate the resulting non-null value against schema_ref before the slot becomes READY."
   },
@@ -110,9 +111,10 @@
       "required_fields":["schema_type_ref","definition","properties"],
       "constraints":[
         "schema_type_ref MUST name exactly one value registered in schema_types.",
-        "Any schema_ref or item_schema_ref inside definition MUST resolve to a Property whose property_type_ref is schema.",
+        "Any schema_ref, item_schema_ref or value_schema_ref inside definition MUST resolve to a Property whose property_type_ref is schema.",
         "For schema_type_ref=list, unique_by when present MUST name a field in the item record Schema.",
-        "For schema_type_ref=list, required_items when present MUST be an array of explicit field/value requirements."
+        "For schema_type_ref=list, required_items when present MUST be an array of explicit field/value requirements.",
+        "For schema_type_ref=map, definition.value_schema_ref is required and MUST resolve to the Schema for every map value."
       ]
     },
     {
