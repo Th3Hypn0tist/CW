@@ -18,6 +18,7 @@ from .cw_version import finalize_cw_for_write, has_entity_version, next_version_
 from .module_discovery import detect_module_candidates
 from .package_pipeline import materialize_package
 from .profiles import profile_options
+from .semantic_gaps import gap_report
 
 
 class ToolchainValidationError(ValueError):
@@ -248,6 +249,17 @@ def _apply_noncanonical_profile_evidence(ir_path: Path, module_discovery_rules: 
     ir_path.write_text(json.dumps(ir, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def _write_semantic_gap_report(ir_path: Path, semantic_gap_rules: list[dict[str, Any]]) -> None:
+    if not semantic_gap_rules:
+        return
+    ir = json.loads(ir_path.read_text(encoding="utf-8"))
+    report = gap_report(ir, semantic_gap_rules)
+    report_path = ir_path.parent / "semantic_gaps.json"
+    report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    ir["semantic_gap_summary"] = dict(report.get("summary", {}))
+    ir_path.write_text(json.dumps(ir, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 def import_folder(
     code_folder: str | Path,
     cw_folder: str | Path,
@@ -277,6 +289,7 @@ def import_folder(
 
     profile_kwargs = profile_options(profile)
     module_discovery_rules = profile_kwargs.pop("module_discovery_rules", [])
+    semantic_gap_rules = profile_kwargs.pop("semantic_gap_rules", [])
     for key, value in profile_kwargs.items():
         if key in kwargs:
             raise ValueError(f"CIC profile {profile!r} and explicit {key} cannot both be supplied")
@@ -298,6 +311,7 @@ def import_folder(
         result = _core.import_folder(source, staged, force=False, **kwargs)
         _apply_noncanonical_profile_evidence(result.ir_path, module_discovery_rules)
         cw_path, ir_path, shard_count = materialize_package(staged, source, template)
+        _write_semantic_gap_report(ir_path, semantic_gap_rules)
         result = replace(result, cw_path=cw_path, ir_path=ir_path, shard_count=shard_count)
         _semantic_validate(staged, cw_root=root)
         if previous is None:
