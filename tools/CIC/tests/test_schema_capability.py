@@ -83,6 +83,26 @@ class CICSchemaCapabilityTests(unittest.TestCase):
         self.assertEqual(report["findings"][0]["code"], "SCHEMA_CONTAINER_UNSUPPORTED")
         self.assertEqual(report["findings"][0]["source_contract"], "#SYSTEM:runtime:runners")
 
+    def test_explicit_map_schema_type_closes_state_container_gap(self) -> None:
+        ir = {
+            "state_contract_candidates": [
+                {
+                    "source_entity_ref": "#FILE:system:runtime:runner_store",
+                    "state_symbol": "#SYSTEM:runtime:runners",
+                    "observed_container_types": ["map"],
+                }
+            ]
+        }
+        dr = {
+            "version": "4.0.6-reference",
+            "schema_types": ["record", "string", "integer", "list", "map"],
+            "schema_semantics": {"map": "map"},
+        }
+        report = audit_schema_capabilities(ir, dr)
+        self.assertEqual(report["findings"], [])
+        self.assertEqual(report["summary"]["unsupported_types"], [])
+        self.assertIn("map", report["supported_schema_semantics"])
+
     def test_supported_observed_types_produce_no_findings(self) -> None:
         ir = {
             "record_contract_candidates": [
