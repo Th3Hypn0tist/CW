@@ -6,6 +6,8 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import quote
 
+from .schema_capability import audit_schema_capabilities
+
 
 class CICPackageError(ValueError):
     pass
@@ -155,7 +157,8 @@ def materialize_package(
 
     manifest_path = model_root / "model.cw"
     manifest = _read_json(manifest_path)
-    ir = _read_json(diagnostics_root / "import.ir.json")
+    ir_path = diagnostics_root / "import.ir.json"
+    ir = _read_json(ir_path)
     dr_path = format_root / "DR.json"
     dr = _read_json(dr_path)
     dependencies = _dependency_properties(ir)
@@ -237,4 +240,10 @@ def materialize_package(
     _write_json(manifest_path, manifest)
     _write_json(dr_path, dr)
 
-    return manifest_path, diagnostics_root / "import.ir.json", shard_count
+    if isinstance(ir.get("record_contract_candidates"), list):
+        capability = audit_schema_capabilities(ir, dr)
+        _write_json(diagnostics_root / "schema_capabilities.json", capability)
+        ir["schema_capability_summary"] = dict(capability.get("summary", {}))
+        _write_json(ir_path, ir)
+
+    return manifest_path, ir_path, shard_count
