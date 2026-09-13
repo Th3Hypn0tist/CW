@@ -47,6 +47,11 @@ def _matches(targets: set[str], wanted: Iterable[str]) -> bool:
     return False
 
 
+def _mentions_binding(function: dict[str, Any], binding: str) -> bool:
+    source = function.get("source")
+    return isinstance(source, str) and binding in source
+
+
 def detect_state_contract_candidates(ir: dict[str, Any], rules: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     if not isinstance(ir, dict):
         raise StateContractError("Code IR must be an object")
@@ -67,16 +72,31 @@ def detect_state_contract_candidates(ir: dict[str, Any], rules: Iterable[dict[st
         state_symbol = _literal_bindings(language_ir).get(binding)
         if not isinstance(state_symbol, str) or not state_symbol:
             continue
+        functions = list(_functions(language_ir.get("symbols", [])))
+        resolver_names = {
+            function.get("qualified_name")
+            for function in functions
+            if isinstance(function.get("qualified_name"), str) and _mentions_binding(function, binding)
+        }
+        resolver_names.update({
+            function.get("name")
+            for function in functions
+            if isinstance(function.get("name"), str) and _mentions_binding(function, binding)
+        })
+        resolver_names = {name for name in resolver_names if isinstance(name, str) and name}
+
         readers: list[str] = []
         writers: list[str] = []
-        for function in _functions(language_ir.get("symbols", [])):
+        accessors: list[str] = []
+        for function in functions:
             qualified = function.get("qualified_name")
             if not isinstance(qualified, str) or not qualified:
                 continue
-            source = function.get("source")
-            if not isinstance(source, str) or binding not in source:
-                continue
             calls = _call_targets(function)
+            touches_binding = _mentions_binding(function, binding) or _matches(calls, resolver_names)
+            if not touches_binding:
+                continue
+            accessors.append(qualified)
             if _matches(calls, rule.get("read_targets", [])):
                 readers.append(qualified)
             if _matches(calls, rule.get("write_targets", [])):
@@ -88,6 +108,8 @@ def detect_state_contract_candidates(ir: dict[str, Any], rules: Iterable[dict[st
             "source_path": source_path,
             "symbol_binding": binding,
             "state_symbol": state_symbol,
+            "root_resolvers": sorted(resolver_names),
+            "accessors": sorted(set(accessors)),
             "readers": sorted(set(readers)),
             "writers": sorted(set(writers)),
             "shape_fields": list(rule.get("shape_fields", [])),
