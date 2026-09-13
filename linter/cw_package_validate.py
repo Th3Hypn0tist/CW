@@ -9,6 +9,15 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import quote
 
+try:
+    from .cw_condition_validate import validate_event_condition_value
+    from .cw_dispatch_validate import validate_emit_statement, validate_event_dispatch_link
+    from .cw_effect_validate import validate_effect_semantics
+except ImportError:
+    from cw_condition_validate import validate_event_condition_value
+    from cw_dispatch_validate import validate_emit_statement, validate_event_dispatch_link
+    from cw_effect_validate import validate_effect_semantics
+
 
 @dataclass
 class Finding:
@@ -293,13 +302,12 @@ def validate_package(package_root: str | Path) -> dict[str, Any]:
                     if op in forbidden_ops or op not in primitives:
                         f.error("LOGIC_OP_INVALID", path, f"{prop_id}: {op!r}")
                     if op == "emit":
-                        cause_ref = stmt.get("cause_ref")
-                        cause = properties.get(cause_ref)
-                        cause_value = cause.get("value") if isinstance(cause, dict) and isinstance(cause.get("value"), dict) else {}
-                        if not isinstance(cause, dict) or cause.get("property_type_ref") != "link" or cause_value.get("link_type_ref") != "event_cause":
-                            f.error("EMIT_CAUSE_INVALID", path, f"{prop_id}: {cause_ref!r}")
-                        elif cause_value.get("parent_ref") != prop_id:
-                            f.error("EMIT_CAUSE_PARENT_MISMATCH", path, f"{prop_id}: {cause_ref}")
+                        for finding in validate_emit_statement(
+                            stmt,
+                            containing_function_ref=prop_id,
+                            properties=properties,
+                        ):
+                            f.error(finding["code"], path, f"{prop_id}: {finding['message']}")
 
         elif prop_type == "link":
             link_type = value.get("link_type_ref")
@@ -312,9 +320,11 @@ def validate_package(package_root: str | Path) -> dict[str, Any]:
                 if ref not in objects:
                     f.error("LINK_ENDPOINT_UNRESOLVED", path, f"{prop_id}.{field}: {ref!r}")
             if link_type == "event_condition":
-                mode = value.get("condition_mode")
-                if mode not in set(selected.get("supported_condition_modes", [])):
-                    f.error("EVENT_CONDITION_MODE_INVALID", path, f"{prop_id}: {mode!r}")
+                for finding in validate_event_condition_value(value, selected):
+                    f.error(finding["code"], path, f"{prop_id}: {finding['message']}")
+            elif link_type == "event_dispatch":
+                for finding in validate_event_dispatch_link(value, properties, entities):
+                    f.error(finding["code"], path, f"{prop_id}: {finding['message']}")
 
         elif prop_type == "asset":
             owner = owners[prop_id]
@@ -348,6 +358,19 @@ def validate_package(package_root: str | Path) -> dict[str, Any]:
             f.error("ASSET_CARDINALITY_INVALID", source_paths[entity_id], f"{entity_id}: {len(assets)}")
 
     links = [p for p in properties.values() if p.get("property_type_ref") == "link"]
+
+    for effect_id, effect in properties.items():
+        if effect.get("property_type_ref") != "effect":
+            continue
+        effect_value = effect.get("value") if isinstance(effect.get("value"), dict) else {}
+        target_values = []
+        for link in links:
+            link_value = link.get("value") if isinstance(link.get("value"), dict) else {}
+            if link_value.get("link_type_ref") == "effect_target" and link_value.get("parent_ref") == effect_id:
+                target_values.append(link_value)
+        for finding in validate_effect_semantics(effect_value, target_values, dr):
+            f.error(finding["code"], source_paths[effect_id], f"{effect_id}: {finding['message']}")
+
     for req_id, req in properties.items():
         if req.get("property_type_ref") != "required_link":
             continue
