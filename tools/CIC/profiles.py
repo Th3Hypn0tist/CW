@@ -9,7 +9,6 @@ class CICProfileError(ValueError):
 
 _PROFILES: dict[str, dict[str, Any]] = {
     "aigmos": {
-        "contract_namespace": "AIGMos",
         "event_rules": [
             {
                 "rule_id": "AIGMOS_COMMANDDEF_HANDLER",
@@ -71,18 +70,21 @@ _PROFILES: dict[str, dict[str, Any]] = {
         "record_contract_rules": [
             {
                 "rule_id": "AIGMOS_TRIGGER_DEF_RECORD",
+                "contract_namespace": "AIGMos",
                 "source_path": "system/lib/trigger/types.py",
                 "class_name": "TriggerDef",
                 "serializer_method": "to_dict",
             },
             {
                 "rule_id": "AIGMOS_TRIGGER_STATE_RECORD",
+                "contract_namespace": "AIGMos",
                 "source_path": "system/lib/trigger/types.py",
                 "class_name": "TriggerState",
                 "serializer_method": "to_dict",
             },
             {
                 "rule_id": "AIGMOS_EVENT_DEF_RECORD",
+                "contract_namespace": "AIGMos",
                 "source_path": "system/lib/trigger/types.py",
                 "class_name": "EventDef",
                 "serializer_method": "to_dict",
@@ -161,7 +163,6 @@ def profile_options(name: str | None) -> dict[str, Any]:
     if profile is None:
         raise CICProfileError(f"unknown CIC profile: {name!r}; available: {', '.join(list_profiles())}")
     return {
-        "contract_namespace": profile.get("contract_namespace"),
         "event_rules": [dict(item) for item in profile.get("event_rules", [])],
         "module_discovery_rules": [dict(item) for item in profile.get("module_discovery_rules", [])],
         "state_contract_rules": [dict(item) for item in profile.get("state_contract_rules", [])],
