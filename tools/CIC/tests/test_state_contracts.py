@@ -10,7 +10,8 @@ from CIC.profiles import profile_options
 from CIC.state_contracts import detect_state_contract_candidates
 
 
-STORE_SOURCE = '''RUNNER_DEFS_SYMBOL = "#SYSTEM:runtime:runners"
+STORE_SOURCE = '''from typing import Any, Dict
+RUNNER_DEFS_SYMBOL = "#SYSTEM:runtime:runners"
 
 def _state_get_value(state, symbol):
     return None
@@ -18,7 +19,7 @@ def _state_get_value(state, symbol):
 def _state_set_value(state, symbol, value):
     return None
 
-def load_runner_defs(state):
+def load_runner_defs(state) -> Dict[str, Dict[str, Any]]:
     data = _state_get_value(state, RUNNER_DEFS_SYMBOL)
     return data
 
@@ -40,6 +41,7 @@ class CICStateContractTests(unittest.TestCase):
         self.assertEqual(item["source_entity_ref"], "#FILE:system:runtime:runner_store")
         self.assertEqual(item["readers"], ["load_runner_defs"])
         self.assertEqual(item["writers"], ["save_runner_defs"])
+        self.assertEqual(item["observed_container_types"], ["map"])
         self.assertFalse(item["canonical_ready"])
         self.assertFalse(item["canonical_semantic_authority"])
 
@@ -56,6 +58,7 @@ class CICStateContractTests(unittest.TestCase):
             candidates = ir["state_contract_candidates"]
             self.assertEqual(len(candidates), 1)
             self.assertEqual(candidates[0]["state_symbol"], "#SYSTEM:runtime:runners")
+            self.assertEqual(candidates[0]["observed_container_types"], ["map"])
 
 
 if __name__ == "__main__":
