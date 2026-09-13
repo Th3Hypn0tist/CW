@@ -1,0 +1,73 @@
+{
+  "id": "CW_DRX_HANDOVER_2026_09_13",
+  "date": "2026-09-13",
+  "source_repository": "Th3Hypn0tist/CW",
+  "scope": "CW semantic availability for downstream models",
+  "canonical_status": "unlocked",
+  "engineering_state": "READY",
+  "lock_requires": "human_validation",
+  "versions": {
+    "ccf": "2.4.3",
+    "dependency_rules": "4.3.0-reference",
+    "package_format": "2.0.3-reference"
+  },
+  "modeling_rules": {
+    "value_condition": {
+      "construction": "event_condition Link with condition_mode=value_equals and explicit expected_value",
+      "rule": "Parent Data must be READY before exact type-preserving comparison; UNBOUND/INVALID is unsatisfied but not false or unequal."
+    },
+    "dynamic_event_dispatch": {
+      "construction": "event_dispatch Link from Function to explicit members-based dispatch domain Entity; selector_ref points to Data containing exact canonical Event Property.id; Function logic emits through dispatch_ref",
+      "rule": "Selected Event owner must be a direct domain member. Target Function remains reached only through ordinary event_handler semantics.",
+      "forbidden": ["command token as direct authority", "function_call", "logic op=call", "arbitrary executable string"]
+    },
+    "filesystem_mutation": {
+      "construction": "Effect effect_type_ref=filesystem_mutation plus explicit operation and effect_target Links with target_role",
+      "operations": ["write", "move", "delete", "replace"]
+    },
+    "persistence_mutation": {
+      "construction": "Effect effect_type_ref=persistence_mutation plus explicit backend and target effect_target roles",
+      "operations": ["set", "delete", "batch"]
+    },
+    "network_io": {
+      "construction": "Effect effect_type_ref=network_io with operation send/respond, at least one input_ref and explicit endpoint target",
+      "operations": ["send", "respond"],
+      "inbound_rule": "Network data arrival is modeled with Event/Data semantics, not network_io receive Effect."
+    },
+    "resource_lifecycle": {
+      "construction": "Effect effect_type_ref=resource_lifecycle with explicit resource target",
+      "operations": ["start", "stop", "close", "join"]
+    }
+  },
+  "blocked_gap_mapping": [
+    {"gap":"GAP_AIGMOS_STATE_GUARD_CONDITION","cw_semantic":"event_condition:value_equals"},
+    {"gap":"GAP_AIGMOS_LAYOUT_DISPATCH_BRANCHING","cw_semantic":"event_condition:value_equals"},
+    {"gap":"GAP_AIGMOS_RELOAD_TARGET_BRANCHING","cw_semantic":"event_condition:value_equals"},
+    {"gap":"GAP_AIGMOS_TOOL_AUTHORITY_CONTINUATION","cw_semantic":"event_condition:value_equals"},
+    {"gap":"GAP_AIGMOS_PERMISSION_CONTINUATION_CONDITION","cw_semantic":"event_condition:value_equals"},
+    {"gap":"GAP_AIGMOS_Q_WORKER_BRANCH","cw_semantic":"event_condition:value_equals"},
+    {"gap":"GAP_AIGMOS_SYMBOL_ASSIGNMENT_BRANCHING","cw_semantic":"event_condition:value_equals"},
+    {"gap":"GAP_AIGMOS_BOOT_REST_OPTIONAL_CONDITION","cw_semantic":"event_condition:value_equals"},
+    {"gap":"GAP_AIGMOS_DYNAMIC_COMMAND_DISPATCH","cw_semantic":"event_dispatch with canonical Event Property.id selector and members domain"},
+    {"gap":"GAP_AIGMOS_STATE_ROUTE_DISPATCH_BRANCH","cw_semantic":"event_dispatch with canonical Event Property.id selector and members domain"},
+    {"gap":"GAP_AIGMOS_USER_MODULE_FILESYSTEM_EFFECT","cw_semantic":"filesystem_mutation"},
+    {"gap":"GAP_AIGMOS_UM_INSTALL_CONTINUATION","cw_semantic":"filesystem_mutation plus ordinary Event continuation semantics"},
+    {"gap":"GAP_AIGMOS_PERSISTENCE_EFFECT","cw_semantic":"persistence_mutation"},
+    {"gap":"GAP_AIGMOS_REST_NETWORK_RESPONSE_EFFECT","cw_semantic":"network_io:respond"},
+    {"gap":"GAP_AIGMOS_NETWORK_EFFECTS","cw_semantic":"network_io for outbound I/O; Event/Data for inbound arrival; resource_lifecycle for network resource lifecycle"},
+    {"gap":"GAP_AIGMOS_SHUTDOWN_EFFECTS","cw_semantic":"resource_lifecycle"}
+  ],
+  "coverage": {
+    "input_blockers": 16,
+    "mapped_blockers": 16,
+    "unmapped_blockers": 0,
+    "drx_candidates_reviewed": 6,
+    "drx_candidates_ready": 6
+  },
+  "validation": {
+    "package_validator_enforces": ["value conditions", "dynamic dispatch structure", "emit route shape", "Effect type/operation/target-role semantics"],
+    "ultralight_cms": "PASS",
+    "ci": "PASS"
+  },
+  "next_gate": "Human validation may promote an approved version to LOCKED. This handover does not perform or imply that promotion."
+}
