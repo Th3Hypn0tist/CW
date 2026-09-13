@@ -37,6 +37,15 @@ _PROFILES: dict[str, dict[str, Any]] = {
                 "skip_binding_name": "_SKIP_MODULES",
             },
         ],
+        "state_contract_rules": [
+            {
+                "rule_id": "AIGMOS_RUNNER_DEFINITION_STATE",
+                "source_path": "system/runtime/runner_store.py",
+                "symbol_binding": "RUNNER_DEFS_SYMBOL",
+                "read_targets": ["_state_get_value"],
+                "write_targets": ["_state_set_value"],
+            }
+        ],
         "semantic_gap_rules": [
             {
                 "id": "AIGMOS_RUNNER_CONCURRENT_SCHEDULING",
@@ -85,9 +94,9 @@ _PROFILES: dict[str, dict[str, Any]] = {
                 "binding": "RUNNER_DEFS_SYMBOL",
                 "value": "#SYSTEM:runtime:runners",
                 "observed_semantics": "Durable runner definitions are read from and written to #SYSTEM:runtime:runners with fields name/source/mode/lines/autostart.",
-                "missing_cw_semantics": "No new CW primitive is proven missing; CIC does not yet materialize this source-backed state contract as Data plus Schema/CTRCT.",
-                "why_existing_constructs_are_insufficient": "Existing CW Data and Schema semantics appear sufficient, but the mapper does not yet establish the canonical state slot and contract from implementation evidence.",
-                "candidate_extension": "Extend CIC mapping: derive a CTRCT-owned runner-definition Schema and canonical Data slot only after exact state-symbol ownership and field constraints are validated.",
+                "missing_cw_semantics": "No new CW primitive is proven missing; CIC has source-backed state-contract evidence but does not yet materialize it as Data plus Schema/CTRCT.",
+                "why_existing_constructs_are_insufficient": "Existing CW Data and Schema semantics appear sufficient, but automatic contract materialization still requires exact field type and constraint evidence.",
+                "candidate_extension": "Continue CIC mapping from the state_contract_candidate into a CTRCT-owned Schema and canonical Data slot after field contracts are proven.",
                 "ccf_change_required": False,
                 "blocking": False,
             },
@@ -112,5 +121,6 @@ def profile_options(name: str | None) -> dict[str, Any]:
     return {
         "event_rules": [dict(item) for item in profile.get("event_rules", [])],
         "module_discovery_rules": [dict(item) for item in profile.get("module_discovery_rules", [])],
+        "state_contract_rules": [dict(item) for item in profile.get("state_contract_rules", [])],
         "semantic_gap_rules": [dict(item) for item in profile.get("semantic_gap_rules", [])],
     }
