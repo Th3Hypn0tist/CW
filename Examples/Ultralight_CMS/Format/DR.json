@@ -1,7 +1,7 @@
 {
   "id": "CW_DEPENDENCY_RULES",
   "name": "CanonicalWireframe Dependency Rules",
-  "version": "4.0.6-reference",
+  "version": "4.1.0-reference",
   "status": "unlocked",
   "principles": [
     "Entity and Property are the only canonical atoms.",
@@ -55,7 +55,13 @@
   "event_execution_model": {
     "context": "Every Event occurrence belongs to one execution context and caused Events preserve that context.",
     "condition_rule": "event_condition Links are guards on an Event occurrence, not independent Event sources.",
+    "condition_modes": {
+      "ready": "Satisfied exactly when the condition Data is READY in the Event occurrence execution context.",
+      "value_equals": "Evaluated only when the condition Data is READY. It is satisfied exactly when the READY runtime value has the same supported scalar type and value as expected_value. Supported expected_value scalar types are boolean, integer excluding boolean, and string. UNBOUND or INVALID Data is not compared and does not become boolean false. READY unequal Data is a deterministic unsatisfied condition."
+    },
     "pending_rule": "An emitted Event occurrence with unsatisfied conditions remains pending in its execution context. It dispatches exactly once when all its conditions become satisfied.",
+    "unready_condition_rule": "An event_condition whose parent Data is UNBOUND or INVALID is unsatisfied because its required runtime value is unavailable or invalid. That state MUST NOT be reinterpreted as an unequal value or boolean false.",
+    "exact_equality_rule": "value_equals uses type-preserving exact equality: boolean compares only with boolean, integer compares only with integer and never boolean, and string compares only with string. No coercion, parsing, case folding, numeric conversion or executable predicate is permitted.",
     "no_replay_rule": "Condition transitions do not create additional Event occurrences. One emit creates at most one dispatch.",
     "handler_rule": "When an Event occurrence dispatches, its linked handler/effect semantics execute in the same context."
   },
@@ -148,7 +154,22 @@
     {"id":"RULESET_LINK_EVENT_OUTPUT","property_type_ref":"link","link_type_ref":"event_output","parent_role":"Event","child_role":"output Data/Property","direction":"Event -> output"},
     {"id":"RULESET_LINK_EVENT_HANDLER","property_type_ref":"link","link_type_ref":"event_handler","parent_role":"Event","child_role":"Function","direction":"Event -> handler Function"},
     {"id":"RULESET_LINK_EVENT_CAUSE","property_type_ref":"link","link_type_ref":"event_cause","parent_role":"Function","child_role":"Event","direction":"Function -> caused Event","rule":"The Link Property may be owned by any canonical Entity. Causal source identity is parent_ref, not Link Property ownership."},
-    {"id":"RULESET_LINK_EVENT_CONDITION","property_type_ref":"link","link_type_ref":"event_condition","parent_role":"condition Data","child_role":"Event","direction":"condition -> Event","required_fields":["condition_mode"],"supported_condition_modes":["ready"],"rule":"condition_mode=ready is satisfied exactly when parent_ref resolves to a Data Property in READY state in the Event occurrence execution context."},
+    {
+      "id":"RULESET_LINK_EVENT_CONDITION",
+      "property_type_ref":"link",
+      "link_type_ref":"event_condition",
+      "parent_role":"condition Data",
+      "child_role":"Event",
+      "direction":"condition -> Event",
+      "required_fields":["condition_mode"],
+      "supported_condition_modes":["ready","value_equals"],
+      "mode_fields": {
+        "ready": {"required":[],"forbidden":["expected_value"]},
+        "value_equals": {"required":["expected_value"],"forbidden":[]}
+      },
+      "expected_value_types":["boolean","integer","string"],
+      "rule":"condition_mode=ready is satisfied exactly when parent_ref resolves to READY Data. condition_mode=value_equals is evaluated only for READY parent Data and is satisfied exactly by type-preserving exact equality with expected_value. UNBOUND or INVALID Data is unsatisfied without being reinterpreted as false or unequal."
+    },
     {"id":"RULESET_LINK_EVENT_EFFECT","property_type_ref":"link","link_type_ref":"event_effect","parent_role":"Event","child_role":"Effect","direction":"Event -> Effect"},
     {"id":"RULESET_LINK_EFFECT_TARGET","property_type_ref":"link","link_type_ref":"effect_target","parent_role":"Effect","child_role":"target Data/Entity","direction":"Effect -> target"}
   ],
