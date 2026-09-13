@@ -52,6 +52,17 @@ def _mentions_binding(function: dict[str, Any], binding: str) -> bool:
     return isinstance(source, str) and binding in source
 
 
+def _container_type_from_annotation(annotation: Any) -> str | None:
+    if not isinstance(annotation, str) or not annotation.strip():
+        return None
+    compact = annotation.replace(" ", "")
+    if compact.startswith(("Dict[", "dict[", "Mapping[", "MutableMapping[")):
+        return "map"
+    if compact.startswith(("List[", "list[", "Sequence[", "MutableSequence[")):
+        return "list"
+    return None
+
+
 def detect_state_contract_candidates(ir: dict[str, Any], rules: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     if not isinstance(ir, dict):
         raise StateContractError("Code IR must be an object")
@@ -88,6 +99,7 @@ def detect_state_contract_candidates(ir: dict[str, Any], rules: Iterable[dict[st
         readers: list[str] = []
         writers: list[str] = []
         accessors: list[str] = []
+        observed_container_types: set[str] = set()
         for function in functions:
             qualified = function.get("qualified_name")
             if not isinstance(qualified, str) or not qualified:
@@ -99,6 +111,9 @@ def detect_state_contract_candidates(ir: dict[str, Any], rules: Iterable[dict[st
             accessors.append(qualified)
             if _matches(calls, rule.get("read_targets", [])):
                 readers.append(qualified)
+                observed = _container_type_from_annotation(function.get("returns_annotation"))
+                if observed:
+                    observed_container_types.add(observed)
             if _matches(calls, rule.get("write_targets", [])):
                 writers.append(qualified)
         result.append({
@@ -112,6 +127,7 @@ def detect_state_contract_candidates(ir: dict[str, Any], rules: Iterable[dict[st
             "accessors": sorted(set(accessors)),
             "readers": sorted(set(readers)),
             "writers": sorted(set(writers)),
+            "observed_container_types": sorted(observed_container_types),
             "shape_fields": list(rule.get("shape_fields", [])),
             "canonical_ready": False,
             "canonical_semantic_authority": False,
