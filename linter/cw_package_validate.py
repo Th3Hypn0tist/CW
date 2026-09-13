@@ -235,6 +235,7 @@ def validate_package(package_root: str | Path) -> dict[str, Any]:
     property_rules = {r.get("id"): r for r in dr.get("property_rulesets", []) if isinstance(r, dict) and isinstance(r.get("id"), str)}
     link_rules = {r.get("id"): r for r in dr.get("link_rulesets", []) if isinstance(r, dict) and isinstance(r.get("id"), str)}
     file_types = {r.get("id"): r for r in dr.get("asset_file_types", []) if isinstance(r, dict) and isinstance(r.get("id"), str)}
+    schema_types = {item for item in dr.get("schema_types", []) if isinstance(item, str) and item}
     primitives = set(dr.get("logic_primitive_set", {}).get("primitives", []))
     forbidden_ops = set(dr.get("logic_primitive_set", {}).get("forbidden", []))
     forbidden_links = set(dr.get("forbidden_link_types", []))
@@ -270,9 +271,16 @@ def validate_package(package_root: str | Path) -> dict[str, Any]:
                 f.error("DATA_SCHEMA_REF_INVALID", path, f"{prop_id}: {schema_ref!r}")
 
         elif prop_type == "schema":
-            for ref in _walk_refs(value.get("definition"), {"schema_ref", "item_schema_ref"}):
+            schema_type = value.get("schema_type_ref")
+            if schema_types and schema_type not in schema_types:
+                f.error("SCHEMA_TYPE_UNREGISTERED", path, f"{prop_id}: {schema_type!r}")
+            definition = value.get("definition")
+            for ref in _walk_refs(definition, {"schema_ref", "item_schema_ref", "value_schema_ref"}):
                 if ref not in properties or properties[ref].get("property_type_ref") != "schema":
                     f.error("SCHEMA_REF_INVALID", path, f"{prop_id}: {ref}")
+            if schema_type == "map":
+                if not isinstance(definition, dict) or not isinstance(definition.get("value_schema_ref"), str) or not definition.get("value_schema_ref"):
+                    f.error("SCHEMA_MAP_VALUE_SCHEMA_MISSING", path, prop_id)
 
         elif prop_type == "function":
             for ref in [*(value.get("input_refs") or []), *(value.get("output_refs") or [])]:
