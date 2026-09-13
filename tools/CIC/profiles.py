@@ -44,6 +44,27 @@ _PROFILES: dict[str, dict[str, Any]] = {
                 "symbol_binding": "RUNNER_DEFS_SYMBOL",
                 "read_targets": ["_state_get_value"],
                 "write_targets": ["_state_set_value"],
+            },
+            {
+                "rule_id": "AIGMOS_TRIGGER_DEFINITION_STATE",
+                "source_path": "system/lib/trigger/store.py",
+                "symbol_binding": "TRIGGER_DEFS_ROOT",
+                "read_targets": ["read_value"],
+                "write_targets": ["write_value", "delete_value"],
+            },
+            {
+                "rule_id": "AIGMOS_EVENT_DEFINITION_STATE",
+                "source_path": "system/lib/trigger/store.py",
+                "symbol_binding": "EVENT_DEFS_ROOT",
+                "read_targets": ["read_value"],
+                "write_targets": ["write_value", "delete_value"],
+            },
+            {
+                "rule_id": "AIGMOS_TRIGGER_RUNTIME_STATE",
+                "source_path": "system/lib/trigger/store.py",
+                "symbol_binding": "TRIGGER_STATE_ROOT",
+                "read_targets": ["read_value"],
+                "write_targets": ["write_value", "delete_value"],
             }
         ],
         "semantic_gap_rules": [
