@@ -1,0 +1,156 @@
+{
+  "id": "CW_DR_EXTENSION_DECISIONS_2026_09_13",
+  "date": "2026-09-13",
+  "scope": "CanonicalWireframe standard semantics only",
+  "engineering_state": "READY",
+  "canonical_status": "unlocked",
+  "lock_requires": "human_validation",
+  "canonical_versions": {
+    "ccf": "2.4.3",
+    "dependency_rules": "4.3.0-reference",
+    "package_format": "2.0.3-reference"
+  },
+  "principles": [
+    "One truth. Many topologies. No duplicate truth.",
+    "Function boundaries remain Event-mediated.",
+    "function_call remains forbidden.",
+    "logic op=call remains forbidden.",
+    "READY is runtime readiness and is not boolean truth.",
+    "Modeling an Effect does not grant runtime authority.",
+    "Dynamic dispatch cannot target outside an explicit canonical domain.",
+    "LOCKED requires human validation and is not produced by this decision report."
+  ],
+  "decisions": [
+    {
+      "candidate": "DRX_VALUE_CONDITION",
+      "decision": "accepted",
+      "engineering_state": "READY",
+      "introduced_in": "4.1.0-reference",
+      "final_available_in": "4.3.0-reference",
+      "semantic": {
+        "link_type_ref": "event_condition",
+        "condition_mode": "value_equals",
+        "required_field": "expected_value",
+        "supported_expected_types": ["boolean", "integer", "string"],
+        "comparison": "type-preserving exact equality",
+        "unready_behavior": "UNBOUND or INVALID parent Data is unsatisfied because no valid comparison value exists; it is not false and not unequal",
+        "unequal_behavior": "READY but unequal parent Data is deterministically unsatisfied"
+      },
+      "rejected_alternatives": [
+        "reinterpret READY as boolean true",
+        "arbitrary predicate expressions",
+        "runtime code predicates",
+        "implicit type coercion"
+      ]
+    },
+    {
+      "candidate": "DRX_DYNAMIC_DISPATCH",
+      "decision": "accepted",
+      "engineering_state": "READY",
+      "introduced_in": "4.3.0-reference",
+      "semantic": {
+        "link_type_ref": "event_dispatch",
+        "parent_ref": "dispatching Function",
+        "child_ref": "dispatch domain Entity",
+        "selector_ref": "Data Property",
+        "selector_runtime_value": "exact canonical Event Property.id",
+        "domain": "exactly one members Property owned by child_ref Entity",
+        "allowed_target": "Event whose owning Entity is a direct member_ref of the dispatch domain",
+        "emit_form": "emit with dispatch_ref instead of cause_ref",
+        "context": "selected Event preserves current execution context",
+        "invalid_behavior": "non-READY selector, non-string value, unresolved Property.id, non-Event target, missing domain membership surface or out-of-domain Event is INVALID dispatch"
+      },
+      "authority_limit": "No aliases, command tokens, filenames, paths or arbitrary executable target strings are interpreted by event_dispatch.",
+      "rejected_alternatives": [
+        "function_call",
+        "logic op=call",
+        "opaque executable target string",
+        "unbounded domain_ref",
+        "arbitrary Entity invocation"
+      ]
+    },
+    {
+      "candidate": "DRX_FILESYSTEM_MUTATION_EFFECT",
+      "decision": "accepted",
+      "engineering_state": "READY",
+      "introduced_in": "4.2.0-reference",
+      "final_available_in": "4.3.0-reference",
+      "semantic": {
+        "effect_type_ref": "filesystem_mutation",
+        "operation_values": ["write", "move", "delete", "replace"],
+        "target_roles": {
+          "write": ["target"],
+          "delete": ["target"],
+          "move": ["source", "destination"],
+          "replace": ["source", "destination"]
+        }
+      },
+      "authority_limit": "Effect describes the requested mutation only and does not grant host-filesystem authority.",
+      "non_implications": ["atomicity", "rollback", "retry", "ownership"]
+    },
+    {
+      "candidate": "DRX_PERSISTENCE_MUTATION_EFFECT",
+      "decision": "accepted",
+      "engineering_state": "READY",
+      "introduced_in": "4.2.0-reference",
+      "final_available_in": "4.3.0-reference",
+      "semantic": {
+        "effect_type_ref": "persistence_mutation",
+        "operation_values": ["set", "delete", "batch"],
+        "required_target_roles": ["backend", "target"]
+      },
+      "technology_rule": "Storage technology is not part of the generic semantic.",
+      "batch_rule": "batch does not imply transactional atomicity"
+    },
+    {
+      "candidate": "DRX_NETWORK_IO_EFFECT",
+      "decision": "accepted",
+      "engineering_state": "READY",
+      "introduced_in": "4.2.0-reference",
+      "final_available_in": "4.3.0-reference",
+      "semantic": {
+        "effect_type_ref": "network_io",
+        "operation_values": ["send", "respond"],
+        "required_target_roles": ["endpoint"],
+        "minimum_input_refs": 1
+      },
+      "semantic_split": {
+        "inbound_receive": "already supported by Event plus Data semantics; not an Effect operation",
+        "network_resource_lifecycle": "resource_lifecycle Effect"
+      },
+      "authority_limit": "Modeling network_io grants no network authority."
+    },
+    {
+      "candidate": "DRX_RESOURCE_LIFECYCLE_EFFECT",
+      "decision": "accepted",
+      "engineering_state": "READY",
+      "introduced_in": "4.2.0-reference",
+      "final_available_in": "4.3.0-reference",
+      "semantic": {
+        "effect_type_ref": "resource_lifecycle",
+        "operation_values": ["start", "stop", "close", "join"],
+        "required_target_roles": ["resource"]
+      },
+      "authority_limit": "Lifecycle control does not imply ownership or authority over the resource, process, thread, server or adapter."
+    }
+  ],
+  "validation": {
+    "package_validator": "linter/cw_package_validate.py",
+    "semantic_validators": [
+      "linter/cw_condition_validate.py",
+      "linter/cw_dispatch_validate.py",
+      "linter/cw_effect_validate.py"
+    ],
+    "tests": [
+      "linter/tests/test_event_conditions.py",
+      "linter/tests/test_event_dispatch.py",
+      "linter/tests/test_effect_semantics.py",
+      "linter/tests/test_package_semantic_enforcement.py"
+    ],
+    "ultralight_cms_regression": "PASS",
+    "ci": "PASS"
+  },
+  "ccf_change_required": false,
+  "nodetype_change_required": false,
+  "lock_decision": "NOT_PERFORMED"
+}
