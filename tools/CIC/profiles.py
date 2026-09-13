@@ -67,6 +67,26 @@ _PROFILES: dict[str, dict[str, Any]] = {
                 "write_targets": ["write_value", "delete_value"],
             }
         ],
+        "record_contract_rules": [
+            {
+                "rule_id": "AIGMOS_TRIGGER_DEF_RECORD",
+                "source_path": "system/lib/trigger/types.py",
+                "class_name": "TriggerDef",
+                "serializer_method": "to_dict",
+            },
+            {
+                "rule_id": "AIGMOS_TRIGGER_STATE_RECORD",
+                "source_path": "system/lib/trigger/types.py",
+                "class_name": "TriggerState",
+                "serializer_method": "to_dict",
+            },
+            {
+                "rule_id": "AIGMOS_EVENT_DEF_RECORD",
+                "source_path": "system/lib/trigger/types.py",
+                "class_name": "EventDef",
+                "serializer_method": "to_dict",
+            }
+        ],
         "semantic_gap_rules": [
             {
                 "id": "AIGMOS_RUNNER_CONCURRENT_SCHEDULING",
@@ -143,5 +163,6 @@ def profile_options(name: str | None) -> dict[str, Any]:
         "event_rules": [dict(item) for item in profile.get("event_rules", [])],
         "module_discovery_rules": [dict(item) for item in profile.get("module_discovery_rules", [])],
         "state_contract_rules": [dict(item) for item in profile.get("state_contract_rules", [])],
+        "record_contract_rules": [dict(item) for item in profile.get("record_contract_rules", [])],
         "semantic_gap_rules": [dict(item) for item in profile.get("semantic_gap_rules", [])],
     }
