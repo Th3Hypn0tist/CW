@@ -18,6 +18,7 @@ from .cw_version import finalize_cw_for_write, has_entity_version, next_version_
 from .module_discovery import detect_module_candidates
 from .package_pipeline import materialize_package
 from .profiles import profile_options
+from .record_contracts import detect_record_contract_candidates
 from .semantic_gaps import gap_report
 from .state_contracts import detect_state_contract_candidates
 
@@ -246,14 +247,17 @@ def _apply_noncanonical_profile_evidence(
     ir_path: Path,
     module_discovery_rules: list[dict[str, Any]],
     state_contract_rules: list[dict[str, Any]],
+    record_contract_rules: list[dict[str, Any]],
 ) -> None:
-    if not module_discovery_rules and not state_contract_rules:
+    if not module_discovery_rules and not state_contract_rules and not record_contract_rules:
         return
     ir = json.loads(ir_path.read_text(encoding="utf-8"))
     if module_discovery_rules:
         ir["module_candidates"] = detect_module_candidates(ir, module_discovery_rules)
     if state_contract_rules:
         ir["state_contract_candidates"] = detect_state_contract_candidates(ir, state_contract_rules)
+    if record_contract_rules:
+        ir["record_contract_candidates"] = detect_record_contract_candidates(ir, record_contract_rules)
     ir_path.write_text(json.dumps(ir, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
@@ -298,6 +302,7 @@ def import_folder(
     profile_kwargs = profile_options(profile)
     module_discovery_rules = profile_kwargs.pop("module_discovery_rules", [])
     state_contract_rules = profile_kwargs.pop("state_contract_rules", [])
+    record_contract_rules = profile_kwargs.pop("record_contract_rules", [])
     semantic_gap_rules = profile_kwargs.pop("semantic_gap_rules", [])
     for key, value in profile_kwargs.items():
         if key in kwargs:
@@ -318,7 +323,12 @@ def import_folder(
     result = None
     try:
         result = _core.import_folder(source, staged, force=False, **kwargs)
-        _apply_noncanonical_profile_evidence(result.ir_path, module_discovery_rules, state_contract_rules)
+        _apply_noncanonical_profile_evidence(
+            result.ir_path,
+            module_discovery_rules,
+            state_contract_rules,
+            record_contract_rules,
+        )
         cw_path, ir_path, shard_count = materialize_package(staged, source, template)
         _write_semantic_gap_report(ir_path, semantic_gap_rules)
         result = replace(result, cw_path=cw_path, ir_path=ir_path, shard_count=shard_count)
