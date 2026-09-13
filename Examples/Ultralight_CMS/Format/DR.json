@@ -1,7 +1,7 @@
 {
   "id": "CW_DEPENDENCY_RULES",
   "name": "CanonicalWireframe Dependency Rules",
-  "version": "4.2.0-reference",
+  "version": "4.3.0-reference",
   "status": "unlocked",
   "principles": [
     "Entity and Property are the only canonical atoms.",
@@ -62,6 +62,14 @@
     "pending_rule": "An emitted Event occurrence with unsatisfied conditions remains pending in its execution context. It dispatches exactly once when all its conditions become satisfied.",
     "unready_condition_rule": "An event_condition whose parent Data is UNBOUND or INVALID is unsatisfied because its required runtime value is unavailable or invalid. That state MUST NOT be reinterpreted as an unequal value or boolean false.",
     "exact_equality_rule": "value_equals uses type-preserving exact equality: boolean compares only with boolean, integer compares only with integer and never boolean, and string compares only with string. No coercion, parsing, case folding, numeric conversion or executable predicate is permitted.",
+    "dynamic_dispatch": {
+      "selector_rule": "event_dispatch.selector_ref MUST resolve to a Data Property. At dispatch time that Data MUST be READY and its runtime value MUST be an exact canonical Event Property.id string. event_dispatch does not parse aliases, commands, paths, executable names or arbitrary target strings.",
+      "domain_rule": "event_dispatch.child_ref MUST resolve to one Entity that owns exactly one members Property used as the dispatch-domain membership surface. The selected Event's owning Entity MUST be a direct member_ref of that members Property.",
+      "target_rule": "The selector value MUST resolve by exact canonical Property.id to exactly one Property whose property_type_ref is event. Resolution to another Property type, an Entity, an unresolved identity or an Event outside the declared domain is invalid dispatch.",
+      "authority_rule": "event_dispatch grants no authority outside its explicit domain and MUST NOT make arbitrary canonical Entities or Properties invokable. The target Function, if any, remains reached only through the selected Event's ordinary event_handler semantics.",
+      "failure_rule": "A non-READY selector, non-string selector value, unresolved selector value, non-Event target, missing/ambiguous domain members surface or out-of-domain Event produces explicit INVALID dispatch. No fallback target, string interpretation or silent no-op is permitted.",
+      "context_rule": "A dynamically selected Event occurrence preserves the dispatching Function's current execution context exactly as a statically emitted Event occurrence does."
+    },
     "no_replay_rule": "Condition transitions do not create additional Event occurrences. One emit creates at most one dispatch.",
     "handler_rule": "When an Event occurrence dispatches, its linked handler/effect semantics execute in the same context."
   },
@@ -172,6 +180,16 @@
     {"id":"RULESET_LINK_EVENT_HANDLER","property_type_ref":"link","link_type_ref":"event_handler","parent_role":"Event","child_role":"Function","direction":"Event -> handler Function"},
     {"id":"RULESET_LINK_EVENT_CAUSE","property_type_ref":"link","link_type_ref":"event_cause","parent_role":"Function","child_role":"Event","direction":"Function -> caused Event","rule":"The Link Property may be owned by any canonical Entity. Causal source identity is parent_ref, not Link Property ownership."},
     {
+      "id":"RULESET_LINK_EVENT_DISPATCH",
+      "property_type_ref":"link",
+      "link_type_ref":"event_dispatch",
+      "parent_role":"dispatching Function",
+      "child_role":"dispatch domain Entity",
+      "direction":"Function -> dispatch domain",
+      "required_fields":["selector_ref"],
+      "rule":"selector_ref MUST resolve to a Data Property. child_ref MUST resolve to a domain Entity with exactly one members Property. At runtime selector_ref MUST be READY and contain an exact canonical Event Property.id whose owning Entity is a direct member_ref of the domain members Property. No alias, filename, command token or arbitrary executable string is interpreted by event_dispatch."
+    },
+    {
       "id":"RULESET_LINK_EVENT_CONDITION",
       "property_type_ref":"link",
       "link_type_ref":"event_condition",
@@ -246,16 +264,17 @@
       "assign":"Bind a transient local_ref inside the containing Function.logic execution scope.",
       "lookup":"Read one item from a READY collection. The source MUST be READY before lookup executes; lookup against UNBOUND or INVALID source is INVALID execution, never null. For a list, key_field selects the compared item field and key is matched by exact equality; zero matches in a READY collection returns null and more than one match is INVALID. A list Schema unique_by constraint can guarantee at most one match.",
       "concat":"Concatenate ordered scalar/string expressions into one scalar/string value.",
-      "emit":"cause_ref MUST resolve to an event_cause Link whose parent_ref resolves to the containing Function Property.id. The emitted Event occurrence preserves the current execution context.",
+      "emit":"Exactly one of cause_ref or dispatch_ref is required. cause_ref MUST resolve to an event_cause Link whose parent_ref resolves to the containing Function Property.id. dispatch_ref MUST resolve to an event_dispatch Link whose parent_ref resolves to the containing Function Property.id; that Link's READY selector_ref Data selects one exact in-domain Event Property.id according to event_execution_model.dynamic_dispatch. The emitted Event occurrence preserves the current execution context.",
       "return":"Return from local Function logic; return alone does not create cross-Function causality.",
       "fail":"Terminate the current Function execution as INVALID using an explicit machine-readable code. fail MUST NOT emit subsequent Events from the terminated control path.",
       "if":"Select exactly one local logic branch from an explicit boolean condition."
     }
   },
-  "link_types": ["dependency","event_input","event_output","event_handler","event_cause","event_condition","event_effect","effect_target"],
+  "link_types": ["dependency","event_input","event_output","event_handler","event_cause","event_dispatch","event_condition","event_effect","effect_target"],
   "forbidden_link_types": ["function_call"],
   "causal_patterns": {
     "function_boundary": ["Function","event_cause","Event","event_handler","Function"],
+    "dynamic_event_dispatch": ["Function","event_dispatch","dispatch domain members","selected Event","event_handler","Function"],
     "effect": ["Event","event_effect","Effect","effect_target","Data/Entity"]
   }
 }
