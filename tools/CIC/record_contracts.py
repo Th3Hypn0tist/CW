@@ -89,8 +89,11 @@ def detect_record_contract_candidates(ir: dict[str, Any], rules: Iterable[dict[s
         source_path = rule.get("source_path")
         class_name = rule.get("class_name")
         serializer = rule.get("serializer_method", "to_dict")
+        namespace = rule.get("contract_namespace")
         if not all(isinstance(value, str) and value for value in (rule_id, source_path, class_name, serializer)):
             raise RecordContractError("invalid record contract rule")
+        if namespace is not None and (not isinstance(namespace, str) or not namespace.strip()):
+            raise RecordContractError(f"invalid contract namespace for {rule_id}")
         file_record = next((item for item in files if item.get("path") == source_path), None)
         if not isinstance(file_record, dict):
             continue
@@ -121,6 +124,7 @@ def detect_record_contract_candidates(ir: dict[str, Any], rules: Iterable[dict[s
         result.append({
             "candidate_id": f"RECORD_CONTRACT::{rule_id}::{file_record.get('canonical_file_ref')}::{class_name}",
             "rule_ref": rule_id,
+            "contract_namespace": namespace,
             "source_entity_ref": file_record.get("canonical_file_ref"),
             "source_path": source_path,
             "source_class": class_name,
