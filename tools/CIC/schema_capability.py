@@ -5,7 +5,11 @@ from typing import Any
 
 def audit_schema_capabilities(ir: dict[str, Any], dr: dict[str, Any]) -> dict[str, Any]:
     semantics = dr.get("schema_semantics") if isinstance(dr.get("schema_semantics"), dict) else {}
-    supported = set(semantics)
+    schema_types = dr.get("schema_types")
+    supported = {
+        item for item in schema_types
+        if isinstance(item, str) and item
+    } if isinstance(schema_types, list) else set(semantics)
     findings: list[dict[str, Any]] = []
 
     candidates = ir.get("record_contract_candidates") if isinstance(ir.get("record_contract_candidates"), list) else []
