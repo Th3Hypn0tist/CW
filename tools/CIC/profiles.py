@@ -9,6 +9,7 @@ class CICProfileError(ValueError):
 
 _PROFILES: dict[str, dict[str, Any]] = {
     "aigmos": {
+        "contract_namespace": "AIGMos",
         "event_rules": [
             {
                 "rule_id": "AIGMOS_COMMANDDEF_HANDLER",
@@ -98,8 +99,8 @@ _PROFILES: dict[str, dict[str, Any]] = {
                 "missing_cw_semantics": "CW has no explicit asynchronous/background scheduling or concurrent job lifecycle semantic.",
                 "why_existing_constructs_are_insufficient": "Event causality describes dispatch order but does not define concurrent execution, worker ownership, inflight jobs or executor scheduling. while/loop describe synchronous control and are not equivalent.",
                 "candidate_extension": "Add a minimal runtime scheduling semantic, preferably as DR-level Effect/Event execution semantics rather than a new canonical atom.",
-                "ccf_change_required": False,
-                "blocking": True,
+                "ccf_change_required": false,
+                "blocking": true
             },
             {
                 "id": "AIGMOS_RUNNER_CANCELLATION",
@@ -111,8 +112,8 @@ _PROFILES: dict[str, dict[str, Any]] = {
                 "missing_cw_semantics": "CW has no cancellation/termination request semantic for an already-dispatched execution.",
                 "why_existing_constructs_are_insufficient": "fail terminates the current Function path; it does not address another inflight execution and therefore cannot represent cancellation.",
                 "candidate_extension": "Add explicit execution-cancel semantics at DR level, scoped to a concrete execution/job identity.",
-                "ccf_change_required": False,
-                "blocking": True,
+                "ccf_change_required": false,
+                "blocking": true
             },
             {
                 "id": "AIGMOS_RUNNER_DYNAMIC_COMMAND_DISPATCH",
@@ -124,8 +125,8 @@ _PROFILES: dict[str, dict[str, Any]] = {
                 "missing_cw_semantics": "Current canonical Event causality requires explicit Event identity/refs and has no dynamic dispatch-by-runtime-text semantic.",
                 "why_existing_constructs_are_insufficient": "A static event_cause cannot truthfully name a future command Event when the target command is data selected at runtime. function_call is forbidden and dependency is structural only.",
                 "candidate_extension": "Add an explicit dynamic Event dispatch semantic whose target identity is resolved from validated runtime Data under a declared contract.",
-                "ccf_change_required": False,
-                "blocking": True,
+                "ccf_change_required": false,
+                "blocking": true
             },
             {
                 "id": "AIGMOS_RUNNER_DURABLE_DEFINITION_STATE",
@@ -138,10 +139,10 @@ _PROFILES: dict[str, dict[str, Any]] = {
                 "missing_cw_semantics": "No new CW primitive is proven missing; CIC has source-backed state-contract evidence but does not yet materialize it as Data plus Schema/CTRCT.",
                 "why_existing_constructs_are_insufficient": "Existing CW Data and Schema semantics appear sufficient, but automatic contract materialization still requires exact field type and constraint evidence.",
                 "candidate_extension": "Continue CIC mapping from the state_contract_candidate into a CTRCT-owned Schema and canonical Data slot after field contracts are proven.",
-                "ccf_change_required": False,
-                "blocking": False,
-            },
-        ],
+                "ccf_change_required": false,
+                "blocking": false
+            }
+        ]
     }
 }
 
@@ -160,9 +161,10 @@ def profile_options(name: str | None) -> dict[str, Any]:
     if profile is None:
         raise CICProfileError(f"unknown CIC profile: {name!r}; available: {', '.join(list_profiles())}")
     return {
+        "contract_namespace": profile.get("contract_namespace"),
         "event_rules": [dict(item) for item in profile.get("event_rules", [])],
         "module_discovery_rules": [dict(item) for item in profile.get("module_discovery_rules", [])],
         "state_contract_rules": [dict(item) for item in profile.get("state_contract_rules", [])],
         "record_contract_rules": [dict(item) for item in profile.get("record_contract_rules", [])],
-        "semantic_gap_rules": [dict(item) for item in profile.get("semantic_gap_rules", [])],
+        "semantic_gap_rules": [dict(item) for item in profile.get("semantic_gap_rules", [])]
     }
