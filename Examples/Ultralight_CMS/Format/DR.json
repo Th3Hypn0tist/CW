@@ -1,7 +1,7 @@
 {
   "id": "CW_DEPENDENCY_RULES",
   "name": "CanonicalWireframe Dependency Rules",
-  "version": "4.1.0-reference",
+  "version": "4.2.0-reference",
   "status": "unlocked",
   "principles": [
     "Entity and Property are the only canonical atoms.",
@@ -79,6 +79,14 @@
     "storage_rule": "Moving a Link Property between Entity.properties[] collections changes its declarer and is therefore a canonical semantic change; it MUST NOT be done merely to imitate endpoint direction.",
     "validation_rule": "Link validity is determined from the resolved endpoint refs and the selected Link Ruleset, not from co-location with either endpoint."
   },
+  "effect_execution_model": {
+    "authority_rule": "Modeling an Effect describes requested external semantics only. It MUST NOT itself grant filesystem, persistence, network, process, thread, adapter or other runtime authority. Runtime authorization remains a separate explicit concern.",
+    "target_rule": "Every external resource or logical target required by an Effect MUST be represented by an explicit effect_target Link. Effect target identity MUST NOT be inferred from prose, implementation paths or input ordering.",
+    "target_role_rule": "When an Effect type declares required_target_roles, each role MUST be satisfied by exactly one explicit effect_target Link carrying target_role equal to that role unless the Effect type explicitly declares another cardinality.",
+    "operation_rule": "When an Effect type declares operation_values, Effect.value.operation MUST be one exact registered value. Unknown operations are invalid and no operation is inferred from target count or input shape.",
+    "atomicity_rule": "No Effect implies transactional atomicity, rollback, retry, idempotence or ownership unless another explicit canonical contract states it.",
+    "network_arrival_rule": "Inbound data arrival is represented through Event/Data semantics. network_io Effects describe outbound send/respond side effects only; resource start/bind/listen/close lifecycle belongs to resource_lifecycle semantics."
+  },
   "asset_file_types": [
     {"id":"html","extensions":[".html"]},
     {"id":"javascript","extensions":[".js"]},
@@ -144,7 +152,16 @@
         "output_refs describe canonical Properties actually written or produced by modeled Function logic."
       ]
     },
-    {"id":"RULESET_EFFECT","property_type_ref":"effect","optional_fields":["input_refs"]},
+    {
+      "id":"RULESET_EFFECT",
+      "property_type_ref":"effect",
+      "optional_fields":["input_refs","operation"],
+      "constraints":[
+        "effect_type_ref MUST resolve to exactly one registered effect_types entry.",
+        "When the selected Effect type declares operation_values, operation is required and MUST equal one registered operation value.",
+        "All machine-significant external resource/target references MUST use explicit effect_target Links rather than opaque strings inside Effect.value."
+      ]
+    },
     {"id":"RULESET_REPRESENTATION","property_type_ref":"representation"},
     {"id":"RULESET_TRANSFORM","property_type_ref":"transform"}
   ],
@@ -171,10 +188,53 @@
       "rule":"condition_mode=ready is satisfied exactly when parent_ref resolves to READY Data. condition_mode=value_equals is evaluated only for READY parent Data and is satisfied exactly by type-preserving exact equality with expected_value. UNBOUND or INVALID Data is unsatisfied without being reinterpreted as false or unequal."
     },
     {"id":"RULESET_LINK_EVENT_EFFECT","property_type_ref":"link","link_type_ref":"event_effect","parent_role":"Event","child_role":"Effect","direction":"Event -> Effect"},
-    {"id":"RULESET_LINK_EFFECT_TARGET","property_type_ref":"link","link_type_ref":"effect_target","parent_role":"Effect","child_role":"target Data/Entity","direction":"Effect -> target"}
+    {
+      "id":"RULESET_LINK_EFFECT_TARGET",
+      "property_type_ref":"link",
+      "link_type_ref":"effect_target",
+      "parent_role":"Effect",
+      "child_role":"explicit target Data/Entity",
+      "direction":"Effect -> target",
+      "optional_fields":["target_role"],
+      "rule":"target_role is required whenever the selected Effect type declares required_target_roles. Role meaning and cardinality come only from that Effect type definition."
+    }
   ],
   "effect_types": [
-    {"id":"replace_target","input_cardinality":1,"rule":"On dispatch, copy the single input Data value to every explicitly linked effect_target in the same execution context without changing canonical identity."}
+    {
+      "id":"replace_target",
+      "input_cardinality":1,
+      "rule":"On dispatch, copy the single input Data value to every explicitly linked effect_target in the same execution context without changing canonical identity."
+    },
+    {
+      "id":"filesystem_mutation",
+      "operation_values":["write","move","delete","replace"],
+      "operation_target_roles": {
+        "write":["target"],
+        "delete":["target"],
+        "move":["source","destination"],
+        "replace":["source","destination"]
+      },
+      "rule":"Request an explicit filesystem mutation against canonical targets. write/delete require one target role. move/replace require distinct source and destination roles. The Effect does not grant host-filesystem authority and does not imply atomicity or rollback."
+    },
+    {
+      "id":"persistence_mutation",
+      "operation_values":["set","delete","batch"],
+      "required_target_roles":["backend","target"],
+      "rule":"Request mutation of an explicit logical persistence target through an explicit backend target. The semantic is storage-technology neutral. batch represents the supplied mutation batch only and does not imply transactional atomicity."
+    },
+    {
+      "id":"network_io",
+      "operation_values":["send","respond"],
+      "required_target_roles":["endpoint"],
+      "min_input_cardinality":1,
+      "rule":"Request outbound network send/respond to an explicit endpoint/resource. Inbound arrival is Event/Data semantics and network resource lifecycle is modeled separately. Modeling this Effect grants no network authority."
+    },
+    {
+      "id":"resource_lifecycle",
+      "operation_values":["start","stop","close","join"],
+      "required_target_roles":["resource"],
+      "rule":"Request an explicit lifecycle transition for an explicit runtime resource. The Effect does not imply ownership of the resource, process, thread, server or adapter and does not grant lifecycle authority."
+    }
   ],
   "logic_primitive_set": {
     "id": "CW_LOGIC_PRIMITIVES",
