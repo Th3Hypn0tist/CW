@@ -24,6 +24,8 @@ jobs:
         run: python Tools/migrate_property_owner_local_identity.py
       - name: Apply validator owner-scope fix
         run: python Tools/fix_owner_local_validator.py
+      - name: Normalize golden owner-local rules
+        run: python Tools/finalize_golden_owner_local.py
       - name: Parse generated JSON
         run: |
           python - <<'PY'
@@ -40,8 +42,8 @@ jobs:
         run: python linter/cw_spec_lint.py --spec-set spec_sets/CW_CORE_v1.2.0.json
       - name: Run owner-local golden regression
         run: python Tools/check_property_owner_local_identity.py
-      - name: Compile validator
-        run: python -m py_compile linter/cw_validate.py Tools/migrate_property_owner_local_identity.py Tools/check_property_owner_local_identity.py
+      - name: Compile migration tooling
+        run: python -m py_compile linter/cw_validate.py Tools/migrate_property_owner_local_identity.py Tools/fix_owner_local_validator.py Tools/finalize_golden_owner_local.py Tools/check_property_owner_local_identity.py
       - name: Commit generated migration
         run: |
           if git diff --quiet && [ -z "$(git status --porcelain)" ]; then
@@ -51,5 +53,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add Canonical_Contract_Format_v2.5.0.json CanonicalWireframe_Dependency_Rules_v4.0.0.json spec_sets/CW_CORE_v1.2.0.json linter/cw_validate.py tests/fixtures/property_owner_local_identity.json Examples/Ultralight_CMS
-          git commit -m "Finalize owner-local Property identity migration"
+          git commit -m "Normalize owner-local Property identity migration"
           git push origin HEAD:fix/property-owner-local-identity
