@@ -94,6 +94,8 @@
       "Duplicate entity_ref or artifact_ref entries are invalid.",
       "A .cw file present below Model/ but absent from shards[] is not part of the canonical Model closure and makes the package invalid.",
       "Property.id uniqueness is validated per owning Entity, not across the Model closure.",
+      "Package validators MUST NOT construct a flat Property index keyed only by Property.id.",
+      "Property.id uniqueness is validated per owning Entity, not across the Model closure.",
       "Package validators MUST NOT construct a flat Property index keyed only by Property.id."
     ]
   },

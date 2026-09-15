@@ -15,6 +15,9 @@
     "Runtime state belongs to an execution context and does not mutate the canonical Model artifact.",
     "Property.id is owner-local; Property canonical address is owner Entity.id plus local Property.id.",
     "Bare Property ids never trigger Model-wide lookup.",
+    "Function-to-Function calls are same-owner only; cross-Entity behavioral calls are Event-mediated.",
+    "Property.id is owner-local; Property canonical address is owner Entity.id plus local Property.id.",
+    "Bare Property ids never trigger Model-wide lookup.",
     "Function-to-Function calls are same-owner only; cross-Entity behavioral calls are Event-mediated."
   ],
   "reference_resolution": {
@@ -252,6 +255,7 @@
         "logic"
       ],
       "constraints": [
+        "input_refs and output_refs, when present, MUST resolve by bare Property.id only inside the Entity that owns the Function.",
         "input_refs and output_refs, when present, MUST resolve by bare Property.id only inside the Entity that owns the Function.",
         "input_refs describe canonical Properties actually read by modeled Function logic, not all Data visible in the execution context.",
         "output_refs describe canonical Properties actually written or produced by modeled Function logic."

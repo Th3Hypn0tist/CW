@@ -375,7 +375,7 @@ def main() -> int:
                             if ref is None:
                                 continue
                             ref_path = property_path + f".value.{field}[{ref_index}]"
-                            target = resolve_ref(ref, None, objects)
+                            target = resolve_ref(ref, owner_id, objects)
                             if target is None:
                                 c.u("CANONICAL_REFERENCE_UNRESOLVED", file, ref_path, repr(ref))
                                 continue
@@ -422,7 +422,7 @@ def main() -> int:
                         endpoint_constraints = ruleset.get("endpoint_constraints", {}) if isinstance(ruleset.get("endpoint_constraints"), dict) else {}
                         for side in ("parent_ref", "child_ref"):
                             ref = value.get(side)
-                            target = resolve_ref(ref, None, objects)
+                            target = resolve_ref(ref, owner_id, objects)
                             if target is None:
                                 c.u("LINK_ENDPOINT_UNRESOLVED", file, property_path + ".value." + side, repr(ref))
                                 continue
