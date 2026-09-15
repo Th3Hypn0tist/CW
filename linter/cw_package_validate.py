@@ -81,11 +81,39 @@ def _encoded_id(entity_id: str) -> str:
     return quote(entity_id, safe="-._~")
 
 
-def _walk_refs(value: Any, names: set[str]) -> list[str]:
-    refs: list[str] = []
+def _property_key(owner: str, property_id: str) -> str:
+    return owner + "\0" + property_id
+
+
+def _resolve_ref(
+    ref: Any,
+    local_owner: str | None,
+    entities: dict[str, dict[str, Any]],
+    properties: dict[str, dict[str, Any]],
+) -> dict[str, Any] | None:
+    if isinstance(ref, dict) and set(ref) == {"entity_ref", "property_ref"}:
+        entity_ref = ref.get("entity_ref")
+        property_ref = ref.get("property_ref")
+        if isinstance(entity_ref, str) and isinstance(property_ref, str):
+            return properties.get(_property_key(entity_ref, property_ref))
+        return None
+    if not isinstance(ref, str) or not ref:
+        return None
+    if ref in entities:
+        return entities[ref]
+    if local_owner is not None:
+        return properties.get(_property_key(local_owner, ref))
+    return None
+
+
+def _walk_refs(value: Any, names: set[str]) -> list[Any]:
+    refs: list[Any] = []
     if isinstance(value, dict):
         for key, item in value.items():
-            if key in names and isinstance(item, str):
+            if key in names and (
+                isinstance(item, str)
+                or (isinstance(item, dict) and set(item) == {"entity_ref", "property_ref"})
+            ):
                 refs.append(item)
             refs.extend(_walk_refs(item, names))
     elif isinstance(value, list):
@@ -226,6 +254,7 @@ def validate_package(package_root: str | Path) -> dict[str, Any]:
         if not isinstance(props, list):
             f.error("ENTITY_PROPERTIES_INVALID", path, entity_ref)
             continue
+        local_ids: set[str] = set()
         for prop in props:
             if not isinstance(prop, dict):
                 f.error("PROPERTY_INVALID", path, entity_ref)
@@ -234,13 +263,14 @@ def validate_package(package_root: str | Path) -> dict[str, Any]:
             if not isinstance(prop_id, str) or not prop_id:
                 f.error("PROPERTY_ID_INVALID", path, entity_ref)
                 continue
-            if prop_id in properties or prop_id in entities:
-                f.error("PROPERTY_ID_DUPLICATE", path, prop_id)
-            properties[prop_id] = prop
-            owners[prop_id] = entity_ref
-            source_paths[prop_id] = path
-
-    objects = set(entities) | set(properties)
+            if prop_id in local_ids:
+                f.error("PROPERTY_ID_DUPLICATE", path, f"{entity_ref}: {prop_id}")
+                continue
+            local_ids.add(prop_id)
+            prop_key = _property_key(entity_ref, prop_id)
+            properties[prop_key] = prop
+            owners[prop_key] = entity_ref
+            source_paths[prop_key] = path
     property_rules = {r.get("id"): r for r in dr.get("property_rulesets", []) if isinstance(r, dict) and isinstance(r.get("id"), str)}
     link_rules = {r.get("id"): r for r in dr.get("link_rulesets", []) if isinstance(r, dict) and isinstance(r.get("id"), str)}
     file_types = {r.get("id"): r for r in dr.get("asset_file_types", []) if isinstance(r, dict) and isinstance(r.get("id"), str)}
@@ -249,8 +279,10 @@ def validate_package(package_root: str | Path) -> dict[str, Any]:
     forbidden_ops = set(dr.get("logic_primitive_set", {}).get("forbidden", []))
     forbidden_links = set(dr.get("forbidden_link_types", []))
 
-    for prop_id, prop in properties.items():
-        path = source_paths[prop_id]
+    for prop_key, prop in properties.items():
+        prop_id = prop.get("id")
+        owner = owners[prop_key]
+        path = source_paths[prop_key]
         prop_type = prop.get("property_type_ref")
         ruleset_ref = prop.get("ruleset_ref")
         rule = property_rules.get(ruleset_ref)
@@ -276,7 +308,8 @@ def validate_package(package_root: str | Path) -> dict[str, Any]:
 
         elif prop_type == "data":
             schema_ref = value.get("schema_ref")
-            if schema_ref is not None and (schema_ref not in properties or properties[schema_ref].get("property_type_ref") != "schema"):
+            target = _resolve_ref(schema_ref, owner, entities, properties) if schema_ref is not None else None
+            if schema_ref is not None and (not isinstance(target, dict) or target.get("property_type_ref") != "schema"):
                 f.error("DATA_SCHEMA_REF_INVALID", path, f"{prop_id}: {schema_ref!r}")
 
         elif prop_type == "schema":
@@ -285,16 +318,23 @@ def validate_package(package_root: str | Path) -> dict[str, Any]:
                 f.error("SCHEMA_TYPE_UNREGISTERED", path, f"{prop_id}: {schema_type!r}")
             definition = value.get("definition")
             for ref in _walk_refs(definition, {"schema_ref", "item_schema_ref", "value_schema_ref"}):
-                if ref not in properties or properties[ref].get("property_type_ref") != "schema":
-                    f.error("SCHEMA_REF_INVALID", path, f"{prop_id}: {ref}")
+                target = _resolve_ref(ref, owner, entities, properties)
+                if not isinstance(target, dict) or target.get("property_type_ref") != "schema":
+                    f.error("SCHEMA_REF_INVALID", path, f"{prop_id}: {ref!r}")
             if schema_type == "map":
-                if not isinstance(definition, dict) or not isinstance(definition.get("value_schema_ref"), str) or not definition.get("value_schema_ref"):
+                if not isinstance(definition, dict) or definition.get("value_schema_ref") is None:
                     f.error("SCHEMA_MAP_VALUE_SCHEMA_MISSING", path, prop_id)
 
         elif prop_type == "function":
+            local_properties = {
+                item.get("id"): item
+                for key, item in properties.items()
+                if owners.get(key) == owner and isinstance(item.get("id"), str)
+            }
             for ref in [*(value.get("input_refs") or []), *(value.get("output_refs") or [])]:
-                if ref not in properties:
-                    f.error("FUNCTION_REF_UNRESOLVED", path, f"{prop_id}: {ref}")
+                target = _resolve_ref(ref, owner, entities, properties)
+                if not isinstance(ref, str) or not isinstance(target, dict):
+                    f.error("FUNCTION_REF_UNRESOLVED", path, f"{prop_id}: {ref!r}")
             logic = value.get("logic")
             if isinstance(logic, dict):
                 for stmt in _walk_logic(logic):
@@ -305,7 +345,7 @@ def validate_package(package_root: str | Path) -> dict[str, Any]:
                         for finding in validate_emit_statement(
                             stmt,
                             containing_function_ref=prop_id,
-                            properties=properties,
+                            properties=local_properties,
                         ):
                             f.error(finding["code"], path, f"{prop_id}: {finding['message']}")
 
@@ -317,17 +357,22 @@ def validate_package(package_root: str | Path) -> dict[str, Any]:
                 f.error("LINK_RULESET_TYPE_MISMATCH", path, prop_id)
             for field in ("parent_ref", "child_ref"):
                 ref = value.get(field)
-                if ref not in objects:
+                if _resolve_ref(ref, owner, entities, properties) is None:
                     f.error("LINK_ENDPOINT_UNRESOLVED", path, f"{prop_id}.{field}: {ref!r}")
             if link_type == "event_condition":
                 for finding in validate_event_condition_value(value, selected):
                     f.error(finding["code"], path, f"{prop_id}: {finding['message']}")
             elif link_type == "event_dispatch":
-                for finding in validate_event_dispatch_link(value, properties, entities):
+                local_properties = {
+                    item.get("id"): item
+                    for key, item in properties.items()
+                    if owners.get(key) == owner and isinstance(item.get("id"), str)
+                }
+                for finding in validate_event_dispatch_link(value, local_properties, entities):
                     f.error(finding["code"], path, f"{prop_id}: {finding['message']}")
 
         elif prop_type == "asset":
-            owner = owners[prop_id]
+            owner = owners[prop_key]
             owner_family = _family(owner)
             asset_ref = value.get("asset_ref")
             file_type_ref = value.get("file_type_ref")
@@ -357,37 +402,44 @@ def validate_package(package_root: str | Path) -> dict[str, Any]:
         if len(assets) > 1:
             f.error("ASSET_CARDINALITY_INVALID", source_paths[entity_id], f"{entity_id}: {len(assets)}")
 
-    links = [p for p in properties.values() if p.get("property_type_ref") == "link"]
+    links = [(key, p) for key, p in properties.items() if p.get("property_type_ref") == "link"]
 
-    for effect_id, effect in properties.items():
+    for effect_key, effect in properties.items():
         if effect.get("property_type_ref") != "effect":
             continue
+        effect_id = effect.get("id")
+        effect_owner = owners[effect_key]
         effect_value = effect.get("value") if isinstance(effect.get("value"), dict) else {}
         target_values = []
-        for link in links:
+        for link_key, link in links:
+            if owners[link_key] != effect_owner:
+                continue
             link_value = link.get("value") if isinstance(link.get("value"), dict) else {}
             if link_value.get("link_type_ref") == "effect_target" and link_value.get("parent_ref") == effect_id:
                 target_values.append(link_value)
         for finding in validate_effect_semantics(effect_value, target_values, dr):
-            f.error(finding["code"], source_paths[effect_id], f"{effect_id}: {finding['message']}")
+            f.error(finding["code"], source_paths[effect_key], f"{effect_id}: {finding['message']}")
 
-    for req_id, req in properties.items():
+    for req_key, req in properties.items():
         if req.get("property_type_ref") != "required_link":
             continue
-        path = source_paths[req_id]
+        req_id = req.get("id")
+        path = source_paths[req_key]
         value = req.get("value") if isinstance(req.get("value"), dict) else {}
-        owner = owners[req_id]
+        owner = owners[req_key]
         self_endpoint = value.get("self_endpoint")
         matches = []
-        for link in links:
+        for link_key, link in links:
+            if owners[link_key] != owner:
+                continue
             lv = link.get("value") if isinstance(link.get("value"), dict) else {}
             if lv.get("required_link_ref") != req_id:
                 continue
             matches.append(link)
             if self_endpoint in {"parent_ref", "child_ref"} and lv.get(self_endpoint) != owner:
-                f.error("REQUIRED_LINK_OWNER_ENDPOINT_MISMATCH", source_paths[link["id"]], f"{link['id']} -> {req_id}")
+                f.error("REQUIRED_LINK_OWNER_ENDPOINT_MISMATCH", source_paths[link_key], f"{link.get('id')} -> {req_id}")
             if lv.get("link_type_ref") != value.get("link_type_ref"):
-                f.error("REQUIRED_LINK_TYPE_MISMATCH", source_paths[link["id"]], f"{link['id']} -> {req_id}")
+                f.error("REQUIRED_LINK_TYPE_MISMATCH", source_paths[link_key], f"{link.get('id')} -> {req_id}")
         minimum = value.get("min", 0)
         maximum = value.get("max")
         if isinstance(minimum, int) and len(matches) < minimum:

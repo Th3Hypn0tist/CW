@@ -66,7 +66,7 @@ def _asset_ref(entity_ref: str, extension: str) -> str:
 
 def _asset_property(entity_ref: str, asset_ref: str, file_type_ref: str) -> dict[str, Any]:
     return {
-        "id": f"ASSET::{entity_ref}",
+        "id": "ASSET",
         "property_type_ref": "asset",
         "ruleset_ref": "RULESET_ASSET",
         "status": "unlocked",
@@ -161,6 +161,10 @@ def materialize_package(
     ir = _read_json(ir_path)
     dr_path = format_root / "DR.json"
     dr = _read_json(dr_path)
+    ccf = _read_json(format_root / "CCF.json")
+    ccf_version = ccf.get("version")
+    if not isinstance(ccf_version, str) or not ccf_version:
+        raise CICPackageError("Format/CCF.json version missing")
     dependencies = _dependency_properties(ir)
 
     files = [record for record in ir.get("files", []) if isinstance(record, dict)]
@@ -209,7 +213,7 @@ def materialize_package(
         _write_json(shard_path, entity)
         shard_count += 1
 
-    manifest["format"] = {"contract_format": "CANONICAL_CONTRACT", "format_version": "2.4.3"}
+    manifest["format"] = {"contract_format": "CANONICAL_CONTRACT", "format_version": ccf_version}
     identity = manifest.setdefault("identity", {})
     identity.update({
         "id": "CIC_IMPORTED_CODE_MODEL",
