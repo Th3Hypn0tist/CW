@@ -1,7 +1,7 @@
 {
   "id": "CW_DEPENDENCY_RULES",
   "name": "CanonicalWireframe Dependency Rules",
-  "version": "4.3.0-reference",
+  "version": "4.4.0-reference",
   "status": "unlocked",
   "principles": [
     "Entity and Property are the only canonical atoms.",
@@ -10,10 +10,12 @@
     "Properties are unbounded and NodeType reads are not whitelists.",
     "Function, Event, Effect, Data, Schema, Asset, Members and Required Link are Properties.",
     "Function boundary crossing is Event-mediated.",
-    "function_call and logic op=call are forbidden.",
     "Assets are opaque payloads; canonical meaning remains in Entity + Property.",
     "Property ownership and Link endpoint semantics are separate concerns.",
-    "Runtime state belongs to an execution context and does not mutate the canonical Model artifact."
+    "Runtime state belongs to an execution context and does not mutate the canonical Model artifact.",
+    "Property.id is owner-local; Property canonical address is owner Entity.id plus local Property.id.",
+    "Bare Property ids never trigger Model-wide lookup.",
+    "Function-to-Function calls are same-owner only; cross-Entity behavioral calls are Event-mediated."
   ],
   "reference_resolution": {
     "entity_ref": {
@@ -22,12 +24,16 @@
       "rule": "An Entity reference MUST resolve to exactly one active Entity.id in Model/."
     },
     "property_ref": {
-      "scope": "active Model closure",
-      "syntax": "exact Property.id",
-      "identity_rule": "Every active Property.id MUST be unique across the complete Model/ closure.",
-      "resolution_rule": "A bare canonical Property reference MUST resolve by exact Property.id across the complete Model/ closure.",
-      "owner_rule": "The owning Entity is the Entity whose properties[] contains the resolved Property definition. Consumers MUST NOT infer Property ownership from Property naming, file location, endpoint direction or convention.",
-      "ambiguity_rule": "Zero matches or more than one match is invalid. No local-first, nearest-file, family-local or naming-convention fallback is permitted."
+      "scope": "owning Entity.properties[]",
+      "syntax": "local Property.id",
+      "identity_rule": "Property.id MUST be unique only inside one owning Entity.properties[] collection.",
+      "resolution_rule": "A bare Property.id resolves only inside an explicitly known owner Entity. It MUST NEVER trigger Model-wide search.",
+      "cross_entity_address": {
+        "entity_ref": "canonical Entity.id",
+        "property_ref": "Property.id local to that Entity"
+      },
+      "same_id_across_different_entities": "VALID",
+      "duplicate_id_inside_same_entity": "INVALID"
     }
   },
   "data_state_model": {
@@ -42,7 +48,13 @@
     "package_validation_rule": "A valid package or valid Data slot contract MUST NOT be interpreted as a READY runtime Data value. READY exists only for a concrete execution-context binding after runtime validation.",
     "mutation_rule": "Runtime write/bind operations change execution-context state only; they MUST NOT rewrite the canonical .cw artifact."
   },
-  "schema_types": ["record", "string", "integer", "list", "map"],
+  "schema_types": [
+    "record",
+    "string",
+    "integer",
+    "list",
+    "map"
+  ],
   "schema_semantics": {
     "record": "definition.fields declares field contracts; required applies when validating a non-null record value.",
     "string": "a non-null value MUST be a string.",
@@ -63,9 +75,9 @@
     "unready_condition_rule": "An event_condition whose parent Data is UNBOUND or INVALID is unsatisfied because its required runtime value is unavailable or invalid. That state MUST NOT be reinterpreted as an unequal value or boolean false.",
     "exact_equality_rule": "value_equals uses type-preserving exact equality: boolean compares only with boolean, integer compares only with integer and never boolean, and string compares only with string. No coercion, parsing, case folding, numeric conversion or executable predicate is permitted.",
     "dynamic_dispatch": {
-      "selector_rule": "event_dispatch.selector_ref MUST resolve to a Data Property. At dispatch time that Data MUST be READY and its runtime value MUST be an exact canonical Event Property.id string. event_dispatch does not parse aliases, commands, paths, executable names or arbitrary target strings.",
+      "selector_rule": "event_dispatch.selector_ref MUST resolve owner-locally to a Data Property. At dispatch time that Data MUST be READY and its runtime value MUST be a Property address object {entity_ref, property_ref}.",
       "domain_rule": "event_dispatch.child_ref MUST resolve to one Entity that owns exactly one members Property used as the dispatch-domain membership surface. The selected Event's owning Entity MUST be a direct member_ref of that members Property.",
-      "target_rule": "The selector value MUST resolve by exact canonical Property.id to exactly one Property whose property_type_ref is event. Resolution to another Property type, an Entity, an unresolved identity or an Event outside the declared domain is invalid dispatch.",
+      "target_rule": "The selector value entity_ref MUST name an Entity inside the declared dispatch domain and property_ref MUST resolve inside that Entity to exactly one Event Property. Bare globally searched Event ids are forbidden.",
       "authority_rule": "event_dispatch grants no authority outside its explicit domain and MUST NOT make arbitrary canonical Entities or Properties invokable. The target Function, if any, remains reached only through the selected Event's ordinary event_handler semantics.",
       "failure_rule": "A non-READY selector, non-string selector value, unresolved selector value, non-Event target, missing/ambiguous domain members surface or out-of-domain Event produces explicit INVALID dispatch. No fallback target, string interpretation or silent no-op is permitted.",
       "context_rule": "A dynamically selected Event occurrence preserves the dispatching Function's current execution context exactly as a statically emitted Event occurrence does."
@@ -74,10 +86,11 @@
     "handler_rule": "When an Event occurrence dispatches, its linked handler/effect semantics execute in the same context."
   },
   "function_interface_model": {
-    "input_refs": "Function.input_refs is the exact set of canonical Property refs read by that Function's modeled logic. Execution-context Data visible around the Function is not an input unless the Function actually reads it.",
-    "output_refs": "Function.output_refs is the exact set of canonical Property refs written/produced by that Function's modeled logic.",
+    "input_refs": "Function.input_refs is the exact set of owner-local Property ids read by the Function's modeled logic.",
+    "output_refs": "Function.output_refs is the exact set of owner-local Property ids written/produced by the Function's modeled logic.",
     "relay_rule": "A Function may have empty input_refs and output_refs when its modeled purpose is purely causal control such as emitting another Event.",
-    "validation_rule": "Generic tooling SHOULD verify that modeled canonical reads are declared in input_refs, modeled canonical writes are declared in output_refs, and unused declared refs are rejected unless another explicit Function contract permits them."
+    "validation_rule": "Generic tooling SHOULD verify that modeled canonical reads are declared in input_refs, modeled canonical writes are declared in output_refs, and unused declared refs are rejected unless another explicit Function contract permits them.",
+    "scope_rule": "Function input_refs/output_refs MUST resolve only inside the Entity that owns the Function. Cross-Entity data enters through explicit Link/Event semantics."
   },
   "link_property_model": {
     "ownership": "A Link is a Property and is owned by exactly one Entity through ordinary Entity.properties[] containment.",
@@ -96,30 +109,101 @@
     "network_arrival_rule": "Inbound data arrival is represented through Event/Data semantics. network_io Effects describe outbound send/respond side effects only; resource start/bind/listen/close lifecycle belongs to resource_lifecycle semantics."
   },
   "asset_file_types": [
-    {"id":"html","extensions":[".html"]},
-    {"id":"javascript","extensions":[".js"]},
-    {"id":"json","extensions":[".json"]},
-    {"id":"css","extensions":[".css"]},
-    {"id":"svg","extensions":[".svg"]},
-    {"id":"pdf","extensions":[".pdf"]},
-    {"id":"jpg","extensions":[".jpg",".jpeg"]},
-    {"id":"png","extensions":[".png"]}
+    {
+      "id": "html",
+      "extensions": [
+        ".html"
+      ]
+    },
+    {
+      "id": "javascript",
+      "extensions": [
+        ".js"
+      ]
+    },
+    {
+      "id": "json",
+      "extensions": [
+        ".json"
+      ]
+    },
+    {
+      "id": "css",
+      "extensions": [
+        ".css"
+      ]
+    },
+    {
+      "id": "svg",
+      "extensions": [
+        ".svg"
+      ]
+    },
+    {
+      "id": "pdf",
+      "extensions": [
+        ".pdf"
+      ]
+    },
+    {
+      "id": "jpg",
+      "extensions": [
+        ".jpg",
+        ".jpeg"
+      ]
+    },
+    {
+      "id": "png",
+      "extensions": [
+        ".png"
+      ]
+    }
   ],
   "node_ruleset": {
     "id": "RULESET_NODE",
-    "universal_reads": ["members", "link", "asset"],
+    "universal_reads": [
+      "members",
+      "link",
+      "asset"
+    ],
     "rule": "A valid Property remains valid even when its Property type is not present in effective reads."
   },
   "property_rulesets": [
-    {"id":"RULESET_NODETYPE_READS","property_type_ref":"data"},
-    {"id":"RULESET_NODETYPE_EXTENDS","property_type_ref":"data"},
-    {"id":"RULESET_MEMBERS","property_type_ref":"members","required_fields":["member_refs","properties"]},
-    {"id":"RULESET_ASSET","property_type_ref":"asset","required_fields":["asset_ref","file_type_ref","properties"]},
     {
-      "id":"RULESET_REQUIRED_LINK",
-      "property_type_ref":"required_link",
-      "required_fields":["link_type_ref","self_endpoint","min","properties"],
-      "constraints":[
+      "id": "RULESET_NODETYPE_READS",
+      "property_type_ref": "data"
+    },
+    {
+      "id": "RULESET_NODETYPE_EXTENDS",
+      "property_type_ref": "data"
+    },
+    {
+      "id": "RULESET_MEMBERS",
+      "property_type_ref": "members",
+      "required_fields": [
+        "member_refs",
+        "properties"
+      ]
+    },
+    {
+      "id": "RULESET_ASSET",
+      "property_type_ref": "asset",
+      "required_fields": [
+        "asset_ref",
+        "file_type_ref",
+        "properties"
+      ]
+    },
+    {
+      "id": "RULESET_REQUIRED_LINK",
+      "property_type_ref": "required_link",
+      "required_fields": [
+        "link_type_ref",
+        "self_endpoint",
+        "min",
+        "properties"
+      ],
+      "constraints": [
         "self_endpoint MUST be parent_ref or child_ref.",
         "min MUST be a non-negative integer.",
         "max, when present, MUST be an integer greater than or equal to min.",
@@ -128,10 +212,14 @@
       ]
     },
     {
-      "id":"RULESET_SCHEMA",
-      "property_type_ref":"schema",
-      "required_fields":["schema_type_ref","definition","properties"],
-      "constraints":[
+      "id": "RULESET_SCHEMA",
+      "property_type_ref": "schema",
+      "required_fields": [
+        "schema_type_ref",
+        "definition",
+        "properties"
+      ],
+      "constraints": [
         "schema_type_ref MUST name exactly one value registered in schema_types.",
         "Any schema_ref, item_schema_ref or value_schema_ref inside definition MUST resolve to a Property whose property_type_ref is schema.",
         "For schema_type_ref=list, unique_by when present MUST name a field in the item record Schema.",
@@ -140,141 +228,333 @@
       ]
     },
     {
-      "id":"RULESET_DATA",
-      "property_type_ref":"data",
-      "optional_fields":["schema_ref"],
-      "constraints":[
+      "id": "RULESET_DATA",
+      "property_type_ref": "data",
+      "optional_fields": [
+        "schema_ref"
+      ],
+      "constraints": [
         "schema_ref, when present, MUST resolve to a Property whose property_type_ref is schema.",
         "value:null means UNBOUND and is valid as a slot state regardless of required fields in schema_ref.",
         "A non-null runtime binding becomes READY only after schema validation succeeds."
       ]
     },
-    {"id":"RULESET_EVENT","property_type_ref":"event"},
     {
-      "id":"RULESET_FUNCTION",
-      "property_type_ref":"function",
-      "optional_fields":["input_refs","output_refs","logic"],
-      "constraints":[
-        "input_refs and output_refs, when present, MUST resolve through canonical Property reference resolution.",
+      "id": "RULESET_EVENT",
+      "property_type_ref": "event"
+    },
+    {
+      "id": "RULESET_FUNCTION",
+      "property_type_ref": "function",
+      "optional_fields": [
+        "input_refs",
+        "output_refs",
+        "logic"
+      ],
+      "constraints": [
+        "input_refs and output_refs, when present, MUST resolve by bare Property.id only inside the Entity that owns the Function.",
         "input_refs describe canonical Properties actually read by modeled Function logic, not all Data visible in the execution context.",
         "output_refs describe canonical Properties actually written or produced by modeled Function logic."
       ]
     },
     {
-      "id":"RULESET_EFFECT",
-      "property_type_ref":"effect",
-      "optional_fields":["input_refs","operation"],
-      "constraints":[
+      "id": "RULESET_EFFECT",
+      "property_type_ref": "effect",
+      "optional_fields": [
+        "input_refs",
+        "operation"
+      ],
+      "constraints": [
         "effect_type_ref MUST resolve to exactly one registered effect_types entry.",
         "When the selected Effect type declares operation_values, operation is required and MUST equal one registered operation value.",
         "All machine-significant external resource/target references MUST use explicit effect_target Links rather than opaque strings inside Effect.value."
       ]
     },
-    {"id":"RULESET_REPRESENTATION","property_type_ref":"representation"},
-    {"id":"RULESET_TRANSFORM","property_type_ref":"transform"}
+    {
+      "id": "RULESET_REPRESENTATION",
+      "property_type_ref": "representation"
+    },
+    {
+      "id": "RULESET_TRANSFORM",
+      "property_type_ref": "transform"
+    }
   ],
   "link_rulesets": [
-    {"id":"RULESET_LINK_DEPENDENCY","property_type_ref":"link","link_type_ref":"dependency","parent_role":"provider/dependency","child_role":"dependent/consumer","direction":"provider -> dependent","rule":"dependency is structural only and MUST NOT imply causal execution."},
-    {"id":"RULESET_LINK_EVENT_INPUT","property_type_ref":"link","link_type_ref":"event_input","parent_role":"input Data/Property","child_role":"Event","direction":"input -> Event"},
-    {"id":"RULESET_LINK_EVENT_OUTPUT","property_type_ref":"link","link_type_ref":"event_output","parent_role":"Event","child_role":"output Data/Property","direction":"Event -> output"},
-    {"id":"RULESET_LINK_EVENT_HANDLER","property_type_ref":"link","link_type_ref":"event_handler","parent_role":"Event","child_role":"Function","direction":"Event -> handler Function"},
-    {"id":"RULESET_LINK_EVENT_CAUSE","property_type_ref":"link","link_type_ref":"event_cause","parent_role":"Function","child_role":"Event","direction":"Function -> caused Event","rule":"The Link Property may be owned by any canonical Entity. Causal source identity is parent_ref, not Link Property ownership."},
     {
-      "id":"RULESET_LINK_EVENT_DISPATCH",
-      "property_type_ref":"link",
-      "link_type_ref":"event_dispatch",
-      "parent_role":"dispatching Function",
-      "child_role":"dispatch domain Entity",
-      "direction":"Function -> dispatch domain",
-      "required_fields":["selector_ref"],
-      "rule":"selector_ref MUST resolve to a Data Property. child_ref MUST resolve to a domain Entity with exactly one members Property. At runtime selector_ref MUST be READY and contain an exact canonical Event Property.id whose owning Entity is a direct member_ref of the domain members Property. No alias, filename, command token or arbitrary executable string is interpreted by event_dispatch."
+      "id": "RULESET_LINK_DEPENDENCY",
+      "property_type_ref": "link",
+      "link_type_ref": "dependency",
+      "parent_role": "provider/dependency",
+      "child_role": "dependent/consumer",
+      "direction": "provider -> dependent",
+      "rule": "dependency is structural only and MUST NOT imply causal execution."
     },
     {
-      "id":"RULESET_LINK_EVENT_CONDITION",
-      "property_type_ref":"link",
-      "link_type_ref":"event_condition",
-      "parent_role":"condition Data",
-      "child_role":"Event",
-      "direction":"condition -> Event",
-      "required_fields":["condition_mode"],
-      "supported_condition_modes":["ready","value_equals"],
+      "id": "RULESET_LINK_EVENT_INPUT",
+      "property_type_ref": "link",
+      "link_type_ref": "event_input",
+      "parent_role": "input Data/Property",
+      "child_role": "Event",
+      "direction": "input -> Event"
+    },
+    {
+      "id": "RULESET_LINK_EVENT_OUTPUT",
+      "property_type_ref": "link",
+      "link_type_ref": "event_output",
+      "parent_role": "Event",
+      "child_role": "output Data/Property",
+      "direction": "Event -> output"
+    },
+    {
+      "id": "RULESET_LINK_EVENT_HANDLER",
+      "property_type_ref": "link",
+      "link_type_ref": "event_handler",
+      "parent_role": "Event",
+      "child_role": "Function",
+      "direction": "Event -> handler Function",
+      "rule": "Event parent_ref and handler Function child_ref MUST resolve inside the same owning Entity."
+    },
+    {
+      "id": "RULESET_LINK_EVENT_CAUSE",
+      "property_type_ref": "link",
+      "link_type_ref": "event_cause",
+      "parent_role": "Function",
+      "child_role": "Event",
+      "direction": "Function -> caused Event",
+      "rule": "The Link Property MUST be owned by the Entity that owns parent_ref/cause Function. child_ref MAY be a structured cross-Entity Event address."
+    },
+    {
+      "id": "RULESET_LINK_EVENT_DISPATCH",
+      "property_type_ref": "link",
+      "link_type_ref": "event_dispatch",
+      "parent_role": "dispatching Function",
+      "child_role": "dispatch domain Entity",
+      "direction": "Function -> dispatch domain",
+      "required_fields": [
+        "selector_ref"
+      ],
+      "rule": "selector_ref MUST resolve to a Data Property. child_ref MUST resolve to a domain Entity with exactly one members Property. At runtime selector_ref MUST be READY and contain an exact canonical Event Property.id whose owning Entity is a direct member_ref of the domain members Property. No alias, filename, command token or arbitrary executable string is interpreted by event_dispatch."
+    },
+    {
+      "id": "RULESET_LINK_EVENT_CONDITION",
+      "property_type_ref": "link",
+      "link_type_ref": "event_condition",
+      "parent_role": "condition Data",
+      "child_role": "Event",
+      "direction": "condition -> Event",
+      "required_fields": [
+        "condition_mode"
+      ],
+      "supported_condition_modes": [
+        "ready",
+        "value_equals"
+      ],
       "mode_fields": {
-        "ready": {"required":[],"forbidden":["expected_value"]},
-        "value_equals": {"required":["expected_value"],"forbidden":[]}
+        "ready": {
+          "required": [],
+          "forbidden": [
+            "expected_value"
+          ]
+        },
+        "value_equals": {
+          "required": [
+            "expected_value"
+          ],
+          "forbidden": []
+        }
       },
-      "expected_value_types":["boolean","integer","string"],
-      "rule":"condition_mode=ready is satisfied exactly when parent_ref resolves to READY Data. condition_mode=value_equals is evaluated only for READY parent Data and is satisfied exactly by type-preserving exact equality with expected_value. UNBOUND or INVALID Data is unsatisfied without being reinterpreted as false or unequal."
+      "expected_value_types": [
+        "boolean",
+        "integer",
+        "string"
+      ],
+      "rule": "condition_mode=ready is satisfied exactly when parent_ref resolves to READY Data. condition_mode=value_equals is evaluated only for READY parent Data and is satisfied exactly by type-preserving exact equality with expected_value. UNBOUND or INVALID Data is unsatisfied without being reinterpreted as false or unequal."
     },
-    {"id":"RULESET_LINK_EVENT_EFFECT","property_type_ref":"link","link_type_ref":"event_effect","parent_role":"Event","child_role":"Effect","direction":"Event -> Effect"},
     {
-      "id":"RULESET_LINK_EFFECT_TARGET",
-      "property_type_ref":"link",
-      "link_type_ref":"effect_target",
-      "parent_role":"Effect",
-      "child_role":"explicit target Data/Entity",
-      "direction":"Effect -> target",
-      "optional_fields":["target_role"],
-      "rule":"target_role is required whenever the selected Effect type declares required_target_roles. Role meaning and cardinality come only from that Effect type definition."
+      "id": "RULESET_LINK_EVENT_EFFECT",
+      "property_type_ref": "link",
+      "link_type_ref": "event_effect",
+      "parent_role": "Event",
+      "child_role": "Effect",
+      "direction": "Event -> Effect"
+    },
+    {
+      "id": "RULESET_LINK_EFFECT_TARGET",
+      "property_type_ref": "link",
+      "link_type_ref": "effect_target",
+      "parent_role": "Effect",
+      "child_role": "explicit target Data/Entity",
+      "direction": "Effect -> target",
+      "optional_fields": [
+        "target_role"
+      ],
+      "rule": "target_role is required whenever the selected Effect type declares required_target_roles. Role meaning and cardinality come only from that Effect type definition."
+    },
+    {
+      "id": "RULESET_LINK_FUNCTION_CALL",
+      "property_type_ref": "link",
+      "link_type_ref": "function_call",
+      "parent_role": "caller Function",
+      "child_role": "called Function",
+      "direction": "caller -> called",
+      "required_fields": [
+        "input_refs",
+        "output_refs"
+      ],
+      "rule": "caller and called Function MUST be owned by the same Entity. input_refs/output_refs are owner-local Data Property ids. Cross-Entity function_call is INVALID."
     }
   ],
   "effect_types": [
     {
-      "id":"replace_target",
-      "input_cardinality":1,
-      "rule":"On dispatch, copy the single input Data value to every explicitly linked effect_target in the same execution context without changing canonical identity."
+      "id": "replace_target",
+      "input_cardinality": 1,
+      "rule": "On dispatch, copy the single input Data value to every explicitly linked effect_target in the same execution context without changing canonical identity."
     },
     {
-      "id":"filesystem_mutation",
-      "operation_values":["write","move","delete","replace"],
+      "id": "filesystem_mutation",
+      "operation_values": [
+        "write",
+        "move",
+        "delete",
+        "replace"
+      ],
       "operation_target_roles": {
-        "write":["target"],
-        "delete":["target"],
-        "move":["source","destination"],
-        "replace":["source","destination"]
+        "write": [
+          "target"
+        ],
+        "delete": [
+          "target"
+        ],
+        "move": [
+          "source",
+          "destination"
+        ],
+        "replace": [
+          "source",
+          "destination"
+        ]
       },
-      "rule":"Request an explicit filesystem mutation against canonical targets. write/delete require one target role. move/replace require distinct source and destination roles. The Effect does not grant host-filesystem authority and does not imply atomicity or rollback."
+      "rule": "Request an explicit filesystem mutation against canonical targets. write/delete require one target role. move/replace require distinct source and destination roles. The Effect does not grant host-filesystem authority and does not imply atomicity or rollback."
     },
     {
-      "id":"persistence_mutation",
-      "operation_values":["set","delete","batch"],
-      "required_target_roles":["backend","target"],
-      "rule":"Request mutation of an explicit logical persistence target through an explicit backend target. The semantic is storage-technology neutral. batch represents the supplied mutation batch only and does not imply transactional atomicity."
+      "id": "persistence_mutation",
+      "operation_values": [
+        "set",
+        "delete",
+        "batch"
+      ],
+      "required_target_roles": [
+        "backend",
+        "target"
+      ],
+      "rule": "Request mutation of an explicit logical persistence target through an explicit backend target. The semantic is storage-technology neutral. batch represents the supplied mutation batch only and does not imply transactional atomicity."
     },
     {
-      "id":"network_io",
-      "operation_values":["send","respond"],
-      "required_target_roles":["endpoint"],
-      "min_input_cardinality":1,
-      "rule":"Request outbound network send/respond to an explicit endpoint/resource. Inbound arrival is Event/Data semantics and network resource lifecycle is modeled separately. Modeling this Effect grants no network authority."
+      "id": "network_io",
+      "operation_values": [
+        "send",
+        "respond"
+      ],
+      "required_target_roles": [
+        "endpoint"
+      ],
+      "min_input_cardinality": 1,
+      "rule": "Request outbound network send/respond to an explicit endpoint/resource. Inbound arrival is Event/Data semantics and network resource lifecycle is modeled separately. Modeling this Effect grants no network authority."
     },
     {
-      "id":"resource_lifecycle",
-      "operation_values":["start","stop","close","join"],
-      "required_target_roles":["resource"],
-      "rule":"Request an explicit lifecycle transition for an explicit runtime resource. The Effect does not imply ownership of the resource, process, thread, server or adapter and does not grant lifecycle authority."
+      "id": "resource_lifecycle",
+      "operation_values": [
+        "start",
+        "stop",
+        "close",
+        "join"
+      ],
+      "required_target_roles": [
+        "resource"
+      ],
+      "rule": "Request an explicit lifecycle transition for an explicit runtime resource. The Effect does not imply ownership of the resource, process, thread, server or adapter and does not grant lifecycle authority."
     }
   ],
   "logic_primitive_set": {
     "id": "CW_LOGIC_PRIMITIVES",
-    "primitives": ["read","write","assign","lookup","concat","emit","return","fail","if","while","loop","and","or","xor","not","eq","ne","lt","lte","gt","gte"],
-    "forbidden": ["call"],
+    "primitives": [
+      "read",
+      "write",
+      "assign",
+      "lookup",
+      "concat",
+      "call",
+      "emit",
+      "return",
+      "fail",
+      "if",
+      "while",
+      "loop",
+      "and",
+      "or",
+      "xor",
+      "not",
+      "eq",
+      "ne",
+      "lt",
+      "lte",
+      "gt",
+      "gte"
+    ],
+    "forbidden": [],
     "semantics": {
-      "read":"Read a canonical Data/Property value in the current execution context by exact ref; optional path selects a nested value.",
-      "write":"Write a value to the canonical target Data/Property slot in the current execution context. Non-null Data writes MUST satisfy schema_ref before the slot becomes READY.",
-      "assign":"Bind a transient local_ref inside the containing Function.logic execution scope.",
-      "lookup":"Read one item from a READY collection. The source MUST be READY before lookup executes; lookup against UNBOUND or INVALID source is INVALID execution, never null. For a list, key_field selects the compared item field and key is matched by exact equality; zero matches in a READY collection returns null and more than one match is INVALID. A list Schema unique_by constraint can guarantee at most one match.",
-      "concat":"Concatenate ordered scalar/string expressions into one scalar/string value.",
-      "emit":"Exactly one of cause_ref or dispatch_ref is required. cause_ref MUST resolve to an event_cause Link whose parent_ref resolves to the containing Function Property.id. dispatch_ref MUST resolve to an event_dispatch Link whose parent_ref resolves to the containing Function Property.id; that Link's READY selector_ref Data selects one exact in-domain Event Property.id according to event_execution_model.dynamic_dispatch. The emitted Event occurrence preserves the current execution context.",
-      "return":"Return from local Function logic; return alone does not create cross-Function causality.",
-      "fail":"Terminate the current Function execution as INVALID using an explicit machine-readable code. fail MUST NOT emit subsequent Events from the terminated control path.",
-      "if":"Select exactly one local logic branch from an explicit boolean condition."
+      "read": "Read a canonical Data/Property value in the current execution context by exact ref; optional path selects a nested value.",
+      "write": "Write a value to the canonical target Data/Property slot in the current execution context. Non-null Data writes MUST satisfy schema_ref before the slot becomes READY.",
+      "assign": "Bind a transient local_ref inside the containing Function.logic execution scope.",
+      "lookup": "Read one item from a READY collection. The source MUST be READY before lookup executes; lookup against UNBOUND or INVALID source is INVALID execution, never null. For a list, key_field selects the compared item field and key is matched by exact equality; zero matches in a READY collection returns null and more than one match is INVALID. A list Schema unique_by constraint can guarantee at most one match.",
+      "concat": "Concatenate ordered scalar/string expressions into one scalar/string value.",
+      "emit": "Exactly one of cause_ref or dispatch_ref is required. cause_ref resolves owner-locally to an event_cause Link owned by the containing Function's Entity; its child Event may be cross-Entity by explicit Property address.",
+      "return": "Return from local Function logic; return alone does not create cross-Function causality.",
+      "fail": "Terminate the current Function execution as INVALID using an explicit machine-readable code. fail MUST NOT emit subsequent Events from the terminated control path.",
+      "if": "Select exactly one local logic branch from an explicit boolean condition.",
+      "call": "Invoke one owner-local function_call Link whose parent/caller is the containing Function. Cross-Entity Function invocation is forbidden."
     }
   },
-  "link_types": ["dependency","event_input","event_output","event_handler","event_cause","event_dispatch","event_condition","event_effect","effect_target"],
-  "forbidden_link_types": ["function_call"],
+  "link_types": [
+    "dependency",
+    "event_input",
+    "event_output",
+    "event_handler",
+    "event_cause",
+    "event_dispatch",
+    "event_condition",
+    "event_effect",
+    "effect_target",
+    "function_call"
+  ],
+  "forbidden_link_types": [],
   "causal_patterns": {
-    "function_boundary": ["Function","event_cause","Event","event_handler","Function"],
-    "dynamic_event_dispatch": ["Function","event_dispatch","dispatch domain members","selected Event","event_handler","Function"],
-    "effect": ["Event","event_effect","Effect","effect_target","Data/Entity"]
+    "function_boundary": [
+      "Function",
+      "event_cause",
+      "Event",
+      "event_handler",
+      "Function"
+    ],
+    "dynamic_event_dispatch": [
+      "Function",
+      "event_dispatch",
+      "dispatch domain members",
+      "selected Event",
+      "event_handler",
+      "Function"
+    ],
+    "effect": [
+      "Event",
+      "event_effect",
+      "Effect",
+      "effect_target",
+      "Data/Entity"
+    ],
+    "same_owner_function_call": [
+      "Function",
+      "function_call",
+      "Function"
+    ]
   }
 }

@@ -1,44 +1,669 @@
 {
-  "id":"#FILE:renderer",
-  "name":"renderer",
-  "entity_type_ref":"FILE",
-  "status":"unlocked",
-  "properties":[
-    {"id":"ASSET::#FILE:renderer","property_type_ref":"asset","ruleset_ref":"RULESET_ASSET","status":"unlocked","value":{"asset_ref":"Assets/FILE/%23FILE%3Arenderer.js","file_type_ref":"javascript","properties":{}}},
-    {"id":"DATA_SELECTED_CONTENT","property_type_ref":"data","ruleset_ref":"RULESET_DATA","status":"unlocked","value":{"data_type_ref":"page_content","value":null,"schema_ref":"SCHEMA_PAGE_CONTENT","properties":{}}},
-    {"id":"DATA_RENDER_DRAFT","property_type_ref":"data","ruleset_ref":"RULESET_DATA","status":"unlocked","value":{"data_type_ref":"rendered_document","value":null,"schema_ref":"SCHEMA_RENDERED_DOCUMENT","properties":{}}},
-    {"id":"DATA_PUBLISH_DOCUMENT","property_type_ref":"data","ruleset_ref":"RULESET_DATA","status":"unlocked","value":{"data_type_ref":"rendered_document","value":null,"schema_ref":"SCHEMA_RENDERED_DOCUMENT","properties":{}}},
-    {"id":"EVENT_RENDER_PAGE","property_type_ref":"event","ruleset_ref":"RULESET_EVENT","status":"unlocked","value":{"event_type_ref":"render_page","properties":{}}},
-    {"id":"EVENT_COMPOSE_DOCUMENT","property_type_ref":"event","ruleset_ref":"RULESET_EVENT","status":"unlocked","value":{"event_type_ref":"compose_document","properties":{}}},
-    {"id":"EVENT_RENDER_COMPLETE","property_type_ref":"event","ruleset_ref":"RULESET_EVENT","status":"unlocked","value":{"event_type_ref":"render_complete","properties":{}}},
-    {"id":"EVENT_PUBLISH_READY","property_type_ref":"event","ruleset_ref":"RULESET_EVENT","status":"unlocked","value":{"event_type_ref":"publish_ready","properties":{}}},
-    {"id":"FUNCTION_RESOLVE_PAGE","property_type_ref":"function","ruleset_ref":"RULESET_FUNCTION","status":"unlocked","value":{"function_type_ref":"resolve_page","input_refs":["DATA_PAGE_REQUEST","DATA_CONTENT_COLLECTION"],"output_refs":["DATA_SELECTED_CONTENT"],"logic":{"primitive_set_ref":"CW_LOGIC_PRIMITIVES","body":[{"op":"assign","local_ref":"requested_id","value":{"op":"read","source":{"ref":"DATA_PAGE_REQUEST"},"path":["page_id"]}},{"op":"assign","local_ref":"selected_content","value":{"op":"lookup","source":{"ref":"DATA_CONTENT_COLLECTION"},"key_field":"id","key":{"local_ref":"requested_id"}}},{"op":"if","condition":{"op":"ne","left":{"local_ref":"selected_content"},"right":{"literal":null}},"then":[{"op":"write","target":"DATA_SELECTED_CONTENT","value":{"local_ref":"selected_content"}},{"op":"emit","cause_ref":"LINK_RESOLVE_PAGE_CAUSES_COMPOSE"},{"op":"return","value":{"ref":"DATA_SELECTED_CONTENT"}}],"else":[{"op":"assign","local_ref":"fallback_content","value":{"op":"lookup","source":{"ref":"DATA_CONTENT_COLLECTION"},"key_field":"id","key":{"literal":"index"}}},{"op":"if","condition":{"op":"ne","left":{"local_ref":"fallback_content"},"right":{"literal":null}},"then":[{"op":"write","target":"DATA_SELECTED_CONTENT","value":{"local_ref":"fallback_content"}},{"op":"emit","cause_ref":"LINK_RESOLVE_PAGE_CAUSES_COMPOSE"},{"op":"return","value":{"ref":"DATA_SELECTED_CONTENT"}}],"else":[{"op":"fail","code":"INVALID_CONTENT_SOURCE"}]}]}]},"properties":{}}},
-    {"id":"FUNCTION_COMPOSE_DOCUMENT","property_type_ref":"function","ruleset_ref":"RULESET_FUNCTION","status":"unlocked","value":{"function_type_ref":"compose_document","input_refs":["DATA_SELECTED_CONTENT","DATA_STYLE_STYLESHEET"],"output_refs":["DATA_RENDER_DRAFT"],"logic":{"primitive_set_ref":"CW_LOGIC_PRIMITIVES","body":[{"op":"write","target":"DATA_RENDER_DRAFT","value":{"content":{"op":"read","source":{"ref":"DATA_SELECTED_CONTENT"}},"style":{"op":"read","source":{"ref":"DATA_STYLE_STYLESHEET"}},"status":{"literal":"draft"}}},{"op":"emit","cause_ref":"LINK_COMPOSE_CAUSES_RENDER_COMPLETE"},{"op":"return","value":{"ref":"DATA_RENDER_DRAFT"}}]},"properties":{}}},
-    {"id":"FUNCTION_FINALIZE_DOCUMENT","property_type_ref":"function","ruleset_ref":"RULESET_FUNCTION","status":"unlocked","value":{"function_type_ref":"finalize_document","input_refs":["DATA_RENDER_DRAFT"],"output_refs":["DATA_PUBLISH_DOCUMENT"],"logic":{"primitive_set_ref":"CW_LOGIC_PRIMITIVES","body":[{"op":"write","target":"DATA_PUBLISH_DOCUMENT","value":{"content":{"op":"read","source":{"ref":"DATA_RENDER_DRAFT"},"path":["content"]},"style":{"op":"read","source":{"ref":"DATA_RENDER_DRAFT"},"path":["style"]},"status":{"literal":"published"}}},{"op":"emit","cause_ref":"LINK_FINALIZE_CAUSES_PUBLISH_READY"},{"op":"return","value":{"ref":"DATA_PUBLISH_DOCUMENT"}}]},"properties":{}}},
-    {"id":"EFFECT_PUBLISH_DOCUMENT","property_type_ref":"effect","ruleset_ref":"RULESET_EFFECT","status":"unlocked","value":{"effect_type_ref":"replace_target","input_refs":["DATA_PUBLISH_DOCUMENT"],"properties":{}}},
-    {"id":"LINK_OPEN_PAGE_CAUSES_RENDER_PAGE","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_CAUSE","status":"unlocked","value":{"link_type_ref":"event_cause","parent_ref":"FUNCTION_OPEN_PAGE","child_ref":"EVENT_RENDER_PAGE","properties":{}}},
-    {"id":"LINK_RENDER_REQUEST_INPUT","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_INPUT","status":"unlocked","value":{"link_type_ref":"event_input","parent_ref":"DATA_PAGE_REQUEST","child_ref":"EVENT_RENDER_PAGE","properties":{}}},
-    {"id":"LINK_RENDER_CONTENT_INPUT","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_INPUT","status":"unlocked","value":{"link_type_ref":"event_input","parent_ref":"DATA_CONTENT_COLLECTION","child_ref":"EVENT_RENDER_PAGE","properties":{}}},
-    {"id":"LINK_RENDER_STYLE_INPUT","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_INPUT","status":"unlocked","value":{"link_type_ref":"event_input","parent_ref":"DATA_STYLE_STYLESHEET","child_ref":"EVENT_RENDER_PAGE","properties":{}}},
-    {"id":"LINK_RENDER_REQUEST_READY","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_CONDITION","status":"unlocked","value":{"link_type_ref":"event_condition","parent_ref":"DATA_PAGE_REQUEST","child_ref":"EVENT_RENDER_PAGE","condition_mode":"ready","properties":{}}},
-    {"id":"LINK_RENDER_CONTENT_READY","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_CONDITION","status":"unlocked","value":{"link_type_ref":"event_condition","parent_ref":"DATA_CONTENT_COLLECTION","child_ref":"EVENT_RENDER_PAGE","condition_mode":"ready","properties":{}}},
-    {"id":"LINK_RENDER_STYLE_READY","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_CONDITION","status":"unlocked","value":{"link_type_ref":"event_condition","parent_ref":"DATA_STYLE_STYLESHEET","child_ref":"EVENT_RENDER_PAGE","condition_mode":"ready","properties":{}}},
-    {"id":"LINK_RENDER_PAGE_HANDLER","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_HANDLER","status":"unlocked","value":{"link_type_ref":"event_handler","parent_ref":"EVENT_RENDER_PAGE","child_ref":"FUNCTION_RESOLVE_PAGE","properties":{}}},
-    {"id":"LINK_RESOLVE_PAGE_CAUSES_COMPOSE","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_CAUSE","status":"unlocked","value":{"link_type_ref":"event_cause","parent_ref":"FUNCTION_RESOLVE_PAGE","child_ref":"EVENT_COMPOSE_DOCUMENT","properties":{}}},
-    {"id":"LINK_COMPOSE_CONTENT_INPUT","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_INPUT","status":"unlocked","value":{"link_type_ref":"event_input","parent_ref":"DATA_SELECTED_CONTENT","child_ref":"EVENT_COMPOSE_DOCUMENT","properties":{}}},
-    {"id":"LINK_COMPOSE_STYLE_INPUT","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_INPUT","status":"unlocked","value":{"link_type_ref":"event_input","parent_ref":"DATA_STYLE_STYLESHEET","child_ref":"EVENT_COMPOSE_DOCUMENT","properties":{}}},
-    {"id":"LINK_COMPOSE_CONTENT_READY","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_CONDITION","status":"unlocked","value":{"link_type_ref":"event_condition","parent_ref":"DATA_SELECTED_CONTENT","child_ref":"EVENT_COMPOSE_DOCUMENT","condition_mode":"ready","properties":{}}},
-    {"id":"LINK_COMPOSE_STYLE_READY","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_CONDITION","status":"unlocked","value":{"link_type_ref":"event_condition","parent_ref":"DATA_STYLE_STYLESHEET","child_ref":"EVENT_COMPOSE_DOCUMENT","condition_mode":"ready","properties":{}}},
-    {"id":"LINK_COMPOSE_HANDLER","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_HANDLER","status":"unlocked","value":{"link_type_ref":"event_handler","parent_ref":"EVENT_COMPOSE_DOCUMENT","child_ref":"FUNCTION_COMPOSE_DOCUMENT","properties":{}}},
-    {"id":"LINK_COMPOSE_CAUSES_RENDER_COMPLETE","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_CAUSE","status":"unlocked","value":{"link_type_ref":"event_cause","parent_ref":"FUNCTION_COMPOSE_DOCUMENT","child_ref":"EVENT_RENDER_COMPLETE","properties":{}}},
-    {"id":"LINK_RENDER_COMPLETE_HANDLER","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_HANDLER","status":"unlocked","value":{"link_type_ref":"event_handler","parent_ref":"EVENT_RENDER_COMPLETE","child_ref":"FUNCTION_FINALIZE_DOCUMENT","properties":{}}},
-    {"id":"LINK_FINALIZE_CAUSES_PUBLISH_READY","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_CAUSE","status":"unlocked","value":{"link_type_ref":"event_cause","parent_ref":"FUNCTION_FINALIZE_DOCUMENT","child_ref":"EVENT_PUBLISH_READY","properties":{}}},
-    {"id":"LINK_PUBLISH_READY_EFFECT","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_EFFECT","status":"unlocked","value":{"link_type_ref":"event_effect","parent_ref":"EVENT_PUBLISH_READY","child_ref":"EFFECT_PUBLISH_DOCUMENT","properties":{}}},
-    {"id":"LINK_PUBLISH_TARGET","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EFFECT_TARGET","status":"unlocked","value":{"link_type_ref":"effect_target","parent_ref":"EFFECT_PUBLISH_DOCUMENT","child_ref":"DATA_INDEX_DOCUMENT","properties":{}}},
-    {"id":"LINK_RENDER_DRAFT_OUTPUT","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_OUTPUT","status":"unlocked","value":{"link_type_ref":"event_output","parent_ref":"EVENT_RENDER_COMPLETE","child_ref":"DATA_RENDER_DRAFT","properties":{}}},
-    {"id":"LINK_PUBLISH_DOCUMENT_OUTPUT","property_type_ref":"link","ruleset_ref":"RULESET_LINK_EVENT_OUTPUT","status":"unlocked","value":{"link_type_ref":"event_output","parent_ref":"EVENT_PUBLISH_READY","child_ref":"DATA_PUBLISH_DOCUMENT","properties":{}}},
-    {"id":"REQ_RENDERER_INPUTS","property_type_ref":"required_link","ruleset_ref":"RULESET_REQUIRED_LINK","status":"unlocked","value":{"link_type_ref":"dependency","self_endpoint":"child_ref","min":2,"max":2,"other_endpoint":{"entity_type_ref":"FILE"},"properties":{}}},
-    {"id":"LINK_CONTENT_RENDERER_DEPENDENCY","property_type_ref":"link","ruleset_ref":"RULESET_LINK_DEPENDENCY","status":"unlocked","value":{"link_type_ref":"dependency","parent_ref":"#FILE:content","child_ref":"#FILE:renderer","required_link_ref":"REQ_RENDERER_INPUTS","properties":{}}},
-    {"id":"LINK_STYLE_RENDERER_DEPENDENCY","property_type_ref":"link","ruleset_ref":"RULESET_LINK_DEPENDENCY","status":"unlocked","value":{"link_type_ref":"dependency","parent_ref":"#FILE:style","child_ref":"#FILE:renderer","required_link_ref":"REQ_RENDERER_INPUTS","properties":{}}}
+  "id": "#FILE:renderer",
+  "name": "renderer",
+  "entity_type_ref": "FILE",
+  "status": "unlocked",
+  "properties": [
+    {
+      "id": "ASSET",
+      "property_type_ref": "asset",
+      "ruleset_ref": "RULESET_ASSET",
+      "status": "unlocked",
+      "value": {
+        "asset_ref": "Assets/FILE/%23FILE%3Arenderer.js",
+        "file_type_ref": "javascript",
+        "properties": {}
+      }
+    },
+    {
+      "id": "DATA_SELECTED_CONTENT",
+      "property_type_ref": "data",
+      "ruleset_ref": "RULESET_DATA",
+      "status": "unlocked",
+      "value": {
+        "data_type_ref": "page_content",
+        "value": null,
+        "schema_ref": {
+          "entity_ref": "#CTRCT:UltralightCMS:Content",
+          "property_ref": "SCHEMA_PAGE_CONTENT"
+        },
+        "properties": {}
+      }
+    },
+    {
+      "id": "DATA_RENDER_DRAFT",
+      "property_type_ref": "data",
+      "ruleset_ref": "RULESET_DATA",
+      "status": "unlocked",
+      "value": {
+        "data_type_ref": "rendered_document",
+        "value": null,
+        "schema_ref": {
+          "entity_ref": "#CTRCT:UltralightCMS:RenderedDocument",
+          "property_ref": "SCHEMA_RENDERED_DOCUMENT"
+        },
+        "properties": {}
+      }
+    },
+    {
+      "id": "DATA_PUBLISH_DOCUMENT",
+      "property_type_ref": "data",
+      "ruleset_ref": "RULESET_DATA",
+      "status": "unlocked",
+      "value": {
+        "data_type_ref": "rendered_document",
+        "value": null,
+        "schema_ref": {
+          "entity_ref": "#CTRCT:UltralightCMS:RenderedDocument",
+          "property_ref": "SCHEMA_RENDERED_DOCUMENT"
+        },
+        "properties": {}
+      }
+    },
+    {
+      "id": "EVENT_RENDER_PAGE",
+      "property_type_ref": "event",
+      "ruleset_ref": "RULESET_EVENT",
+      "status": "unlocked",
+      "value": {
+        "event_type_ref": "render_page",
+        "properties": {}
+      }
+    },
+    {
+      "id": "EVENT_COMPOSE_DOCUMENT",
+      "property_type_ref": "event",
+      "ruleset_ref": "RULESET_EVENT",
+      "status": "unlocked",
+      "value": {
+        "event_type_ref": "compose_document",
+        "properties": {}
+      }
+    },
+    {
+      "id": "EVENT_RENDER_COMPLETE",
+      "property_type_ref": "event",
+      "ruleset_ref": "RULESET_EVENT",
+      "status": "unlocked",
+      "value": {
+        "event_type_ref": "render_complete",
+        "properties": {}
+      }
+    },
+    {
+      "id": "EVENT_PUBLISH_READY",
+      "property_type_ref": "event",
+      "ruleset_ref": "RULESET_EVENT",
+      "status": "unlocked",
+      "value": {
+        "event_type_ref": "publish_ready",
+        "properties": {}
+      }
+    },
+    {
+      "id": "FUNCTION_RESOLVE_PAGE",
+      "property_type_ref": "function",
+      "ruleset_ref": "RULESET_FUNCTION",
+      "status": "unlocked",
+      "value": {
+        "function_type_ref": "resolve_page",
+        "input_refs": [
+          "LINK_RENDER_REQUEST_INPUT",
+          "LINK_RENDER_CONTENT_INPUT"
+        ],
+        "output_refs": [
+          "DATA_SELECTED_CONTENT"
+        ],
+        "logic": {
+          "primitive_set_ref": "CW_LOGIC_PRIMITIVES",
+          "body": [
+            {
+              "op": "assign",
+              "local_ref": "requested_id",
+              "value": {
+                "op": "read",
+                "source": {
+                  "ref": "LINK_RENDER_REQUEST_INPUT"
+                },
+                "path": [
+                  "page_id"
+                ]
+              }
+            },
+            {
+              "op": "assign",
+              "local_ref": "selected_content",
+              "value": {
+                "op": "lookup",
+                "source": {
+                  "ref": "LINK_RENDER_CONTENT_INPUT"
+                },
+                "key_field": "id",
+                "key": {
+                  "local_ref": "requested_id"
+                }
+              }
+            },
+            {
+              "op": "if",
+              "condition": {
+                "op": "ne",
+                "left": {
+                  "local_ref": "selected_content"
+                },
+                "right": {
+                  "literal": null
+                }
+              },
+              "then": [
+                {
+                  "op": "write",
+                  "target": "DATA_SELECTED_CONTENT",
+                  "value": {
+                    "local_ref": "selected_content"
+                  }
+                },
+                {
+                  "op": "emit",
+                  "cause_ref": "LINK_RESOLVE_PAGE_CAUSES_COMPOSE"
+                },
+                {
+                  "op": "return",
+                  "value": {
+                    "ref": "DATA_SELECTED_CONTENT"
+                  }
+                }
+              ],
+              "else": [
+                {
+                  "op": "assign",
+                  "local_ref": "fallback_content",
+                  "value": {
+                    "op": "lookup",
+                    "source": {
+                      "ref": "LINK_RENDER_CONTENT_INPUT"
+                    },
+                    "key_field": "id",
+                    "key": {
+                      "literal": "index"
+                    }
+                  }
+                },
+                {
+                  "op": "if",
+                  "condition": {
+                    "op": "ne",
+                    "left": {
+                      "local_ref": "fallback_content"
+                    },
+                    "right": {
+                      "literal": null
+                    }
+                  },
+                  "then": [
+                    {
+                      "op": "write",
+                      "target": "DATA_SELECTED_CONTENT",
+                      "value": {
+                        "local_ref": "fallback_content"
+                      }
+                    },
+                    {
+                      "op": "emit",
+                      "cause_ref": "LINK_RESOLVE_PAGE_CAUSES_COMPOSE"
+                    },
+                    {
+                      "op": "return",
+                      "value": {
+                        "ref": "DATA_SELECTED_CONTENT"
+                      }
+                    }
+                  ],
+                  "else": [
+                    {
+                      "op": "fail",
+                      "code": "INVALID_CONTENT_SOURCE"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "properties": {}
+      }
+    },
+    {
+      "id": "FUNCTION_COMPOSE_DOCUMENT",
+      "property_type_ref": "function",
+      "ruleset_ref": "RULESET_FUNCTION",
+      "status": "unlocked",
+      "value": {
+        "function_type_ref": "compose_document",
+        "input_refs": [
+          "DATA_SELECTED_CONTENT",
+          "LINK_RENDER_STYLE_INPUT"
+        ],
+        "output_refs": [
+          "DATA_RENDER_DRAFT"
+        ],
+        "logic": {
+          "primitive_set_ref": "CW_LOGIC_PRIMITIVES",
+          "body": [
+            {
+              "op": "write",
+              "target": "DATA_RENDER_DRAFT",
+              "value": {
+                "content": {
+                  "op": "read",
+                  "source": {
+                    "ref": "DATA_SELECTED_CONTENT"
+                  }
+                },
+                "style": {
+                  "op": "read",
+                  "source": {
+                    "ref": "LINK_RENDER_STYLE_INPUT"
+                  }
+                },
+                "status": {
+                  "literal": "draft"
+                }
+              }
+            },
+            {
+              "op": "emit",
+              "cause_ref": "LINK_COMPOSE_CAUSES_RENDER_COMPLETE"
+            },
+            {
+              "op": "return",
+              "value": {
+                "ref": "DATA_RENDER_DRAFT"
+              }
+            }
+          ]
+        },
+        "properties": {}
+      }
+    },
+    {
+      "id": "FUNCTION_FINALIZE_DOCUMENT",
+      "property_type_ref": "function",
+      "ruleset_ref": "RULESET_FUNCTION",
+      "status": "unlocked",
+      "value": {
+        "function_type_ref": "finalize_document",
+        "input_refs": [
+          "DATA_RENDER_DRAFT"
+        ],
+        "output_refs": [
+          "DATA_PUBLISH_DOCUMENT"
+        ],
+        "logic": {
+          "primitive_set_ref": "CW_LOGIC_PRIMITIVES",
+          "body": [
+            {
+              "op": "write",
+              "target": "DATA_PUBLISH_DOCUMENT",
+              "value": {
+                "content": {
+                  "op": "read",
+                  "source": {
+                    "ref": "DATA_RENDER_DRAFT"
+                  },
+                  "path": [
+                    "content"
+                  ]
+                },
+                "style": {
+                  "op": "read",
+                  "source": {
+                    "ref": "DATA_RENDER_DRAFT"
+                  },
+                  "path": [
+                    "style"
+                  ]
+                },
+                "status": {
+                  "literal": "published"
+                }
+              }
+            },
+            {
+              "op": "emit",
+              "cause_ref": "LINK_FINALIZE_CAUSES_PUBLISH_READY"
+            },
+            {
+              "op": "return",
+              "value": {
+                "ref": "DATA_PUBLISH_DOCUMENT"
+              }
+            }
+          ]
+        },
+        "properties": {}
+      }
+    },
+    {
+      "id": "EFFECT_PUBLISH_DOCUMENT",
+      "property_type_ref": "effect",
+      "ruleset_ref": "RULESET_EFFECT",
+      "status": "unlocked",
+      "value": {
+        "effect_type_ref": "replace_target",
+        "input_refs": [
+          "DATA_PUBLISH_DOCUMENT"
+        ],
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_RENDER_REQUEST_INPUT",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_INPUT",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_input",
+        "parent_ref": {
+          "entity_ref": "#FILE:index",
+          "property_ref": "DATA_PAGE_REQUEST"
+        },
+        "child_ref": "EVENT_RENDER_PAGE",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_RENDER_CONTENT_INPUT",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_INPUT",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_input",
+        "parent_ref": {
+          "entity_ref": "#FILE:content",
+          "property_ref": "DATA_CONTENT_COLLECTION"
+        },
+        "child_ref": "EVENT_RENDER_PAGE",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_RENDER_STYLE_INPUT",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_INPUT",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_input",
+        "parent_ref": {
+          "entity_ref": "#FILE:style",
+          "property_ref": "DATA_STYLE_STYLESHEET"
+        },
+        "child_ref": "EVENT_RENDER_PAGE",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_RENDER_REQUEST_READY",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_CONDITION",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_condition",
+        "parent_ref": {
+          "entity_ref": "#FILE:index",
+          "property_ref": "DATA_PAGE_REQUEST"
+        },
+        "child_ref": "EVENT_RENDER_PAGE",
+        "condition_mode": "ready",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_RENDER_CONTENT_READY",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_CONDITION",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_condition",
+        "parent_ref": {
+          "entity_ref": "#FILE:content",
+          "property_ref": "DATA_CONTENT_COLLECTION"
+        },
+        "child_ref": "EVENT_RENDER_PAGE",
+        "condition_mode": "ready",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_RENDER_STYLE_READY",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_CONDITION",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_condition",
+        "parent_ref": {
+          "entity_ref": "#FILE:style",
+          "property_ref": "DATA_STYLE_STYLESHEET"
+        },
+        "child_ref": "EVENT_RENDER_PAGE",
+        "condition_mode": "ready",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_RENDER_PAGE_HANDLER",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_HANDLER",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_handler",
+        "parent_ref": "EVENT_RENDER_PAGE",
+        "child_ref": "FUNCTION_RESOLVE_PAGE",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_RESOLVE_PAGE_CAUSES_COMPOSE",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_CAUSE",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_cause",
+        "parent_ref": "FUNCTION_RESOLVE_PAGE",
+        "child_ref": "EVENT_COMPOSE_DOCUMENT",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_COMPOSE_CONTENT_INPUT",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_INPUT",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_input",
+        "parent_ref": "DATA_SELECTED_CONTENT",
+        "child_ref": "EVENT_COMPOSE_DOCUMENT",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_COMPOSE_STYLE_INPUT",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_INPUT",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_input",
+        "parent_ref": "LINK_RENDER_STYLE_INPUT",
+        "child_ref": "EVENT_COMPOSE_DOCUMENT",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_COMPOSE_CONTENT_READY",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_CONDITION",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_condition",
+        "parent_ref": "DATA_SELECTED_CONTENT",
+        "child_ref": "EVENT_COMPOSE_DOCUMENT",
+        "condition_mode": "ready",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_COMPOSE_STYLE_READY",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_CONDITION",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_condition",
+        "parent_ref": "LINK_RENDER_STYLE_INPUT",
+        "child_ref": "EVENT_COMPOSE_DOCUMENT",
+        "condition_mode": "ready",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_COMPOSE_HANDLER",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_HANDLER",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_handler",
+        "parent_ref": "EVENT_COMPOSE_DOCUMENT",
+        "child_ref": "FUNCTION_COMPOSE_DOCUMENT",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_COMPOSE_CAUSES_RENDER_COMPLETE",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_CAUSE",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_cause",
+        "parent_ref": "FUNCTION_COMPOSE_DOCUMENT",
+        "child_ref": "EVENT_RENDER_COMPLETE",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_RENDER_COMPLETE_HANDLER",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_HANDLER",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_handler",
+        "parent_ref": "EVENT_RENDER_COMPLETE",
+        "child_ref": "FUNCTION_FINALIZE_DOCUMENT",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_FINALIZE_CAUSES_PUBLISH_READY",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_CAUSE",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_cause",
+        "parent_ref": "FUNCTION_FINALIZE_DOCUMENT",
+        "child_ref": "EVENT_PUBLISH_READY",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_PUBLISH_READY_EFFECT",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_EFFECT",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_effect",
+        "parent_ref": "EVENT_PUBLISH_READY",
+        "child_ref": "EFFECT_PUBLISH_DOCUMENT",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_PUBLISH_TARGET",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EFFECT_TARGET",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "effect_target",
+        "parent_ref": "EFFECT_PUBLISH_DOCUMENT",
+        "child_ref": {
+          "entity_ref": "#FILE:index",
+          "property_ref": "DATA_INDEX_DOCUMENT"
+        },
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_RENDER_DRAFT_OUTPUT",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_OUTPUT",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_output",
+        "parent_ref": "EVENT_RENDER_COMPLETE",
+        "child_ref": "DATA_RENDER_DRAFT",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_PUBLISH_DOCUMENT_OUTPUT",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_EVENT_OUTPUT",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "event_output",
+        "parent_ref": "EVENT_PUBLISH_READY",
+        "child_ref": "DATA_PUBLISH_DOCUMENT",
+        "properties": {}
+      }
+    },
+    {
+      "id": "REQ_RENDERER_INPUTS",
+      "property_type_ref": "required_link",
+      "ruleset_ref": "RULESET_REQUIRED_LINK",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "dependency",
+        "self_endpoint": "child_ref",
+        "min": 2,
+        "max": 2,
+        "other_endpoint": {
+          "entity_type_ref": "FILE"
+        },
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_CONTENT_RENDERER_DEPENDENCY",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_DEPENDENCY",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "dependency",
+        "parent_ref": "#FILE:content",
+        "child_ref": "#FILE:renderer",
+        "required_link_ref": "REQ_RENDERER_INPUTS",
+        "properties": {}
+      }
+    },
+    {
+      "id": "LINK_STYLE_RENDERER_DEPENDENCY",
+      "property_type_ref": "link",
+      "ruleset_ref": "RULESET_LINK_DEPENDENCY",
+      "status": "unlocked",
+      "value": {
+        "link_type_ref": "dependency",
+        "parent_ref": "#FILE:style",
+        "child_ref": "#FILE:renderer",
+        "required_link_ref": "REQ_RENDERER_INPUTS",
+        "properties": {}
+      }
+    }
   ]
 }

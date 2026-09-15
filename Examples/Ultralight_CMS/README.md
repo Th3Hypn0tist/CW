@@ -6,11 +6,11 @@ This directory is the normative target fixture for the next CanonicalWireframe t
 - `Model/` is the canonical mechanism/model-data root.
 - `Assets/` contains opaque physical payloads owned by Nodes.
 - NodeType declarations use `.cwn`; canonical model artifacts use `.cw`.
-- CCF is the unchanged Canonical Contract Format 2.4.3.
+- CCF 2.5.0 defines model-global Entity identity and owner-local Property identity.
 - CCF, CW package format, Dependency Rules and modeled-system release versions are independent dimensions. `CW.json.version_dimensions` points to their authoritative sources and does not duplicate their current values.
 - The package remains `unlocked` until the package-aware linter and CIC pipeline validate the complete closure.
 - `Model/model.cw.shards[]` is the authoritative Model closure. Every non-root `.cw` shard is listed exactly once and unlisted `.cw` files invalidate the package.
-- Property identifiers are package-global inside the active `Model/` closure; bare Property references resolve by exact `Property.id` and never by locality or naming convention.
+- Entity ids are model-global. Property ids are owner-local; cross-Entity Property references use explicit `{entity_ref, property_ref}` addresses. Bare Property ids never trigger Model-wide lookup.
 - A Link Property's owner is its declarer. Storage ownership is independent from semantic endpoints; `event_cause.parent_ref` identifies the causing Function.
 - `dependency` direction is explicit: `parent_ref` is the provider/dependency and `child_ref` is the dependent/consumer.
 
@@ -37,7 +37,7 @@ The CMS contracts are:
 - `#CTRCT:UltralightCMS:Style`
 - `#CTRCT:UltralightCMS:RenderedDocument`
 
-FILE Data Properties reference these package-global Schema ids. The contract truth is therefore owned once under CTRCT rather than copied into implementation Nodes.
+FILE Data Properties reference these Schema Properties through explicit owner-qualified Property addresses. The contract truth is therefore owned once under CTRCT rather than copied into implementation Nodes.
 
 ## Package-relative references
 
@@ -68,9 +68,9 @@ Package validity and runtime readiness are different dimensions. A package may v
 
 ## Function interfaces and control relays
 
-`Function.input_refs` and `Function.output_refs` describe canonical Properties the modeled Function logic actually reads and writes. They do not describe all Data visible in the surrounding execution context.
+`Function.input_refs` and `Function.output_refs` describe owner-local Properties the modeled Function logic actually reads and writes. They do not describe all Data visible in the surrounding execution context.
 
-`FUNCTION_OPEN_PAGE` therefore has empty `input_refs` and `output_refs`: it is intentionally a pure causal relay. `DATA_PAGE_REQUEST` belongs to `EVENT_OPEN_PAGE` and remains available in the preserved execution context, but `FUNCTION_OPEN_PAGE` itself does not read or rewrite that Data.
+`FUNCTION_OPEN_PAGE` therefore has empty `input_refs` and `output_refs`: it is intentionally a pure causal relay. Cross-Entity behavior crosses the Node boundary only through an Event; direct cross-Entity Function calls are forbidden, while same-Entity `function_call` remains valid. `DATA_PAGE_REQUEST` belongs to `EVENT_OPEN_PAGE` and remains available in the preserved execution context, but `FUNCTION_OPEN_PAGE` itself does not read or rewrite that Data.
 
 ```text
 control: Event -> Function -> Event

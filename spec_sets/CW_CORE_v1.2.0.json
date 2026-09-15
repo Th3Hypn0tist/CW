@@ -1,0 +1,26 @@
+{
+  "type": "cw_specification_set",
+  "id": "CW_CORE",
+  "name": "CW Core Specification Set",
+  "version": "1.2.0",
+  "immutable": true,
+  "ccf": {
+    "path": "../Canonical_Contract_Format_v2.5.0.json",
+    "git_blob_sha": "724f74a15becd91639f11a8c68c9ed87911af594"
+  },
+  "nodetypes": {
+    "path": "../CanonicalWireframe_NodeTypes_v1.18.0.json",
+    "git_blob_sha": "5d0b1ca371c947c91b5d865725e30f1288f0396f"
+  },
+  "rulesets": {
+    "path": "../CanonicalWireframe_Dependency_Rules_v4.0.0.json",
+    "git_blob_sha": "af8cadf46931b522e06fe618e425ef820e96b8fd"
+  },
+  "purpose": "Pin the immutable CW Core interpretation bundle with model-global Entity identity, owner-local Property identity, explicit cross-Entity Property addresses and Event-mediated cross-Entity Function boundaries.",
+  "rules": [
+    "The bundle selects interpretation authority explicitly; filenames and latest/current discovery are not semantic authority.",
+    "Importers produce CW canonical data only. Specification selection happens after import.",
+    "Changing the selected specification set changes an evaluation context and MUST NOT silently rewrite the canonical model.",
+    "One truth. Many topologies. No duplicate truth."
+  ]
+}

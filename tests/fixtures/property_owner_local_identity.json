@@ -1,0 +1,40 @@
+{
+  "valid_repeated_local_id": [
+    {
+      "id": "#A:One",
+      "properties": [
+        {
+          "id": "MEMBERS"
+        }
+      ]
+    },
+    {
+      "id": "#A:Two",
+      "properties": [
+        {
+          "id": "MEMBERS"
+        }
+      ]
+    }
+  ],
+  "invalid_duplicate_same_owner": {
+    "id": "#A:One",
+    "properties": [
+      {
+        "id": "MEMBERS"
+      },
+      {
+        "id": "MEMBERS"
+      }
+    ]
+  },
+  "valid_cross_entity_address": {
+    "entity_ref": "#A:Two",
+    "property_ref": "MEMBERS"
+  },
+  "forbidden": [
+    "Model-wide bare Property.id scan",
+    "owner-qualified text encoded into Property.id",
+    "cross-Entity function_call"
+  ]
+}
