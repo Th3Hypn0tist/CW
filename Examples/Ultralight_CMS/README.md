@@ -70,7 +70,7 @@ Package validity and runtime readiness are different dimensions. A package may v
 
 `Function.input_refs` and `Function.output_refs` describe owner-local Properties the modeled Function logic actually reads and writes. They do not describe all Data visible in the surrounding execution context.
 
-`FUNCTION_OPEN_PAGE` therefore has empty `input_refs` and `output_refs`: it is intentionally a pure causal relay. Cross-Entity behavior crosses the Node boundary only through an Event; direct cross-Entity Function calls are forbidden, while same-Entity `function_call` remains valid. Cross-Entity behavior crosses the Node boundary only through an Event; direct cross-Entity Function calls are forbidden, while same-Entity `function_call` remains valid. `DATA_PAGE_REQUEST` belongs to `EVENT_OPEN_PAGE` and remains available in the preserved execution context, but `FUNCTION_OPEN_PAGE` itself does not read or rewrite that Data.
+`FUNCTION_OPEN_PAGE` therefore has empty `input_refs` and `output_refs`: it is intentionally a pure causal relay. Cross-Entity behavior crosses the Node boundary only through an Event; direct cross-Entity Function calls are forbidden, while same-Entity `function_call` remains valid. Cross-Entity behavior crosses the Node boundary only through an Event; direct cross-Entity Function calls are forbidden, while same-Entity `function_call` remains valid. Cross-Entity behavior crosses the Node boundary only through an Event; direct cross-Entity Function calls are forbidden, while same-Entity `function_call` remains valid. `DATA_PAGE_REQUEST` belongs to `EVENT_OPEN_PAGE` and remains available in the preserved execution context, but `FUNCTION_OPEN_PAGE` itself does not read or rewrite that Data.
 
 ```text
 control: Event -> Function -> Event
