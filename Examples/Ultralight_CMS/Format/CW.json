@@ -1,7 +1,7 @@
 {
   "id": "CANONICAL_WIREFRAME_PACKAGE_FORMAT",
   "name": "CanonicalWireframe Package Format",
-  "version": "2.0.3-reference",
+  "version": "2.1.0-reference",
   "status": "unlocked",
   "ccf_ref": "CCF.json",
   "dr_ref": "DR.json",
@@ -45,7 +45,10 @@
     }
   },
   "ontology": {
-    "canonical_atoms": ["Entity", "Property"],
+    "canonical_atoms": [
+      "Entity",
+      "Property"
+    ],
     "node": "An interpreted Entity.",
     "abstraction": "Every Node is an abstraction. ABS is the least opinionated predefined abstraction family.",
     "family": "A predefined abstraction contract selecting default interpretation/projection behavior."
@@ -70,7 +73,11 @@
   },
   "universal_node": {
     "id": "CW_NODE",
-    "reads": ["members", "link", "asset"],
+    "reads": [
+      "members",
+      "link",
+      "asset"
+    ],
     "member_cardinality": "0..N",
     "asset_cardinality": "0..1",
     "rule": "Every Node may group any number of canonical members and may own at most one physical Asset."
@@ -85,7 +92,13 @@
       "Every shards[].artifact_ref MUST resolve to exactly one regular .cw file below Model/.",
       "Every shards[].entity_ref MUST equal the root Entity.id declared by its artifact_ref.",
       "Duplicate entity_ref or artifact_ref entries are invalid.",
-      "A .cw file present below Model/ but absent from shards[] is not part of the canonical Model closure and makes the package invalid."
+      "A .cw file present below Model/ but absent from shards[] is not part of the canonical Model closure and makes the package invalid.",
+      "Property.id uniqueness is validated per owning Entity, not across the Model closure.",
+      "Package validators MUST NOT construct a flat Property index keyed only by Property.id.",
+      "Property.id uniqueness is validated per owning Entity, not across the Model closure.",
+      "Package validators MUST NOT construct a flat Property index keyed only by Property.id.",
+      "Property.id uniqueness is validated per owning Entity, not across the Model closure.",
+      "Package validators MUST NOT construct a flat Property index keyed only by Property.id."
     ]
   },
   "asset_model": {
@@ -123,6 +136,22 @@
   "provenance": {
     "unlocked": "A local Format closure may evolve together with the package.",
     "locked": "The complete Format closure MUST be immutably content-addressed before the model may become locked.",
-    "locked_closure": ["Format/CW.json", "Format/CCF.json", "Format/DR.json", "Format/NodeTypes/**/*.cwn"]
+    "locked_closure": [
+      "Format/CW.json",
+      "Format/CCF.json",
+      "Format/DR.json",
+      "Format/NodeTypes/**/*.cwn"
+    ]
+  },
+  "property_address_model": {
+    "entity_namespace": "model-global Entity.id",
+    "property_namespace": "owner-local Property.id",
+    "local_property_ref": "bare Property.id relative to explicitly known owner",
+    "cross_entity_property_ref": {
+      "entity_ref": "Entity.id",
+      "property_ref": "local Property.id"
+    },
+    "flat_global_property_index": false,
+    "synthetic_compound_property_id": false
   }
 }

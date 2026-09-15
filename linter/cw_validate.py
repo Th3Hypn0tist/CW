@@ -19,7 +19,7 @@ except ImportError:
     from cw_version import validate_entity_version
     import cw_spec_lint
 
-VER = "2.4.1"
+VER = "2.5.0"
 
 
 @dataclass
@@ -78,11 +78,15 @@ def type_matches(value: Any, description: Any) -> bool:
         return any(type_matches(value, option) for option in options)
     if description == "null":
         return value is None
-    if description in {"logic_value", "logic_statement", "logic_representation", "required_link_ref"}:
+    if description in {"logic_value", "logic_statement", "logic_representation", "required_link_ref", "property_address"}:
         return isinstance(value, dict)
+    if description == "canonical_ref":
+        return (isinstance(value, str) and bool(value)) or (isinstance(value, dict) and set(value) == {"entity_ref", "property_ref"} and all(isinstance(value[k], str) and value[k] for k in ("entity_ref", "property_ref")))
+    if description == "local_property_ref":
+        return isinstance(value, str) and bool(value)
     if description == "endpoint_constraint":
         return isinstance(value, dict)
-    if description == "string" or description.endswith("_ref"):
+    if description == "string" or (description.endswith("_ref") and description != "canonical_ref"):
         return isinstance(value, str) and bool(value)
     if description == "non_negative_integer":
         return isinstance(value, int) and not isinstance(value, bool) and value >= 0
@@ -148,6 +152,37 @@ def inherits(nodetype: str, wanted: str, registry: dict[str, dict]) -> bool:
     return False
 
 
+def property_key(owner: str, property_id: str) -> str:
+    return owner + "\0" + property_id
+
+
+def resolve_ref(ref: Any, local_owner: str | None, objects: dict[str, tuple[str, dict, Path]]) -> tuple[str, dict, Path] | None:
+    if isinstance(ref, dict) and set(ref) == {"entity_ref", "property_ref"}:
+        entity_ref, property_ref = ref.get("entity_ref"), ref.get("property_ref")
+        if isinstance(entity_ref, str) and isinstance(property_ref, str):
+            return objects.get(property_key(entity_ref, property_ref))
+        return None
+    if not isinstance(ref, str) or not ref:
+        return None
+    entity = objects.get(ref)
+    if entity is not None and entity[0] == "Entity":
+        return entity
+    if local_owner is not None:
+        return objects.get(property_key(local_owner, ref))
+    return None
+
+def owner_of_ref(ref: Any, local_owner: str | None, objects: dict[str, tuple[str, dict, Path]]) -> str | None:
+    if isinstance(ref, dict) and set(ref) == {"entity_ref", "property_ref"}:
+        return ref.get("entity_ref") if isinstance(ref.get("entity_ref"), str) else None
+    target = resolve_ref(ref, local_owner, objects)
+    if target is None:
+        return None
+    kind, value, _ = target
+    if kind == "Entity":
+        return value.get("id") if isinstance(value.get("id"), str) else None
+    return local_owner
+
+
 def endpoint_constraint_matches(
     constraint: Any,
     endpoint_ref: Any,
@@ -169,7 +204,7 @@ def endpoint_constraint_matches(
         return False
     if property_type_ref is not None and (not isinstance(property_type_ref, str) or not property_type_ref):
         return False
-    target = objects.get(endpoint_ref)
+    target = resolve_ref(endpoint_ref, None, objects)
     if target is None:
         return None
     kind, value, _ = target
@@ -205,7 +240,7 @@ def _validate_ref_array(value: Any, schema_def: dict[str, Any], objects: dict[st
         if schema_def.get("duplicate_refs") == "invalid_model" and ref in seen:
             c.e("NODE_SECTION_REF_DUPLICATE", file, item_path, ref)
         seen.add(ref)
-        target = objects.get(ref)
+        target = resolve_ref(ref, None, objects)
         if target is None:
             c.u("NODE_SECTION_REF_UNRESOLVED", file, item_path, ref)
             continue
@@ -269,7 +304,6 @@ def main() -> int:
         property_required = property_shape.get("item_required", []) if isinstance(property_shape, dict) else []
         known_property_types = {item.get("property_type_ref") for item in property_rulesets.values() if isinstance(item.get("property_type_ref"), str)} | {"link"}
         objects: dict[str, tuple[str, dict, Path]] = {}
-        owners: dict[str, str] = {}
         for file, document in documents:
             required_fields(c, file, document, contract_shape.get("required", []), "$", "CONTRACT_REQUIRED_FIELD_MISSING")
             for entity_index, entity in enumerate(document.get("entities", []) if isinstance(document.get("entities"), list) else []):
@@ -286,7 +320,6 @@ def main() -> int:
                     if entity_id in objects:
                         c.e("CANONICAL_ID_DUPLICATE", file, entity_path + ".id", entity_id)
                     objects[entity_id] = ("Entity", entity, file)
-                    owners[entity_id] = entity_id
                 properties = entity.get("properties")
                 if properties is not None and not isinstance(properties, list):
                     c.e("ENTITY_PROPERTIES_INVALID", file, entity_path + ".properties", "properties must be array")
@@ -298,12 +331,11 @@ def main() -> int:
                     property_path = f"{entity_path}.properties[{property_index}]"
                     required_fields(c, file, prop, property_required, property_path, "PROPERTY_REQUIRED_FIELD_MISSING")
                     property_id = prop.get("id")
-                    if isinstance(property_id, str):
-                        if property_id in objects:
-                            c.e("CANONICAL_ID_DUPLICATE", file, property_path + ".id", property_id)
-                        objects[property_id] = ("Property", prop, file)
-                        if isinstance(entity_id, str):
-                            owners[property_id] = entity_id
+                    if isinstance(property_id, str) and isinstance(entity_id, str):
+                        key = property_key(entity_id, property_id)
+                        if key in objects:
+                            c.e("PROPERTY_ID_DUPLICATE_IN_OWNER", file, property_path + ".id", property_id)
+                        objects[key] = ("Property", prop, file)
         section_cache: dict[str, list[str]] = {}
         links: list[dict[str, Any]] = []
         for file, document in documents:
@@ -311,6 +343,7 @@ def main() -> int:
                 if not isinstance(entity, dict):
                     continue
                 entity_path = f"$.entities[{entity_index}]"
+                owner_id = entity.get("id") if isinstance(entity.get("id"), str) else None
                 nodetype = entity.get("entity_type_ref")
                 if nodetype not in nodetypes:
                     c.e("NODETYPE_UNRESOLVED", file, entity_path + ".entity_type_ref", repr(nodetype))
@@ -342,7 +375,7 @@ def main() -> int:
                             if ref is None:
                                 continue
                             ref_path = property_path + f".value.{field}[{ref_index}]"
-                            target = objects.get(ref)
+                            target = resolve_ref(ref, owner_id, objects)
                             if target is None:
                                 c.u("CANONICAL_REFERENCE_UNRESOLVED", file, ref_path, repr(ref))
                                 continue
@@ -364,7 +397,7 @@ def main() -> int:
                         if ruleset.get("relation_policy", "fixed") != "open" and relation != ruleset.get("link_type_ref"):
                             c.e("LINK_RELATION_RULESET_MISMATCH", file, property_path + ".value.link_type_ref", str(relation))
                         if ruleset.get("relation_policy") == "open" and isinstance(relation, str) and relation.startswith("#"):
-                            topology = objects.get(relation)
+                            topology = resolve_ref(relation, None, objects)
                             topology_rule = ruleset.get("relation_resolution", {}).get("canonical_topology_ref", {}) if isinstance(ruleset.get("relation_resolution"), dict) else {}
                             required_nodetype = topology_rule.get("target_nodetype_ref") if isinstance(topology_rule, dict) else None
                             if topology is None:
@@ -377,10 +410,19 @@ def main() -> int:
                                     compatible = inherits(target_nodetype, required_nodetype, nodetypes)
                                 if not compatible:
                                     c.e("LINK_TOPOLOGY_REF_INCOMPATIBLE", file, property_path + ".value.link_type_ref", relation)
+                        # Owner-scope invariants.
+                        parent_owner = owner_of_ref(value.get("parent_ref"), owner_id, objects)
+                        child_owner = owner_of_ref(value.get("child_ref"), owner_id, objects)
+                        if ruleset_ref == "RULESET_LINK_EVENT_CAUSE" and parent_owner is not None and owner_id != parent_owner:
+                            c.e("EVENT_CAUSE_DECLARER_SCOPE_INVALID", file, property_path, "event_cause must be owned by cause Function owner Entity")
+                        if ruleset_ref == "RULESET_LINK_EVENT_HANDLER" and parent_owner is not None and child_owner is not None and parent_owner != child_owner:
+                            c.e("EVENT_HANDLER_OWNER_SCOPE_INVALID", file, property_path, "Event and handler Function must share one owner Entity")
+                        if ruleset_ref == "RULESET_LINK_FUNCTION_CALL" and parent_owner is not None and child_owner is not None and parent_owner != child_owner:
+                            c.e("FUNCTION_CALL_CROSS_OWNER_FORBIDDEN", file, property_path, "cross-Entity Function call must use Event boundary")
                         endpoint_constraints = ruleset.get("endpoint_constraints", {}) if isinstance(ruleset.get("endpoint_constraints"), dict) else {}
                         for side in ("parent_ref", "child_ref"):
                             ref = value.get(side)
-                            target = objects.get(ref)
+                            target = resolve_ref(ref, owner_id, objects)
                             if target is None:
                                 c.u("LINK_ENDPOINT_UNRESOLVED", file, property_path + ".value." + side, repr(ref))
                                 continue
@@ -395,6 +437,18 @@ def main() -> int:
                                         compatible = True
                                 if not compatible:
                                     c.e("LINK_ENDPOINT_INCOMPATIBLE", file, property_path + ".value." + side, str(constraints_for_side))
+                    if property_type == "function":
+                        for field in ("input_refs", "output_refs"):
+                            refs = value.get(field, [])
+                            if isinstance(refs, list):
+                                for ref_index, ref in enumerate(refs):
+                                    ref_path = property_path + f".value.{field}[{ref_index}]"
+                                    if not isinstance(ref, str):
+                                        c.e("FUNCTION_REF_NOT_OWNER_LOCAL", file, ref_path, "Function I/O requires bare owner-local Property.id")
+                                        continue
+                                    target = resolve_ref(ref, owner_id, objects)
+                                    if target is None or target[0] != "Property":
+                                        c.u("FUNCTION_LOCAL_REF_UNRESOLVED", file, ref_path, repr(ref))
                     if property_type == "function" and isinstance(value.get("logic"), dict):
                         logic = value["logic"]
                         validate_schema(logic, ruleset.get("logic_schema"), c, file, property_path + ".value.logic", str(ruleset_ref))

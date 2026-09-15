@@ -1,0 +1,57 @@
+name: Generate property owner-local identity migration
+
+on:
+  push:
+    branches:
+      - fix/property-owner-local-identity
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/property-owner-local-identity
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Generate migration
+        run: python Tools/migrate_property_owner_local_identity.py
+      - name: Apply validator owner-scope fix
+        run: python Tools/fix_owner_local_validator.py
+      - name: Normalize golden owner-local rules
+        run: python Tools/finalize_golden_owner_local.py
+      - name: Parse generated JSON
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for p in Path('.').rglob('*'):
+              if p.is_file() and (p.suffix in {'.json', '.cw', '.cwn'}):
+                  try:
+                      json.loads(p.read_text(encoding='utf-8'))
+                  except Exception as exc:
+                      raise SystemExit(f'{p}: {exc}')
+          PY
+      - name: Run spec linter against new core bundle
+        run: python linter/cw_spec_lint.py --spec-set spec_sets/CW_CORE_v1.2.0.json
+      - name: Run owner-local golden regression
+        run: python Tools/check_property_owner_local_identity.py
+      - name: Compile migration tooling
+        run: python -m py_compile linter/cw_validate.py Tools/migrate_property_owner_local_identity.py Tools/fix_owner_local_validator.py Tools/finalize_golden_owner_local.py Tools/check_property_owner_local_identity.py
+      - name: Commit generated migration
+        run: |
+          if git diff --quiet && [ -z "$(git status --porcelain)" ]; then
+            echo "No generated changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Canonical_Contract_Format_v2.5.0.json CanonicalWireframe_Dependency_Rules_v4.0.0.json spec_sets/CW_CORE_v1.2.0.json linter/cw_validate.py tests/fixtures/property_owner_local_identity.json Examples/Ultralight_CMS
+          git commit -m "Normalize owner-local Property identity migration"
+          git push origin HEAD:fix/property-owner-local-identity
