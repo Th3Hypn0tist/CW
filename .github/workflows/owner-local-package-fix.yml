@@ -22,18 +22,22 @@ jobs:
           python-version: '3.13'
       - name: Patch package validator
         run: python Tools/fix_owner_local_package_validator.py
-      - name: Compile patched validator
-        run: python -m py_compile linter/cw_package_validate.py
+      - name: Patch CIC owner-local semantics
+        run: python Tools/fix_owner_local_cic.py
+      - name: Compile patched tooling
+        run: python -m py_compile linter/cw_package_validate.py tools/CIC/*.py tools/CIC/modules/*.py
       - name: Validate golden package
         run: python linter/cw_package_validate.py Examples/Ultralight_CMS --json
       - name: Run core regressions
         run: python -m unittest discover -s linter/tests -v
       - name: Run CIC release gate
         run: python -m tools.CIC release-check
+      - name: Run owner-local golden regression
+        run: python Tools/check_property_owner_local_identity.py
       - name: Commit patch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add linter/cw_package_validate.py
-          git commit -m "Make package validator owner-aware"
+          git add linter/cw_package_validate.py tools/CIC/package_pipeline.py tools/CIC/cw.py linter/tests/test_package_semantic_enforcement.py
+          git commit -m "Close owner-local package and CIC regressions"
           git push origin HEAD:fix/owner-local-package-regressions
