@@ -63,8 +63,8 @@ class PackageSemanticEnforcementTests(unittest.TestCase):
     def test_unbounded_event_dispatch_invalidates_package(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             package = self._copy_golden(Path(tmp))
-            renderer = package / "Model" / "FILE" / "renderer.cw"
-            model = _read(renderer)
+            index = package / "Model" / "FILE" / "index.cw"
+            model = _read(index)
             link = next(
                 item for item in model["properties"]
                 if item.get("id") == "LINK_OPEN_PAGE_CAUSES_RENDER_PAGE"
@@ -74,10 +74,10 @@ class PackageSemanticEnforcementTests(unittest.TestCase):
                 "link_type_ref": "event_dispatch",
                 "parent_ref": "FUNCTION_OPEN_PAGE",
                 "child_ref": "#FILE:renderer",
-                "selector_ref": "EVENT_RENDER_PAGE",
+                "selector_ref": "EVENT_OPEN_PAGE",
                 "properties": {},
             }
-            _write(renderer, model)
+            _write(index, model)
             report = validate_package(package)
             codes = {item["code"] for item in report["findings"]}
             self.assertIn("EVENT_DISPATCH_SELECTOR_INVALID", codes)

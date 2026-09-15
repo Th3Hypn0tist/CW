@@ -224,7 +224,7 @@ def load_cw(path: str | Path) -> dict[str, Any]:
 
 
 def validate_cw(document: dict[str, Any]) -> dict[str, Any]:
-    """Validate lossless Model representation and package-global identity closure only."""
+    """Validate lossless Model representation with global Entity and owner-local Property identity."""
     if not isinstance(document, dict):
         raise CWValidationError("CW document must be an object")
     if not isinstance(document.get("format"), dict):
@@ -239,28 +239,29 @@ def validate_cw(document: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(entities, list):
         raise CWValidationError("CW entities must be an array")
 
-    identities: set[str] = set()
+    entity_ids: set[str] = set()
     for entity in entities:
         if not isinstance(entity, dict):
             raise CWValidationError("CW entity must be an object")
         entity_id = entity.get("id")
         if not isinstance(entity_id, str) or not entity_id:
             raise CWValidationError("CW entity id missing")
-        if entity_id in identities:
-            raise CWValidationError(f"duplicate canonical identity: {entity_id}")
-        identities.add(entity_id)
+        if entity_id in entity_ids:
+            raise CWValidationError(f"duplicate canonical Entity identity: {entity_id}")
+        entity_ids.add(entity_id)
         properties = entity.get("properties")
         if not isinstance(properties, list):
             raise CWValidationError(f"CW entity {entity_id} properties must be an array")
+        property_ids: set[str] = set()
         for prop in properties:
             if not isinstance(prop, dict):
                 raise CWValidationError(f"CW entity {entity_id} contains non-object Property")
             prop_id = prop.get("id")
             if not isinstance(prop_id, str) or not prop_id:
                 raise CWValidationError(f"CW entity {entity_id} Property id missing")
-            if prop_id in identities:
-                raise CWValidationError(f"duplicate canonical identity: {prop_id}")
-            identities.add(prop_id)
+            if prop_id in property_ids:
+                raise CWValidationError(f"duplicate Property identity inside {entity_id}: {prop_id}")
+            property_ids.add(prop_id)
     return document
 
 
