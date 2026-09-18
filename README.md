@@ -112,15 +112,17 @@ That Link does not silently add the FILE to `CTRCT.members`. Declared membership
 
 CW interpretation is explicitly selected through a specification set.
 
-The current locked CW Core bundle is pinned by [`spec_sets/CW_CORE_v1.1.0.json`](spec_sets/CW_CORE_v1.1.0.json):
+The current locked CW Core bundle is pinned by [`spec_sets/CW_CORE_v1.2.0.json`](spec_sets/CW_CORE_v1.2.0.json):
 
 ```text
-CCF        2.4.3
+CCF        2.5.0
 NodeTypes  1.18.0
-Rulesets   3.14.0
+Rulesets   4.0.0
 ```
 
-The previous immutable bundle is archived as [`History/spec_sets/CW_CORE.json`](History/spec_sets/CW_CORE.json). Its original manifest is preserved unchanged, and its pinned closure is preserved under `History/` with CCF 2.4.3 / NodeTypes 1.17.0 / Rulesets 3.13.0. Superseded NodeTypes and Rulesets are no longer kept at repository root.
+CW Core 1.2 uses model-global Entity identity, owner-local Property identity, explicit cross-Entity Property addresses and Event-mediated cross-Entity Function boundaries.
+
+The previous immutable [`spec_sets/CW_CORE_v1.1.0.json`](spec_sets/CW_CORE_v1.1.0.json) bundle remains preserved for historical interpretation and regression testing. Older preserved specification material remains under `History/`; immutable historical bundles are not rewritten in place.
 
 The bundle pins one CCF + NodeTypes + Rulesets interpretation context. Selecting another compatible bundle changes evaluation context, not canonical truth.
 
@@ -351,7 +353,7 @@ Both tools read the same canonical model. They only project explicitly selected 
 
 ## Validation tools
 
-CW ships with two separate validation tools under [`linter/`](linter/).
+CW ships with two primary semantic validation entry points under [`linter/`](linter/), plus composition, binding, package-validation and specialized semantic helpers.
 
 ### `cw_spec_lint.py`
 
@@ -361,7 +363,7 @@ CW ships with two separate validation tools under [`linter/`](linter/).
 python linter/cw_spec_lint.py --coverage
 ```
 
-The repository default resolves through `spec_sets/CW_CORE_v1.1.0.json`.
+The repository default resolves through `spec_sets/CW_CORE_v1.2.0.json`.
 
 An explicit specification set can be selected with:
 
@@ -396,7 +398,7 @@ Validate a single `.cw` artifact:
 
 ```bash
 python linter/cw_validate.py my-model.cw \
-  --spec-set spec_sets/CW_CORE_v1.1.0.json
+  --spec-set spec_sets/CW_CORE_v1.2.0.json
 ```
 
 Or evaluate the same canonical artifact using another compatible specification selection:
@@ -414,7 +416,7 @@ Directory validation discovers supported CW artifacts recursively and composes s
 
 ```bash
 python linter/cw_validate.py ./artifact-directory/ \
-  --spec-set spec_sets/CW_CORE_v1.1.0.json
+  --spec-set spec_sets/CW_CORE_v1.2.0.json
 ```
 
 The validator first lints the selected specification unless `--skip-spec-lint` is explicitly supplied for isolated debugging.
@@ -439,14 +441,17 @@ Exit codes:
 
 `UNREADY != INVALID_MODEL`.
 
-The distinction between the tools is intentional:
+The distinction between the primary tools is intentional:
 
 ```text
-cw_spec_lint.py   specification set -> specification integrity
-cw_validate.py    canonical model   -> conformance under selected specification
+cw_spec_lint.py        specification set -> specification integrity
+cw_validate.py         canonical model   -> conformance under selected specification
+cw_package_validate.py package root      -> self-contained package conformance
 ```
 
-See [`linter/README.md`](linter/README.md) for detailed usage.
+Supporting modules include `cw_compose.py`, `cw_bind.py`, `cw_version.py`, `cw_condition_validate.py`, `cw_effect_validate.py` and `cw_dispatch_validate.py`.
+
+See [`linter/README.md`](linter/README.md) for detailed usage and the current CW Core 1.2 identity/reference model.
 
 ---
 
