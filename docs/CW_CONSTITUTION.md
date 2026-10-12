@@ -1,6 +1,6 @@
 # CW Constitution
 
-> **One truth. Many topologies. No duplicate truth.**
+> **One truth. Many topologies.**
 
 This document defines the architectural invariants of Canonical Wireframe (CW). Machine-enforced realization remains expressed through the active locked Canonical Contract Format, NodeTypes, Rulesets, and their pinned immutable specification closure.
 
@@ -184,4 +184,51 @@ Consumers shall depend on valid CW, not on importer internals.
 
 ## Constitutional invariant
 
-**One truth. Many topologies. No duplicate truth.**
+**One truth. Many topologies.**
+
+
+## Article II — Comps and Interpretation Capability
+
+### 1. Comp boundary
+
+A Comp is a named immutable semantic evaluation bundle over compatible NodeTypes, Rulesets, and related interpretation context.
+
+A Comp SHALL NOT create another canonical format, another canonical identity namespace, or another semantic truth. Canonical Entities, Properties, and Links remain CW.
+
+### 2. Cross-Comp relations
+
+A relation between canonical Entities interpreted through different Comps remains one canonical Link Property.
+
+Cross-Comp connectivity SHALL NOT require a parallel edge store or a copy of either endpoint.
+
+### 3. Interpretation capability
+
+A consumer may have different interpretation capability for the same unchanged canonical Link:
+
+- **specialized** — compatible specialized semantics are available;
+- **reference** — endpoint identities resolve, but richer specialized semantics are unavailable;
+- **unresolved** — a required canonical endpoint identity does not resolve;
+- **conflict** — applicable specialized authorities are present but incompatible.
+
+Reference capability is a loss of interpretation richness, not a mutation of canonical truth.
+
+### 4. Reference degradation
+
+When specialized semantics are unavailable but canonical endpoint identities resolve, a consumer MAY degrade to generic directed reference/navigation semantics.
+
+Such degradation SHALL preserve the original Link Property identity, owner, `ruleset_ref`, `link_type_ref`, endpoints, and explicit properties exactly.
+
+A consumer SHALL NOT replace the canonical relation with a `reference` relation merely because only reference-level interpretation is currently available.
+
+### 5. No guessing
+
+Reference-level interpretation asserts only canonical identity, direction, addressability, and navigation.
+
+It SHALL NOT infer domain meaning, endpoint roles, ownership, containment, dependency, causality, support behavior, physical behavior, or other specialized semantics.
+
+### 6. Capability upgrade
+
+If a compatible missing Comp later becomes available, the same unchanged canonical model MAY be re-evaluated with specialized semantics.
+
+No canonical rewrite is required merely to increase interpretation capability.
+
