@@ -110,11 +110,11 @@ def _run(document: dict) -> dict:
 
 
 class CWCore11Tests(unittest.TestCase):
-    def test_default_bundle_is_locked_core_1_1(self) -> None:
+    def test_default_bundle_is_locked_core_1_2(self) -> None:
         bundle = resolve_bundle(default_start=ROOT / "linter")
-        self.assertEqual(bundle.ccf.get("version"), "2.4.3")
+        self.assertEqual(bundle.ccf.get("version"), "2.5.0")
         self.assertEqual(bundle.nodetypes.get("version"), "1.18.0")
-        self.assertEqual(bundle.rulesets.get("version"), "3.14.0")
+        self.assertEqual(bundle.rulesets.get("version"), "4.0.0")
 
     def test_topology_members_and_contract_affiliation_are_ready(self) -> None:
         result = _run(_document())

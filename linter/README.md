@@ -1,6 +1,6 @@
 # CW Linters and Validators
 
-CW has two separate validation tools:
+CW has two primary semantic validation entry points:
 
 ```text
 cw_spec_lint.py
@@ -10,7 +10,7 @@ cw_validate.py
     Does this CW canonical artifact conform to the selected specification set?
 ```
 
-Both tools are local-first and use only the Python standard library.
+Both primary tools are local-first and use only the Python standard library. The same package also contains composition, specification binding, package validation, version-stamp validation, and specialized Event/Effect/dispatch validators.
 
 The key boundary is:
 
@@ -31,18 +31,18 @@ Rulesets
 The repository default is pinned by:
 
 ```text
-spec_sets/CW_CORE_v1.1.0.json
+spec_sets/CW_CORE_v1.2.0.json
 ```
 
 Current default bundle:
 
 ```text
-CCF        2.4.3
+CCF        2.5.0
 NodeTypes  1.18.0
-Rulesets   3.14.0
+Rulesets   4.0.0
 ```
 
-The previous immutable `spec_sets/CW_CORE.json` bundle remains preserved and continues to pin NodeTypes 1.17.0 + Rulesets 3.13.0. It is not rewritten in place.
+The previous immutable `spec_sets/CW_CORE_v1.1.0.json` bundle remains preserved for historical interpretation and regression testing. Older preserved specification material remains under `History/`. Immutable historical bundles are not rewritten in place.
 
 The manifest may pin each file with its Git blob SHA. This makes the selected interpretation content explicit and immutable.
 
@@ -53,7 +53,7 @@ python linter/cw_spec_lint.py --coverage
 python linter/cw_validate.py artifact.json
 ```
 
-Both commands search upward from the tool location and prefer `spec_sets/CW_CORE_v1.1.0.json`.
+Both commands search upward from the tool location and prefer `spec_sets/CW_CORE_v1.2.0.json`.
 
 ### Explicit specification-set manifest
 
@@ -101,7 +101,7 @@ RULESET_NODE.section_readers
 
 The linter checks this contract generically. It does not hardcode the concrete section vocabulary.
 
-For CW Core 1.1:
+For CW Core 1.2:
 
 ```text
 code     -> inherited links + functions + events + required_links + data + effects + representation
@@ -118,7 +118,7 @@ Links are the universal relational navigation mechanism.
 
 The selected Rulesets may provide one open generic Link Ruleset. With that rule selected by `Property.ruleset_ref`, an explicit relation selector can be read and preserved without requiring a dedicated Ruleset for every possible relation label.
 
-CW Core 1.1 distinguishes two generic Link selector forms:
+The generic Link selector model distinguishes two explicit forms:
 
 ```text
 #ABS:Runtime
@@ -212,13 +212,64 @@ CLI exit codes:
 
 The validator first self-lints the selected specification set unless `--skip-spec-lint` is supplied for isolated debugging.
 
-CW artifact validator 2.2 additionally validates:
+The current artifact validator additionally validates:
 
 - `contract.members` is an array of unique canonical refs.
 - unresolved member refs remain `UNREADY` rather than being guessed.
 - a generic `RULESET_LINK` selector beginning with `#` resolves a canonical topology Entity.
 - a resolved topology selector must be compatible with the `topology_entity` NodeType family.
 - literal relation selectors without `#` are not identity-resolved.
+
+## CW Core 1.2 identity and reference model
+
+The current default specification set explicitly uses:
+
+```text
+model-global Entity identity
+owner-local Property identity
+explicit cross-Entity Property addresses
+Event-mediated cross-Entity Function boundaries
+```
+
+Entity ids therefore remain model-global, while Property ids are local to their owning Entity. A cross-Entity Property reference must identify both owner and Property explicitly:
+
+```json
+{
+  "entity_ref": "#FILE:example",
+  "property_ref": "FUNCTION::render"
+}
+```
+
+A consumer must not recover Property ownership from filenames, paths, naming conventions, geometry, source proximity, or another heuristic.
+
+Cross-Entity Function behavior is likewise not represented as an implicit direct Function-to-Function shortcut across Node ownership. The selected Rulesets keep that boundary Event-mediated and explicit.
+
+## Composition, binding and package validation
+
+The linter package also contains these supporting modules:
+
+```text
+cw_compose.py             compose explicitly sharded CW for validation
+cw_bind.py                bind one imported candidate to an immutable specification_ref
+cw_version.py             validate optional Node timestamp/hash version stamps
+cw_condition_validate.py  validate structured Event condition semantics
+cw_effect_validate.py     validate Effect semantics
+cw_dispatch_validate.py   validate and resolve explicit Event dispatch semantics
+cw_package_validate.py    validate the self-contained CW package form
+```
+
+`cw_compose.py` changes storage representation only. It does not create new canonical identity or semantic authority.
+
+`cw_bind.py` changes only the root `specification_ref`. It refuses silent rebinding to a different evaluation context.
+
+The package validator is run separately:
+
+```bash
+python linter/cw_package_validate.py /path/to/package
+python linter/cw_package_validate.py /path/to/package --json
+```
+
+It validates the package-local format/model closure, including `Format/`, `Model/`, NodeType family files, shards, owner-local Property references, Event/Effect semantics, Required Links, and Assets. Package validation is a separate package contract; it does not replace the generic `cw_spec_lint.py` + `cw_validate.py` model.
 
 ## Canonical boundaries
 
