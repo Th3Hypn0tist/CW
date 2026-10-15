@@ -1,0 +1,156 @@
+{
+  "id": "CW_CIC_TOOLKIT_INTEGRATION_ANALYSIS",
+  "version": "1.0.0",
+  "status": "analysis_only",
+  "date": "2026-09-07",
+  "repository": "Th3Hypn0tist/CW",
+  "target_path": "tools/CIC",
+  "purpose": "Define and analyze the intended integration boundary for CIC as a CW Toolkit component before any CIC implementation is moved into CW.",
+  "execution_policy": {
+    "analysis_only": true,
+    "move_cic_code": false,
+    "modify_validator": false,
+    "modify_canonical_specs": false,
+    "change_structure_ingress": false,
+    "create_parallel_semantics": false
+  },
+  "current_active_cw_set": {
+    "canonical_contract_format": "Canonical_Contract_Format_v2.4.3.json",
+    "node_types": "CanonicalWireframe_NodeTypes_v1.15.1.json",
+    "dependency_rules": "CanonicalWireframe_Dependency_Rules_v3.11.2.json",
+    "authority_rule": "CIC must conform to the active CW specification set. CIC must not own or redefine canonical CW semantics."
+  },
+  "architectural_role": {
+    "toolkit": "CW Toolkit",
+    "component": "CIC",
+    "component_role": "code_to_cw_importer",
+    "input": "source code",
+    "output": "CW",
+    "pipeline": [
+      "source code",
+      "CIC",
+      "CW",
+      "CW consumer",
+      "derived projections"
+    ],
+    "canonical_statement": "CIC knows how to extract code into CW. CW Toolkit knows how CW is formed, validated and handled. Consumers know valid CW. Derived projections know only projections.",
+    "core_principle": "One model. Many topologies. No duplicate truth."
+  },
+  "ownership_boundaries": {
+    "cic_owns": [
+      "source-language discovery",
+      "source parsing",
+      "source evidence extraction",
+      "code IR",
+      "cross-file source resolution needed for import",
+      "mapping extracted implementation evidence into canonical CW structures"
+    ],
+    "cw_toolkit_owns": [
+      "canonical CW specifications",
+      "canonical validation",
+      "specification integrity validation",
+      "artifact conformance validation",
+      "canonical serialization and loading rules",
+      "specification closure resolution",
+      "shared CW handling utilities"
+    ],
+    "cic_must_not_own": [
+      "canonical Property Type vocabulary",
+      "canonical Ruleset semantics",
+      "canonical NodeType semantics",
+      "parallel CW validation semantics",
+      "consumer-specific projections",
+      "StructureTree semantics"
+    ],
+    "consumer_must_not_own": [
+      "source-code parsing required to reconstruct canonical CW semantics",
+      "CIC Code IR semantics",
+      "a private CW dialect",
+      "a trusted-internal validation bypass"
+    ]
+  },
+  "validation_boundary": {
+    "required_chain": [
+      "CW artifact acquisition",
+      "serialization and artifact integrity",
+      "resolve canonical specification context",
+      "validate active specification integrity",
+      "validate CW artifact against active canonical specification",
+      "accept valid CW",
+      "allow consumer projection"
+    ],
+    "shared_validator_rule": "CIC-produced CW and externally produced CW must pass the same canonical CW validation path before a consumer treats the model as valid.",
+    "no_bypass_rule": "CIC output must not receive trusted-internal acceptance solely because CIC produced it."
+  },
+  "allowed_cic_local_checks": [
+    "source file readability",
+    "source parser success",
+    "Code IR integrity",
+    "source evidence consistency",
+    "artifact write success",
+    "shard packaging integrity where CIC is the serializer"
+  ],
+  "semantic_checks_that_must_remain_canonical": [
+    "Property Type validity",
+    "Ruleset resolution",
+    "Property value schema conformance",
+    "NodeType compatibility",
+    "dependency and endpoint compatibility",
+    "canonical function semantics",
+    "canonical event semantics",
+    "canonical field placement",
+    "canonical cardinality and dependency invariants"
+  ],
+  "analysis_questions": [
+    {
+      "id": "CIC-01",
+      "question": "Can the current CIC implementation be moved under CW Toolkit without importing Structure-specific semantics?"
+    },
+    {
+      "id": "CIC-02",
+      "question": "Does current CIC contain hardcoded CW semantic vocabulary that should instead be resolved from the active CW specification set?"
+    },
+    {
+      "id": "CIC-03",
+      "question": "Does current CIC output canonical CW or a CIC-specific approximation of CW?"
+    },
+    {
+      "id": "CIC-04",
+      "question": "Can current CIC validation be reduced to importer-local integrity while canonical semantic validation is delegated to the CW Toolkit validator stack?"
+    },
+    {
+      "id": "CIC-05",
+      "question": "Do all current CIC function, event, link, data, file and API mappings conform to the active CW Rulesets and NodeTypes without shadow schemas?"
+    },
+    {
+      "id": "CIC-06",
+      "question": "Is canonical structured function logic emitted at the location required by the active Dependency Rules rather than under importer-specific metadata?"
+    },
+    {
+      "id": "CIC-07",
+      "question": "Can any CW consumer use CIC output without knowing that CIC produced it?"
+    },
+    {
+      "id": "CIC-08",
+      "question": "Can CIC be removed or replaced without changing the canonical CW model or any consumer contract?"
+    }
+  ],
+  "acceptance_criteria_for_future_move": [
+    "CIC has no Structure-specific semantic dependency.",
+    "CIC emits CW conforming to the active CW specification set.",
+    "CIC does not hardcode canonical semantic vocabularies that belong to CW specifications.",
+    "CIC uses the shared CW Toolkit validation stack for canonical conformance.",
+    "CIC output and third-party CW output receive identical canonical validation treatment.",
+    "Consumers require only CW, not CIC internals or source code.",
+    "Derived projections remain non-authoritative and rebuildable from CW.",
+    "No duplicate semantic truth is introduced by the integration."
+  ],
+  "non_goals": [
+    "Move current CIC implementation into CW now.",
+    "Change CW specifications to fit current CIC output.",
+    "Preserve importer-specific schemas merely for compatibility.",
+    "Make Structure part of CIC or CIC part of Structure.",
+    "Define StructureTree as canonical state."
+  ],
+  "decision_rule": "CIC is ready to enter CW Toolkit only when it behaves as a replaceable source-to-CW adapter whose output is indistinguishable, at the canonical boundary, from valid CW produced by any other conforming producer."
+}
