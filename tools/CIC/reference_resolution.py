@@ -96,7 +96,7 @@ def resolve_code_references(ir: dict[str, Any]) -> list[dict[str, Any]]:
     """Resolve exact local implementation references while preserving both identity layers.
 
     Observed FILE refs preserve source-format paths for implementation evidence.
-    Canonical endpoint refs are language-agnostic #FILE identities. Neither form
+    Canonical endpoint refs are language-agnostic #LOGIC identities. Neither form
     grants canonical dependency semantics; dependency promotion stays separate.
     """
     if not isinstance(ir, dict) or not isinstance(ir.get("files"), list):

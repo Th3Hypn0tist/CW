@@ -61,7 +61,7 @@ def _asset_file_type(dr: dict[str, Any], extension: str) -> str:
 
 def _asset_ref(entity_ref: str, extension: str) -> str:
     encoded = quote(entity_ref, safe="-._~")
-    return f"Assets/FILE/{encoded}{extension}"
+    return f"Assets/LOGIC/{encoded}{extension}"
 
 
 def _asset_property(entity_ref: str, asset_ref: str, file_type_ref: str) -> dict[str, Any]:
@@ -126,14 +126,14 @@ def materialize_package(
     """Transform CIC parser output into the current self-contained CW package.
 
     Input staging layout is the parser/evidence layout produced by api_core:
-    model.cw, FILE/**/*.cw and import.ir.json. The result is Format/Model/Assets
+    model.cw, LOGIC/**/*.cw and import.ir.json. The result is Format/Model/Assets
     plus non-canonical Diagnostics/import.ir.json.
     """
     root = Path(staging_root).resolve()
     source = Path(source_root).resolve()
     template = Path(format_template).resolve()
     old_manifest = root / "model.cw"
-    old_file_root = root / "FILE"
+    old_file_root = root / "LOGIC"
     old_ir = root / "import.ir.json"
     if not old_manifest.is_file() or not old_file_root.is_dir() or not old_ir.is_file():
         raise CICPackageError("CIC parser staging output is incomplete")
@@ -142,14 +142,14 @@ def materialize_package(
 
     format_root = root / "Format"
     model_root = root / "Model"
-    assets_root = root / "Assets" / "FILE"
+    assets_root = root / "Assets" / "LOGIC"
     diagnostics_root = root / "Diagnostics"
     if any(path.exists() for path in (format_root, model_root, root / "Assets", diagnostics_root)):
         raise CICPackageError("CIC package target directories already exist in staging output")
 
     shutil.copytree(template, format_root)
     model_root.mkdir()
-    shutil.move(str(old_file_root), str(model_root / "FILE"))
+    shutil.move(str(old_file_root), str(model_root / "LOGIC"))
     shutil.move(str(old_manifest), str(model_root / "model.cw"))
     diagnostics_root.mkdir()
     shutil.move(str(old_ir), str(diagnostics_root / "import.ir.json"))
@@ -198,7 +198,7 @@ def materialize_package(
         target_asset.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source_asset, target_asset)
 
-        entity["entity_type_ref"] = "FILE"
+        entity["entity_type_ref"] = "LOGIC"
         entity.pop("required_links", None)
         properties = [
             prop for prop in entity.get("properties", [])
@@ -238,7 +238,7 @@ def materialize_package(
         ]
         invariants.extend([
             {"id": "CIC_SELF_CONTAINED_PACKAGE", "rule": "The generated package carries its complete local Format closure under Format/."},
-            {"id": "CIC_SOURCE_ASSET", "rule": "Every imported #FILE Entity owns its original source file as its one opaque Asset."},
+            {"id": "CIC_SOURCE_ASSET", "rule": "Every imported #LOGIC Entity owns its original source file as its one opaque Asset."},
             {"id": "CIC_DEPENDENCY_FROM_IMPORT", "rule": "Exactly resolved internal implementation imports project to dependency Links with provider parent_ref and consumer child_ref."},
         ])
     _write_json(manifest_path, manifest)

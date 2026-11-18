@@ -274,7 +274,7 @@ def file_refs(document: dict[str, Any]) -> list[str]:
     refs = [
         entity["id"]
         for entity in document.get("entities", [])
-        if isinstance(entity, dict) and isinstance(entity.get("id"), str) and entity["id"].startswith("#FILE:")
+        if isinstance(entity, dict) and isinstance(entity.get("id"), str) and entity["id"].startswith("#LOGIC:")
     ]
     return sorted(refs, key=str.lower)
 
@@ -285,16 +285,16 @@ def filetree(document: dict[str, Any]) -> dict[str, Any]:
         try:
             path = canonical_file_key_from_ref(ref)
         except Exception as exc:
-            raise CWValidationError(f"invalid #FILE identity path: {ref}") from exc
+            raise CWValidationError(f"invalid #LOGIC identity path: {ref}") from exc
         pure = PurePosixPath(path)
         cursor = root
         for part in pure.parts[:-1]:
             cursor = cursor.setdefault(part, {})
             if not isinstance(cursor, dict):
-                raise CWValidationError(f"#FILE hierarchy collision at {part}")
+                raise CWValidationError(f"#LOGIC hierarchy collision at {part}")
         leaf = pure.parts[-1]
         if leaf in cursor:
-            raise CWValidationError(f"#FILE hierarchy collision at {path}")
+            raise CWValidationError(f"#LOGIC hierarchy collision at {path}")
         cursor[leaf] = ref
     return root
 
@@ -313,7 +313,7 @@ def _tree_lines(tree: dict[str, Any], prefix: str = "") -> list[str]:
 
 
 def format_filetree(document: dict[str, Any]) -> str:
-    lines = ["#FILE", *_tree_lines(filetree(document))]
+    lines = ["#LOGIC", *_tree_lines(filetree(document))]
     return "\n".join(lines)
 
 

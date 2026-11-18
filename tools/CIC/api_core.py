@@ -203,10 +203,10 @@ def _cw_document(files: list[dict[str, Any]]) -> dict[str, Any]:
         "entities": entities,
         "constraints": {
             "invariants": [
-                {"id": "CIC_ONE_FILE_ONE_ENTITY", "rule": "Every imported source file maps to exactly one language-agnostic #FILE canonical Entity identity."},
-                {"id": "CIC_SOURCE_SUFFIX_NOT_CANONICAL_IDENTITY", "rule": "Source-format suffixes such as .py, .js, .html, .css and .hgi are provenance and MUST NOT appear in canonical #FILE identity or physical shard basename."},
-                {"id": "CIC_ONE_FILE_ONE_SHARD", "rule": "Every canonical #FILE Entity is serialized to exactly one FILE/<canonical path>.cw shard."},
-                {"id": "CIC_FUNCTION_IS_FILE_PROPERTY", "rule": "Functions and methods remain Properties of their owning #FILE Entity and never become Entities."},
+                {"id": "CIC_ONE_FILE_ONE_ENTITY", "rule": "Every imported source file maps to exactly one language-agnostic #LOGIC canonical Entity identity."},
+                {"id": "CIC_SOURCE_SUFFIX_NOT_CANONICAL_IDENTITY", "rule": "Source-format suffixes such as .py, .js, .html, .css and .hgi are provenance and MUST NOT appear in canonical #LOGIC identity or physical shard basename."},
+                {"id": "CIC_ONE_FILE_ONE_SHARD", "rule": "Every canonical #LOGIC Entity is serialized to exactly one LOGIC/<canonical path>.cw shard."},
+                {"id": "CIC_FUNCTION_IS_FILE_PROPERTY", "rule": "Functions and methods remain Properties of their owning #LOGIC Entity and never become Entities."},
                 {"id": "CIC_NO_GUESSED_LINKS", "rule": "Implementation import or call evidence does not become canonical Link truth without explicit resolution/authority."},
                 {"id": "CIC_IMPORT_IS_SPEC_UNBOUND", "rule": "Import MUST NOT select a CCF + NodeTypes + Rulesets interpretation bundle. specification_ref is added only by an explicit post-import binding step."},
                 {"id": "CIC_STDLIB_CORE", "rule": "CIC core and built-in parser chain are self-contained Python code and require no Node/npm or external parser runtime."},
@@ -280,7 +280,7 @@ def import_files(
         previous = canonical_owners.get(canonical_ref)
         if previous is not None and previous != item["path"]:
             raise CICIdentityError(
-                f"canonical #FILE identity collision: {previous!r} and {item['path']!r} both map to {canonical_ref}"
+                f"canonical #LOGIC identity collision: {previous!r} and {item['path']!r} both map to {canonical_ref}"
             )
         canonical_owners[canonical_ref] = item["path"]
         imported.append({

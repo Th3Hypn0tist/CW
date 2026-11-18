@@ -8,7 +8,7 @@ class CICIdentityError(ValueError):
     pass
 
 
-CANONICAL_FILE_PREFIX = "#FILE:"
+CANONICAL_FILE_PREFIX = "#LOGIC:"
 OBSERVED_FILE_PREFIX = "FILE::"
 
 
@@ -20,7 +20,7 @@ def normalize_source_path(value: Any) -> str:
     if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
         raise CICIdentityError(f"invalid CIC source path: {value!r}")
     if any(":" in part for part in path.parts):
-        raise CICIdentityError(f"CIC source path contains ':' which cannot map losslessly to #FILE identity: {value!r}")
+        raise CICIdentityError(f"CIC source path contains ':' which cannot map losslessly to #LOGIC identity: {value!r}")
     return str(path)
 
 
@@ -46,7 +46,7 @@ def canonical_file_key(source_path: Any) -> str:
     suffix = path.suffix
     stem = basename[:-len(suffix)] if suffix else basename
     if not stem or stem in {".", ".."}:
-        raise CICIdentityError(f"source basename cannot produce canonical #FILE identity: {source_path!r}")
+        raise CICIdentityError(f"source basename cannot produce canonical #LOGIC identity: {source_path!r}")
     parts = [*path.parts[:-1], stem]
     return "/".join(parts)
 
@@ -64,22 +64,22 @@ def canonical_file_ref_from_observed_ref(value: Any) -> str:
 
 def canonical_file_key_from_ref(value: Any) -> str:
     if not isinstance(value, str) or not value.startswith(CANONICAL_FILE_PREFIX):
-        raise CICIdentityError(f"canonical #FILE ref required: {value!r}")
+        raise CICIdentityError(f"canonical #LOGIC ref required: {value!r}")
     raw = value[len(CANONICAL_FILE_PREFIX):]
     parts = raw.split(":") if raw else []
     if not parts or any(not part or part in {".", ".."} or "/" in part or "\\" in part for part in parts):
-        raise CICIdentityError(f"invalid canonical #FILE ref: {value!r}")
+        raise CICIdentityError(f"invalid canonical #LOGIC ref: {value!r}")
     return "/".join(parts)
 
 
 def canonical_file_shard_path(value: Any) -> str:
-    """Return physical .cw shard path for a source path or canonical #FILE ref."""
+    """Return physical .cw shard path for a source path or canonical #LOGIC ref."""
     if isinstance(value, str) and value.startswith(CANONICAL_FILE_PREFIX):
         key = canonical_file_key_from_ref(value)
     else:
         key = canonical_file_key(value)
     path = PurePosixPath(key)
-    return str(PurePosixPath("FILE", *path.parts[:-1], f"{path.name}.cw"))
+    return str(PurePosixPath("LOGIC", *path.parts[:-1], f"{path.name}.cw"))
 
 
 def canonical_function_ref(source_path: Any, qualified_name: str) -> str:
@@ -95,7 +95,7 @@ def assert_no_canonical_file_collisions(source_paths: list[str]) -> dict[str, st
         previous = by_ref.get(ref)
         if previous is not None and previous != source_path:
             raise CICIdentityError(
-                f"canonical #FILE identity collision: {previous!r} and {source_path!r} both map to {ref}"
+                f"canonical #LOGIC identity collision: {previous!r} and {source_path!r} both map to {ref}"
             )
         by_ref[ref] = source_path
     return by_ref
