@@ -13,15 +13,15 @@ class EventDispatchValidationTests(unittest.TestCase):
                 {
                     "id": "MEMBERS::#ABS:DispatchDomain",
                     "property_type_ref": "members",
-                    "value": {"member_refs": ["#FILE:a", "#FILE:b"], "properties": {}},
+                    "value": {"member_refs": ["#LOGIC:a", "#LOGIC:b"], "properties": {}},
                 }
             ],
         }
         self.entities = {
             "#ABS:DispatchDomain": self.domain,
-            "#FILE:a": {"id": "#FILE:a", "properties": []},
-            "#FILE:b": {"id": "#FILE:b", "properties": []},
-            "#FILE:outside": {"id": "#FILE:outside", "properties": []},
+            "#LOGIC:a": {"id": "#LOGIC:a", "properties": []},
+            "#LOGIC:b": {"id": "#LOGIC:b", "properties": []},
+            "#LOGIC:outside": {"id": "#LOGIC:outside", "properties": []},
         }
         self.properties = {
             "DATA_SELECTOR": {"id": "DATA_SELECTOR", "property_type_ref": "data", "value": {}},
@@ -50,13 +50,13 @@ class EventDispatchValidationTests(unittest.TestCase):
             },
         }
         self.owners = {
-            "DATA_SELECTOR": "#FILE:a",
-            "EVENT_A": "#FILE:a",
-            "EVENT_OUTSIDE": "#FILE:outside",
-            "DATA_NOT_EVENT": "#FILE:a",
-            "FUNCTION_SOURCE": "#FILE:a",
-            "LINK_DISPATCH": "#FILE:a",
-            "LINK_CAUSE": "#FILE:a",
+            "DATA_SELECTOR": "#LOGIC:a",
+            "EVENT_A": "#LOGIC:a",
+            "EVENT_OUTSIDE": "#LOGIC:outside",
+            "DATA_NOT_EVENT": "#LOGIC:a",
+            "FUNCTION_SOURCE": "#LOGIC:a",
+            "LINK_DISPATCH": "#LOGIC:a",
+            "LINK_CAUSE": "#LOGIC:a",
         }
         self.dispatch_value = self.properties["LINK_DISPATCH"]["value"]
 

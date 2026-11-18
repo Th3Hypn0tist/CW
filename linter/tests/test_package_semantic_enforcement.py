@@ -33,7 +33,7 @@ class PackageSemanticEnforcementTests(unittest.TestCase):
     def test_ready_condition_rejects_expected_value(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             package = self._copy_golden(Path(tmp))
-            renderer = package / "Model" / "FILE" / "renderer.cw"
+            renderer = package / "Model" / "LOGIC" / "renderer.cw"
             model = _read(renderer)
             condition = next(
                 item for item in model["properties"]
@@ -48,7 +48,7 @@ class PackageSemanticEnforcementTests(unittest.TestCase):
     def test_unknown_effect_type_invalidates_package(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             package = self._copy_golden(Path(tmp))
-            renderer = package / "Model" / "FILE" / "renderer.cw"
+            renderer = package / "Model" / "LOGIC" / "renderer.cw"
             model = _read(renderer)
             effect = next(
                 item for item in model["properties"]
@@ -63,7 +63,7 @@ class PackageSemanticEnforcementTests(unittest.TestCase):
     def test_unbounded_event_dispatch_invalidates_package(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             package = self._copy_golden(Path(tmp))
-            index = package / "Model" / "FILE" / "index.cw"
+            index = package / "Model" / "LOGIC" / "index.cw"
             model = _read(index)
             link = next(
                 item for item in model["properties"]
@@ -73,7 +73,7 @@ class PackageSemanticEnforcementTests(unittest.TestCase):
             link["value"] = {
                 "link_type_ref": "event_dispatch",
                 "parent_ref": "FUNCTION_OPEN_PAGE",
-                "child_ref": "#FILE:renderer",
+                "child_ref": "#LOGIC:renderer",
                 "selector_ref": "EVENT_OPEN_PAGE",
                 "properties": {},
             }

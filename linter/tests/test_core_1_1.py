@@ -48,15 +48,15 @@ def _link(prop_id: str, relation: str, parent: str, child: str, ruleset: str = "
 
 def _document() -> dict:
     topology = _entity("#ABS:Runtime", "abs")
-    file_a = _entity("#FILE:a", "code")
-    file_b = _entity("#FILE:b", "code")
-    contract = _entity("#CTRCT:Parser", "contract", members=["#FILE:a"])
-    topology["properties"].append(_link("LINK::ABS_RUNTIME", "#ABS:Runtime", "#FILE:a", "#FILE:b"))
+    file_a = _entity("#LOGIC:a", "code")
+    file_b = _entity("#LOGIC:b", "code")
+    contract = _entity("#CTRCT:Parser", "contract", members=["#LOGIC:a"])
+    topology["properties"].append(_link("LINK::ABS_RUNTIME", "#ABS:Runtime", "#LOGIC:a", "#LOGIC:b"))
     file_b["properties"].append(
         _link(
             "LINK::B_PARSER_CONTRACT",
             "contract_affiliation",
-            "#FILE:b",
+            "#LOGIC:b",
             "#CTRCT:Parser",
             "RULESET_LINK_CONTRACT_AFFILIATION",
         )
@@ -88,8 +88,8 @@ def _add_required_dependency(document: dict, *, endpoint_nodetype: str) -> None:
             "other_endpoint": {"entity_nodetype_ref": endpoint_nodetype},
         }
     ]
-    link = _link("LINK::B_TO_A", "dependency", "#FILE:b", "#FILE:a", "RULESET_LINK_DEPENDENCY")
-    link["value"]["required_link_ref"] = {"entity_ref": "#FILE:a", "required_link_id": "REQ_DEP"}
+    link = _link("LINK::B_TO_A", "dependency", "#LOGIC:b", "#LOGIC:a", "RULESET_LINK_DEPENDENCY")
+    link["value"]["required_link_ref"] = {"entity_ref": "#LOGIC:a", "required_link_id": "REQ_DEP"}
     file_b["properties"].append(link)
 
 
@@ -136,7 +136,7 @@ class CWCore11Tests(unittest.TestCase):
 
     def test_duplicate_contract_member_is_invalid(self) -> None:
         document = _document()
-        document["entities"][3]["members"] = ["#FILE:a", "#FILE:a"]
+        document["entities"][3]["members"] = ["#LOGIC:a", "#LOGIC:a"]
         result = _run(document)
         self.assertEqual(result["result"], "INVALID_MODEL", result)
         self.assertTrue(any(item["code"] == "NODE_SECTION_REF_DUPLICATE" for item in result["findings"]))
