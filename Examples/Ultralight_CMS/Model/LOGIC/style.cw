@@ -1,7 +1,7 @@
 {
-  "id": "#FILE:style",
+  "id": "#LOGIC:style",
   "name": "style",
-  "entity_type_ref": "FILE",
+  "entity_type_ref": "LOGIC",
   "status": "unlocked",
   "properties": [
     {
@@ -10,7 +10,7 @@
       "ruleset_ref": "RULESET_ASSET",
       "status": "unlocked",
       "value": {
-        "asset_ref": "Assets/FILE/%23FILE%3Astyle.css",
+        "asset_ref": "Assets/LOGIC/%23LOGIC%3Astyle.css",
         "file_type_ref": "css",
         "properties": {}
       }

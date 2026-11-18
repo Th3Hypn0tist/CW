@@ -1,7 +1,7 @@
 {
-  "id": "#FILE:content",
+  "id": "#LOGIC:content",
   "name": "content",
-  "entity_type_ref": "FILE",
+  "entity_type_ref": "LOGIC",
   "status": "unlocked",
   "properties": [
     {
@@ -10,7 +10,7 @@
       "ruleset_ref": "RULESET_ASSET",
       "status": "unlocked",
       "value": {
-        "asset_ref": "Assets/FILE/%23FILE%3Acontent.json",
+        "asset_ref": "Assets/LOGIC/%23LOGIC%3Acontent.json",
         "file_type_ref": "json",
         "properties": {}
       }

@@ -1,7 +1,7 @@
 {
-  "id": "#FILE:renderer",
+  "id": "#LOGIC:renderer",
   "name": "renderer",
-  "entity_type_ref": "FILE",
+  "entity_type_ref": "LOGIC",
   "status": "unlocked",
   "properties": [
     {
@@ -10,7 +10,7 @@
       "ruleset_ref": "RULESET_ASSET",
       "status": "unlocked",
       "value": {
-        "asset_ref": "Assets/FILE/%23FILE%3Arenderer.js",
+        "asset_ref": "Assets/LOGIC/%23LOGIC%3Arenderer.js",
         "file_type_ref": "javascript",
         "properties": {}
       }
@@ -365,7 +365,7 @@
       "value": {
         "link_type_ref": "event_input",
         "parent_ref": {
-          "entity_ref": "#FILE:index",
+          "entity_ref": "#LOGIC:index",
           "property_ref": "DATA_PAGE_REQUEST"
         },
         "child_ref": "EVENT_RENDER_PAGE",
@@ -380,7 +380,7 @@
       "value": {
         "link_type_ref": "event_input",
         "parent_ref": {
-          "entity_ref": "#FILE:content",
+          "entity_ref": "#LOGIC:content",
           "property_ref": "DATA_CONTENT_COLLECTION"
         },
         "child_ref": "EVENT_RENDER_PAGE",
@@ -395,7 +395,7 @@
       "value": {
         "link_type_ref": "event_input",
         "parent_ref": {
-          "entity_ref": "#FILE:style",
+          "entity_ref": "#LOGIC:style",
           "property_ref": "DATA_STYLE_STYLESHEET"
         },
         "child_ref": "EVENT_RENDER_PAGE",
@@ -410,7 +410,7 @@
       "value": {
         "link_type_ref": "event_condition",
         "parent_ref": {
-          "entity_ref": "#FILE:index",
+          "entity_ref": "#LOGIC:index",
           "property_ref": "DATA_PAGE_REQUEST"
         },
         "child_ref": "EVENT_RENDER_PAGE",
@@ -426,7 +426,7 @@
       "value": {
         "link_type_ref": "event_condition",
         "parent_ref": {
-          "entity_ref": "#FILE:content",
+          "entity_ref": "#LOGIC:content",
           "property_ref": "DATA_CONTENT_COLLECTION"
         },
         "child_ref": "EVENT_RENDER_PAGE",
@@ -442,7 +442,7 @@
       "value": {
         "link_type_ref": "event_condition",
         "parent_ref": {
-          "entity_ref": "#FILE:style",
+          "entity_ref": "#LOGIC:style",
           "property_ref": "DATA_STYLE_STYLESHEET"
         },
         "child_ref": "EVENT_RENDER_PAGE",
@@ -593,7 +593,7 @@
         "link_type_ref": "effect_target",
         "parent_ref": "EFFECT_PUBLISH_DOCUMENT",
         "child_ref": {
-          "entity_ref": "#FILE:index",
+          "entity_ref": "#LOGIC:index",
           "property_ref": "DATA_INDEX_DOCUMENT"
         },
         "properties": {}
@@ -634,7 +634,7 @@
         "min": 2,
         "max": 2,
         "other_endpoint": {
-          "entity_type_ref": "FILE"
+          "entity_type_ref": "LOGIC"
         },
         "properties": {}
       }
@@ -646,8 +646,8 @@
       "status": "unlocked",
       "value": {
         "link_type_ref": "dependency",
-        "parent_ref": "#FILE:content",
-        "child_ref": "#FILE:renderer",
+        "parent_ref": "#LOGIC:content",
+        "child_ref": "#LOGIC:renderer",
         "required_link_ref": "REQ_RENDERER_INPUTS",
         "properties": {}
       }
@@ -659,8 +659,8 @@
       "status": "unlocked",
       "value": {
         "link_type_ref": "dependency",
-        "parent_ref": "#FILE:style",
-        "child_ref": "#FILE:renderer",
+        "parent_ref": "#LOGIC:style",
+        "child_ref": "#LOGIC:renderer",
         "required_link_ref": "REQ_RENDERER_INPUTS",
         "properties": {}
       }
