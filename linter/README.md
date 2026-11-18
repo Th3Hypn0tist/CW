@@ -141,7 +141,7 @@ Specialized Link Rulesets remain valid when additional semantics are required, f
 `contract_affiliation` is directed:
 
 ```text
-#FILE implementation -> #CTRCT contract
+#LOGIC implementation -> #CTRCT contract
 ```
 
 It states that an implementation FILE affiliates itself with the Contract as a whole. It does not silently add that FILE to `CTRCT.members`.
