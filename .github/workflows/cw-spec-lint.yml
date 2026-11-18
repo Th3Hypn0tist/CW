@@ -54,7 +54,7 @@ jobs:
             tools/CIC/*.py \
             tools/CIC/modules/*.py
 
-      - name: Validate historical locked specification set
+      - name: Validate pinned CW Core specification set
         run: python linter/cw_spec_lint.py --coverage
 
       - name: Validate current Ultralight CMS golden package
