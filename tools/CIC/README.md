@@ -48,7 +48,7 @@ The public importer runs this order:
 validate CIC + package tooling
   -> validate the current golden package
   -> parse source into non-canonical evidence IR
-  -> serialize parser-stage FILE shards
+  -> serialize parser-stage LOGIC shards
   -> copy the selected package-local Format closure
   -> move canonical shards under Model/
   -> copy each imported source file as its owning #LOGIC Entity Asset

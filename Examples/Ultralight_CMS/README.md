@@ -18,7 +18,7 @@ This directory is the normative target fixture for the next CanonicalWireframe t
 
 The same CMS is projected through several abstraction families without duplicating canonical identity.
 
-- `FILE` owns implementation/runtime Nodes and their physical source/content/style Assets.
+- `LOGIC` owns implementation/runtime Nodes and their physical source/content/style Assets.
 - `CTRCT` owns reusable CMS contract truth. The current `CTRCT/schema` Nodes own `SCHEMA_PAGE_CONTENT`, `SCHEMA_CONTENT_COLLECTION`, `SCHEMA_PAGE_REQUEST`, `SCHEMA_STYLE_SHEET` and `SCHEMA_RENDERED_DOCUMENT`.
 - `DOC` owns semantic documentation scope through `members`. Conversation-derived explanations live only in opaque DOC Assets; they explain the model but never replace canonical Property truth.
 - `ABS` groups the complete CMS and its render pipeline without cloning the member Entities.
@@ -37,7 +37,7 @@ The CMS contracts are:
 - `#CTRCT:UltralightCMS:Style`
 - `#CTRCT:UltralightCMS:RenderedDocument`
 
-FILE Data Properties reference these Schema Properties through explicit owner-qualified Property addresses. The contract truth is therefore owned once under CTRCT rather than copied into implementation Nodes.
+LOGIC Data Properties reference these Schema Properties through explicit owner-qualified Property addresses. The contract truth is therefore owned once under CTRCT rather than copied into implementation Nodes.
 
 ## Package-relative references
 
