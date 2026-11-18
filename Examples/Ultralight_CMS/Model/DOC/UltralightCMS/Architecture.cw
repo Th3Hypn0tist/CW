@@ -13,10 +13,10 @@
         "member_refs": [
           "#ABS:UltralightCMS",
           "#CTRCT:UltralightCMS",
-          "#FILE:index",
-          "#FILE:renderer",
-          "#FILE:content",
-          "#FILE:style"
+          "#LOGIC:index",
+          "#LOGIC:renderer",
+          "#LOGIC:content",
+          "#LOGIC:style"
         ],
         "properties": {}
       }

@@ -47,7 +47,7 @@
           "value": {
             "link_type_ref": "#ABS:UltralightCMS",
             "parent_ref": "#ABS:UltralightCMS",
-            "child_ref": "#FILE:index.html",
+            "child_ref": "#LOGIC:index.html",
             "properties": {}
           }
         },
@@ -59,7 +59,7 @@
           "value": {
             "link_type_ref": "#ABS:UltralightCMS",
             "parent_ref": "#ABS:UltralightCMS",
-            "child_ref": "#FILE:renderer.js",
+            "child_ref": "#LOGIC:renderer.js",
             "properties": {}
           }
         },
@@ -71,7 +71,7 @@
           "value": {
             "link_type_ref": "#ABS:UltralightCMS",
             "parent_ref": "#ABS:UltralightCMS",
-            "child_ref": "#FILE:content.json",
+            "child_ref": "#LOGIC:content.json",
             "properties": {}
           }
         },
@@ -83,14 +83,14 @@
           "value": {
             "link_type_ref": "#ABS:UltralightCMS",
             "parent_ref": "#ABS:UltralightCMS",
-            "child_ref": "#FILE:style.css",
+            "child_ref": "#LOGIC:style.css",
             "properties": {}
           }
         }
       ]
     },
     {
-      "id": "#FILE:index.html",
+      "id": "#LOGIC:index.html",
       "name": "index.html",
       "entity_type_ref": "code",
       "status": "unlocked",
@@ -223,15 +223,15 @@
           "status": "unlocked",
           "value": {
             "link_type_ref": "dependency",
-            "parent_ref": "#FILE:renderer.js",
-            "child_ref": "#FILE:index.html",
+            "parent_ref": "#LOGIC:renderer.js",
+            "child_ref": "#LOGIC:index.html",
             "properties": {}
           }
         }
       ]
     },
     {
-      "id": "#FILE:renderer.js",
+      "id": "#LOGIC:renderer.js",
       "name": "renderer.js",
       "entity_type_ref": "code",
       "status": "unlocked",
@@ -442,8 +442,8 @@
           "status": "unlocked",
           "value": {
             "link_type_ref": "dependency",
-            "parent_ref": "#FILE:content.json",
-            "child_ref": "#FILE:renderer.js",
+            "parent_ref": "#LOGIC:content.json",
+            "child_ref": "#LOGIC:renderer.js",
             "properties": {}
           }
         },
@@ -454,15 +454,15 @@
           "status": "unlocked",
           "value": {
             "link_type_ref": "dependency",
-            "parent_ref": "#FILE:style.css",
-            "child_ref": "#FILE:renderer.js",
+            "parent_ref": "#LOGIC:style.css",
+            "child_ref": "#LOGIC:renderer.js",
             "properties": {}
           }
         }
       ]
     },
     {
-      "id": "#FILE:content.json",
+      "id": "#LOGIC:content.json",
       "name": "content.json",
       "entity_type_ref": "code",
       "status": "unlocked",
@@ -482,7 +482,7 @@
       ]
     },
     {
-      "id": "#FILE:style.css",
+      "id": "#LOGIC:style.css",
       "name": "style.css",
       "entity_type_ref": "code",
       "status": "unlocked",
@@ -510,11 +510,11 @@
       },
       {
         "id": "OPEN_PAGE_EVENT_IS_INDEX",
-        "rule": "EVENT_OPEN_PAGE belongs to #FILE:index.html and is handled by FUNCTION_OPEN_PAGE on the same Node."
+        "rule": "EVENT_OPEN_PAGE belongs to #LOGIC:index.html and is handled by FUNCTION_OPEN_PAGE on the same Node."
       },
       {
         "id": "OPEN_PAGE_CALLS_RENDER_PAGE",
-        "rule": "FUNCTION_OPEN_PAGE explicitly calls FUNCTION_RENDER_PAGE on #FILE:renderer.js."
+        "rule": "FUNCTION_OPEN_PAGE explicitly calls FUNCTION_RENDER_PAGE on #LOGIC:renderer.js."
       },
       {
         "id": "RENDER_PAGE_CALLS_READERS",
@@ -522,19 +522,19 @@
       },
       {
         "id": "READ_CONTENT_READS_CONTENT_JSON",
-        "rule": "FUNCTION_READ_CONTENT explicitly reads DATA_CONTENT_DOCUMENT from #FILE:content.json and exposes DATA_READ_CONTENT."
+        "rule": "FUNCTION_READ_CONTENT explicitly reads DATA_CONTENT_DOCUMENT from #LOGIC:content.json and exposes DATA_READ_CONTENT."
       },
       {
         "id": "READ_STYLE_READS_STYLE_CSS",
-        "rule": "FUNCTION_READ_STYLE explicitly reads DATA_STYLE_STYLESHEET from #FILE:style.css and exposes DATA_READ_STYLE."
+        "rule": "FUNCTION_READ_STYLE explicitly reads DATA_STYLE_STYLESHEET from #LOGIC:style.css and exposes DATA_READ_STYLE."
       },
       {
         "id": "OPEN_PAGE_CAUSES_RENDER_EFFECT",
-        "rule": "EVENT_OPEN_PAGE explicitly causes EFFECT_RENDER_PAGE on #FILE:renderer.js through event_effect."
+        "rule": "EVENT_OPEN_PAGE explicitly causes EFFECT_RENDER_PAGE on #LOGIC:renderer.js through event_effect."
       },
       {
         "id": "RENDER_EFFECT_TARGETS_INDEX",
-        "rule": "EFFECT_RENDER_PAGE explicitly targets DATA_INDEX_DOCUMENT on #FILE:index.html."
+        "rule": "EFFECT_RENDER_PAGE explicitly targets DATA_INDEX_DOCUMENT on #LOGIC:index.html."
       },
       {
         "id": "DEPENDENCY_CHAIN_EXPLICIT",
@@ -559,7 +559,7 @@
   ],
   "gaps": [],
   "prose": {
-    "summary": "Ultralight CMS is one #ABS abstraction over four #FILE Nodes. index.html owns the open_page Event and handler Function. The handler calls renderer.js render_page; render_page calls read_content and read_style, whose Data inputs resolve to content.json and style.css. The Event explicitly causes a render_page Effect on renderer.js, and that Effect explicitly targets the index.html document.",
+    "summary": "Ultralight CMS is one #ABS abstraction over four #LOGIC Nodes. index.html owns the open_page Event and handler Function. The handler calls renderer.js render_page; render_page calls read_content and read_style, whose Data inputs resolve to content.json and style.css. The Event explicitly causes a render_page Effect on renderer.js, and that Effect explicitly targets the index.html document.",
     "notes": "Causality and dependency remain separate canonical truths. The dependency graph is content.json/style.css -> renderer.js -> index.html. The open-page causal request crosses index.html -> renderer.js, opposite the renderer dependency edge, and the render Effect returns renderer.js -> index.html through its explicit effect_target. Animation is intentionally not defined by this example."
   }
 }
