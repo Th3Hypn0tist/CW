@@ -70,7 +70,7 @@ class CICTriggerStateContractTests(unittest.TestCase):
         self.assertEqual(trigger_state["writers"], ["save_trigger_state"])
 
         for item in candidates:
-            self.assertEqual(item["source_entity_ref"], "#FILE:system:lib:trigger:store")
+            self.assertEqual(item["source_entity_ref"], "#LOGIC:system:lib:trigger:store")
             self.assertFalse(item["canonical_ready"])
             self.assertFalse(item["canonical_semantic_authority"])
 
