@@ -58,9 +58,9 @@ def propose_event_mapping(
 
     owner = next((entity for entity in cw.get("entities", []) if entity.get("id") == owner_ref), None)
     if owner is None:
-        raise EventMappingError(f"Event candidate owner #FILE does not exist in CW: {owner_ref}")
-    if not str(owner_ref).startswith("#FILE:"):
-        raise EventMappingError(f"Event candidate owner must be canonical #FILE identity: {owner_ref}")
+        raise EventMappingError(f"Event candidate owner #LOGIC does not exist in CW: {owner_ref}")
+    if not str(owner_ref).startswith("#LOGIC:"):
+        raise EventMappingError(f"Event candidate owner must be canonical #LOGIC identity: {owner_ref}")
 
     matches: list[dict[str, Any]] = []
     for prop in owner.get("properties", []):

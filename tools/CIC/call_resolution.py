@@ -357,7 +357,7 @@ def resolve_function_calls(ir: dict[str, Any]) -> list[dict[str, Any]]:
                 "resolution_reason": reason,
                 "candidate_function_refs": [item["function_ref"] for item in candidates],
                 "shadowed_names": sorted(shadowed),
-                "function_property_scope": "#FILE",
+                "function_property_scope": "#LOGIC",
                 "function_refs_are_property_refs": True,
                 "observed_file_refs_preserve_source_suffix": True,
                 "canonical_file_refs_are_language_agnostic": True,
