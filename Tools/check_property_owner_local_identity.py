@@ -127,11 +127,11 @@ def main() -> None:
     if cross_addresses == 0:
         fail("golden contains no explicit cross-Entity Property address")
 
-    index = local["#FILE:index"]
+    index = local["#LOGIC:index"]
     cause = index.get("LINK_OPEN_PAGE_CAUSES_RENDER_PAGE")
     if cause is None:
-        fail("cross-Entity event_cause was not moved to #FILE:index declarer")
-    renderer = local["#FILE:renderer"]
+        fail("cross-Entity event_cause was not moved to #LOGIC:index declarer")
+    renderer = local["#LOGIC:renderer"]
     if "LINK_OPEN_PAGE_CAUSES_RENDER_PAGE" in renderer:
         fail("renderer still declares index-owned event_cause")
 
