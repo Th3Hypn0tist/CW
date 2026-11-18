@@ -26,7 +26,7 @@ Templates/Nodes/
 Identity-family examples:
 
 ```text
-code/code.cw -> NodeType `code`      / #FILE family
+code/code.cw -> NodeType `code`      / #LOGIC family
 abs.cw       -> NodeType `abs`       / #ABS family
 doc.cw       -> NodeType `doc`       / #DOC family
 contract.cw  -> NodeType `contract`  / #CTRCT family
