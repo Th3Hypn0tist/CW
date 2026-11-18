@@ -1,0 +1,30 @@
+{
+  "type": "cw_specification_set",
+  "id": "CW_CORE",
+  "name": "CW Core Specification Set",
+  "version": "1.4.0",
+  "immutable": true,
+  "ccf": {
+    "path": "../Canonical_Contract_Format_v2.6.0.json",
+    "git_blob_sha": "e6bc90a1d06542862296ff46ec3c8dc4dacb6fa0"
+  },
+  "nodetypes": {
+    "path": "../CanonicalWireframe_NodeTypes_v1.19.0.json",
+    "git_blob_sha": "773db9e7bb1cfb2a9cadfe02741d077b18817e38"
+  },
+  "rulesets": {
+    "path": "../CanonicalWireframe_Dependency_Rules_v4.2.0.json",
+    "git_blob_sha": "e0b077f4b6c3197b65e7a0ceef9115feff5732ff"
+  },
+  "purpose": "Pin the immutable CW Core interpretation bundle with model-global Entity identity, owner-local Property identity, explicit cross-Entity Property addresses, Event-mediated cross-Entity Function boundaries, Comp evaluation semantics, and non-mutating reference degradation when specialized relation interpretation is unavailable.",
+  "rules": [
+    "The bundle selects interpretation authority explicitly; filenames and latest/current discovery are not semantic authority.",
+    "Importers produce CW canonical data only. Specification selection happens after import.",
+    "Changing the selected specification set changes an evaluation context and MUST NOT silently rewrite the canonical model.",
+    "A Comp is an immutable semantic evaluation bundle over compatible NodeTypes, Rulesets and interpretation context; it does not create another CW format or identity model.",
+    "Cross-Comp relations remain canonical Link Properties.",
+    "If specialized relation semantics are unavailable but canonical endpoints resolve, consumers may expose generic reference/navigation semantics without rewriting the Link.",
+    "Known semantic conflicts remain conflicts and are never hidden by fallback.",
+    "One truth. Many topologies."
+  ]
+}
