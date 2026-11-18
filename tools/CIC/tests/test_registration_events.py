@@ -60,7 +60,7 @@ def register() -> CommandDef:
             if prop.get("property_type_ref") == "link"
             and prop.get("value", {}).get("link_type_ref") == "event_handler"
         ]
-        self.assertIn("FUNCTION::#FILE:system:cs:commands:q::handler", functions)
+        self.assertIn("FUNCTION::#LOGIC:system:cs:commands:q::handler", functions)
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["value"]["event_type_ref"], "command")
         self.assertEqual(events[0]["value"]["properties"]["event_identity"], "q")
@@ -69,7 +69,7 @@ def register() -> CommandDef:
         self.assertEqual(handlers[0]["value"]["parent_ref"], events[0]["id"])
         self.assertEqual(
             handlers[0]["value"]["child_ref"],
-            "FUNCTION::#FILE:system:cs:commands:q::handler",
+            "FUNCTION::#LOGIC:system:cs:commands:q::handler",
         )
 
     def test_registration_identity_must_be_source_resolvable(self) -> None:

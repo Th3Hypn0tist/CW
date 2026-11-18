@@ -41,7 +41,7 @@ def register():
 
             import_folder(source, target, profile="aigmos")
             document = ingest_cw(target)
-            entity = next(item for item in document["entities"] if item["id"] == "#FILE:system:cs:commands:q")
+            entity = next(item for item in document["entities"] if item["id"] == "#LOGIC:system:cs:commands:q")
             events = [prop for prop in entity["properties"] if prop.get("property_type_ref") == "event"]
             handlers = [
                 prop
@@ -57,10 +57,10 @@ def register():
             self.assertEqual(handlers[0]["value"]["parent_ref"], events[0]["id"])
             self.assertEqual(
                 handlers[0]["value"]["child_ref"],
-                "FUNCTION::#FILE:system:cs:commands:q::handler",
+                "FUNCTION::#LOGIC:system:cs:commands:q::handler",
             )
             self.assertTrue((target / "Format" / "CW.json").is_file())
-            self.assertTrue((target / "Assets" / "FILE").is_dir())
+            self.assertTrue((target / "Assets" / "LOGIC").is_dir())
 
 
 if __name__ == "__main__":

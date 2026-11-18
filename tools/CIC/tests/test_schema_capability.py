@@ -10,7 +10,7 @@ class CICSchemaCapabilityTests(unittest.TestCase):
         ir = {
             "record_contract_candidates": [
                 {
-                    "source_entity_ref": "#FILE:types",
+                    "source_entity_ref": "#LOGIC:types",
                     "source_class": "TriggerDef",
                     "serialized_fields": [
                         {"name": "kind", "observed_type": "string"},
@@ -38,7 +38,7 @@ class CICSchemaCapabilityTests(unittest.TestCase):
         ir = {
             "record_contract_candidates": [
                 {
-                    "source_entity_ref": "#FILE:types",
+                    "source_entity_ref": "#LOGIC:types",
                     "source_class": "TriggerDef",
                     "serialized_fields": [
                         {"name": "kind", "observed_type": "string"},
@@ -66,7 +66,7 @@ class CICSchemaCapabilityTests(unittest.TestCase):
         ir = {
             "state_contract_candidates": [
                 {
-                    "source_entity_ref": "#FILE:system:runtime:runner_store",
+                    "source_entity_ref": "#LOGIC:system:runtime:runner_store",
                     "state_symbol": "#SYSTEM:runtime:runners",
                     "observed_container_types": ["map"],
                 }
@@ -87,7 +87,7 @@ class CICSchemaCapabilityTests(unittest.TestCase):
         ir = {
             "state_contract_candidates": [
                 {
-                    "source_entity_ref": "#FILE:system:runtime:runner_store",
+                    "source_entity_ref": "#LOGIC:system:runtime:runner_store",
                     "state_symbol": "#SYSTEM:runtime:runners",
                     "observed_container_types": ["map"],
                 }
@@ -107,7 +107,7 @@ class CICSchemaCapabilityTests(unittest.TestCase):
         ir = {
             "record_contract_candidates": [
                 {
-                    "source_entity_ref": "#FILE:types",
+                    "source_entity_ref": "#LOGIC:types",
                     "source_class": "EventDef",
                     "serialized_fields": [
                         {"name": "trigger", "observed_type": "string"},
