@@ -11,7 +11,7 @@ def _model() -> dict:
         "identity": {"id": "TEST", "name": "TEST", "type": "test", "version": "0.0.0"},
         "entities": [
             {
-                "id": "#FILE:system:parser",
+                "id": "#LOGIC:system:parser",
                 "name": "parser",
                 "entity_type_ref": "code",
                 "status": "unlocked",
@@ -24,14 +24,14 @@ def _model() -> dict:
                         "status": "unlocked",
                         "value": {
                             "link_type_ref": "dependency",
-                            "parent_ref": "#FILE:system:parser",
-                            "child_ref": "#FILE:system:target",
+                            "parent_ref": "#LOGIC:system:parser",
+                            "child_ref": "#LOGIC:system:target",
                         },
                     }
                 ],
             },
             {
-                "id": "#FILE:system:target",
+                "id": "#LOGIC:system:target",
                 "name": "target",
                 "entity_type_ref": "code",
                 "status": "unlocked",
