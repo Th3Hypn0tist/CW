@@ -216,7 +216,7 @@ def detect_event_candidates(
             not isinstance(path, str)
             or not path
             or not isinstance(canonical_owner_ref, str)
-            or not canonical_owner_ref.startswith("#FILE:")
+            or not canonical_owner_ref.startswith("#LOGIC:")
             or not isinstance(language_ir, dict)
         ):
             continue

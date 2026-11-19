@@ -75,10 +75,10 @@ Topology hierarchy does not imply dependency, causality, ownership, authority, c
 
 Specialized Link Rulesets are used only when a relation needs additional machine-significant semantics, constraints, flow behavior or validation.
 
-The current CW Core identity families are:
+The current CW Core identity families are (the `#LOGIC` family carries CW Ruleset-defined logic, dependencies, causality, Functions and Events; this rename changes no underlying model behavior):
 
 ```text
-#FILE  -> code      -> FILE/
+#LOGIC -> code      -> LOGIC/
 #ABS   -> abs       -> ABS/
 #DOC   -> doc       -> DOC/
 #CTRCT -> contract  -> CTRCT/
@@ -95,18 +95,18 @@ CTRCT.members
     = explicit declared / normative Contract scope
 
 contract_affiliation
-    = implementation-side FILE affiliation to the Contract as a whole
+    = implementation-side LOGIC affiliation to the Contract as a whole
 ```
 
-A Contract does not need to enumerate every implementation-detail FILE in `members`.
+A Contract does not need to enumerate every implementation-detail LOGIC in `members`.
 
-An implementation FILE may instead carry a specialized `contract_affiliation` Link:
+An implementation LOGIC Node may instead carry a specialized `contract_affiliation` Link:
 
 ```text
-#FILE implementation -> #CTRCT contract
+#LOGIC implementation -> #CTRCT contract
 ```
 
-That Link does not silently add the FILE to `CTRCT.members`. Declared membership and implementation affiliation are different claims, so retaining both is not duplicate truth.
+That Link does not silently add the LOGIC Node to `CTRCT.members`. Declared membership and implementation affiliation are different claims, so retaining both is not duplicate truth.
 
 ## Specification sets
 
@@ -181,7 +181,7 @@ Starter files live under [`Templates/`](Templates/). See [`Templates/README.md`]
 Templates/
 ├── CanonicalWireframe_Template.cw   # monolithic starter
 ├── CW/                              # minimal sharded CW hierarchy
-│   ├── FILE/
+│   ├── LOGIC/
 │   │   └── code.cw
 │   ├── ABS/
 │   │   └── abs.cw
@@ -210,7 +210,7 @@ cp Templates/CanonicalWireframe_Template.cw my-model.cw
 [`Templates/CW/`](Templates/CW/) demonstrates the minimal canonical StructureTree roots:
 
 ```text
-FILE/
+LOGIC/
 ABS/
 DOC/
 CTRCT/

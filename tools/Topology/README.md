@@ -28,11 +28,11 @@ Q Q Q       quit
 ## One StructureTree hierarchy
 
 `hierarchy` renders one StructureTree over all discovered canonical Entity Nodes.
-Identity-family branches such as `#FILE`, `#DOC`, `#CTRCT` and `#ABS` are siblings below one common `ROOT`; they are not separate hierarchy projections.
+Identity-family branches such as `#LOGIC`, `#DOC`, `#CTRCT` and `#ABS` are siblings below one common `ROOT`; they are not separate hierarchy projections.
 
 ```text
 ROOT
-|-- #FILE
+|-- #LOGIC
 |   `-- ...
 |-- #DOC
 |   `-- ...

@@ -8,7 +8,7 @@
   "nodetypes_ref": "NodeTypes",
   "model_root": "Model",
   "assets_root": "Assets",
-  "primary_family_ref": "#FILE",
+  "primary_family_ref": "#LOGIC",
   "core_principle": "One truth. Many topologies. No duplicate truth.",
   "reference_bases": {
     "format_root": "Format",

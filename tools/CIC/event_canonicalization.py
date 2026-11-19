@@ -86,8 +86,8 @@ def propose_canonical_event(mapping: EventMappingProposal) -> CanonicalEventProp
     if event_identity is not None and (not isinstance(event_identity, str) or not event_identity):
         raise EventCanonicalizationError("Event event_identity must be a non-empty string when present")
 
-    if not owner_ref.startswith("#FILE:"):
-        raise EventCanonicalizationError(f"Event owner must be canonical #FILE identity: {owner_ref}")
+    if not owner_ref.startswith("#LOGIC:"):
+        raise EventCanonicalizationError(f"Event owner must be canonical #LOGIC identity: {owner_ref}")
 
     semantic_name = event_identity if event_identity is not None else qualified_name
     event_id = f"EVENT::{_safe_fragment(owner_ref)}::{event_type_ref}::{_safe_fragment(semantic_name)}::{trigger_rule_ref}"
@@ -145,8 +145,8 @@ def approve_canonical_event(cw: dict[str, Any], proposal: CanonicalEventProposal
 
     index = _identity_index(cw)
     owner_hit = index.get(proposal.owner_entity_ref)
-    if owner_hit is None or owner_hit[0] != "entity" or not proposal.owner_entity_ref.startswith("#FILE:"):
-        raise EventCanonicalizationError(f"Event owner #FILE does not exist: {proposal.owner_entity_ref}")
+    if owner_hit is None or owner_hit[0] != "entity" or not proposal.owner_entity_ref.startswith("#LOGIC:"):
+        raise EventCanonicalizationError(f"Event owner #LOGIC does not exist: {proposal.owner_entity_ref}")
 
     event = proposal.event_property
     handler = proposal.handler_link_property
@@ -194,7 +194,7 @@ def apply_canonical_event(cw: dict[str, Any], approved: ApprovedCanonicalEventCh
     result = copy.deepcopy(cw)
     owner = next((entity for entity in result.get("entities", []) if entity.get("id") == proposal.owner_entity_ref), None)
     if owner is None:
-        raise EventCanonicalizationError(f"Event owner #FILE disappeared before apply: {proposal.owner_entity_ref}")
+        raise EventCanonicalizationError(f"Event owner #LOGIC disappeared before apply: {proposal.owner_entity_ref}")
 
     owner["properties"].append(copy.deepcopy(proposal.event_property))
     owner["properties"].append(copy.deepcopy(proposal.handler_link_property))

@@ -1,7 +1,7 @@
 {
-  "id": "#FILE:index",
+  "id": "#LOGIC:index",
   "name": "index",
-  "entity_type_ref": "FILE",
+  "entity_type_ref": "LOGIC",
   "status": "unlocked",
   "properties": [
     {
@@ -10,7 +10,7 @@
       "ruleset_ref": "RULESET_ASSET",
       "status": "unlocked",
       "value": {
-        "asset_ref": "Assets/FILE/%23FILE%3Aindex.html",
+        "asset_ref": "Assets/LOGIC/%23LOGIC%3Aindex.html",
         "file_type_ref": "html",
         "properties": {}
       }
@@ -127,7 +127,7 @@
         "min": 1,
         "max": 1,
         "other_endpoint": {
-          "entity_type_ref": "FILE"
+          "entity_type_ref": "LOGIC"
         },
         "properties": {}
       }
@@ -139,8 +139,8 @@
       "status": "unlocked",
       "value": {
         "link_type_ref": "dependency",
-        "parent_ref": "#FILE:renderer",
-        "child_ref": "#FILE:index",
+        "parent_ref": "#LOGIC:renderer",
+        "child_ref": "#LOGIC:index",
         "required_link_ref": "REQ_INDEX_RENDERER",
         "properties": {}
       }
@@ -154,7 +154,7 @@
         "link_type_ref": "event_cause",
         "parent_ref": "FUNCTION_OPEN_PAGE",
         "child_ref": {
-          "entity_ref": "#FILE:renderer",
+          "entity_ref": "#LOGIC:renderer",
           "property_ref": "EVENT_RENDER_PAGE"
         },
         "properties": {}

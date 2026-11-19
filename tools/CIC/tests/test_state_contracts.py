@@ -38,7 +38,7 @@ class CICStateContractTests(unittest.TestCase):
         self.assertEqual(len(candidates), 1)
         item = candidates[0]
         self.assertEqual(item["state_symbol"], "#SYSTEM:runtime:runners")
-        self.assertEqual(item["source_entity_ref"], "#FILE:system:runtime:runner_store")
+        self.assertEqual(item["source_entity_ref"], "#LOGIC:system:runtime:runner_store")
         self.assertEqual(item["readers"], ["load_runner_defs"])
         self.assertEqual(item["writers"], ["save_runner_defs"])
         self.assertEqual(item["observed_container_types"], ["map"])

@@ -50,8 +50,8 @@ class CICToolchainTests(unittest.TestCase):
             import_folder(source, target, force=True)
             after = ingest_cw(target)
             after_versions = {e["id"]: (e["timestamp"], e["hash"]) for e in after["entities"]}
-            self.assertEqual(after_versions["#FILE:a"], versions["#FILE:a"])
-            self.assertNotEqual(after_versions["#FILE:b"][1], versions["#FILE:b"][1])
+            self.assertEqual(after_versions["#LOGIC:a"], versions["#LOGIC:a"])
+            self.assertNotEqual(after_versions["#LOGIC:b"][1], versions["#LOGIC:b"][1])
 
     def test_asset_byte_change_versions_owner_even_when_parsed_shape_is_same(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -80,11 +80,11 @@ class CICToolchainTests(unittest.TestCase):
             (source / "app.py").write_text("import lib\n", encoding="utf-8")
             import_folder(source, target)
             document = ingest_cw(target)
-            app = next(entity for entity in document["entities"] if entity["id"] == "#FILE:app")
+            app = next(entity for entity in document["entities"] if entity["id"] == "#LOGIC:app")
             links = [prop for prop in app["properties"] if prop.get("property_type_ref") == "link"]
             dependency = next(prop for prop in links if prop["value"].get("link_type_ref") == "dependency")
-            self.assertEqual(dependency["value"]["parent_ref"], "#FILE:lib")
-            self.assertEqual(dependency["value"]["child_ref"], "#FILE:app")
+            self.assertEqual(dependency["value"]["parent_ref"], "#LOGIC:lib")
+            self.assertEqual(dependency["value"]["child_ref"], "#LOGIC:app")
 
     def test_failed_force_keeps_previous_target(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

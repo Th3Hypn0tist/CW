@@ -16,10 +16,10 @@
           "#CTRCT:UltralightCMS:PageRequest",
           "#CTRCT:UltralightCMS:Style",
           "#CTRCT:UltralightCMS:RenderedDocument",
-          "#FILE:index",
-          "#FILE:renderer",
-          "#FILE:content",
-          "#FILE:style"
+          "#LOGIC:index",
+          "#LOGIC:renderer",
+          "#LOGIC:content",
+          "#LOGIC:style"
         ],
         "properties": {}
       }

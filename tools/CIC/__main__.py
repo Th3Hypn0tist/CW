@@ -50,7 +50,7 @@ def _selftest(cw_root=None, spec_set=None, format_template=None) -> dict:
             raise RuntimeError("CIC package missing Format/CW.json")
         if not (target / "Model" / "model.cw").is_file():
             raise RuntimeError("CIC package missing Model/model.cw")
-        if not any((target / "Assets" / "FILE").iterdir()):
+        if not any((target / "Assets" / "LOGIC").iterdir()):
             raise RuntimeError("CIC package missing source Asset")
         return {
             "status": "PASS",

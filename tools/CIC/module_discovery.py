@@ -142,7 +142,7 @@ def detect_module_candidates(
                     continue
                 seen.add(key)
                 canonical_ref = file_record.get("canonical_file_ref")
-                if not isinstance(canonical_ref, str) or not canonical_ref.startswith("#FILE:"):
+                if not isinstance(canonical_ref, str) or not canonical_ref.startswith("#LOGIC:"):
                     continue
                 candidates.append({
                     "candidate_id": f"MODULE_CANDIDATE::{rule.rule_id}::{canonical_ref}",

@@ -11,9 +11,9 @@
       "status": "unlocked",
       "value": {
         "member_refs": [
-          "#FILE:style",
-          "#FILE:renderer",
-          "#FILE:index"
+          "#LOGIC:style",
+          "#LOGIC:renderer",
+          "#LOGIC:index"
         ],
         "properties": {}
       }

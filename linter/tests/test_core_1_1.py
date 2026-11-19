@@ -12,7 +12,7 @@ from linter.cw_spec_common import resolve_bundle
 from linter.cw_version import calculate_entity_hash
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC_SET = ROOT / "spec_sets" / "CW_CORE_v1.1.0.json"
+SPEC_SET = ROOT / "spec_sets" / "CW_CORE_v1.4.0.json"
 VALIDATOR = ROOT / "linter" / "cw_validate.py"
 
 
@@ -48,15 +48,15 @@ def _link(prop_id: str, relation: str, parent: str, child: str, ruleset: str = "
 
 def _document() -> dict:
     topology = _entity("#ABS:Runtime", "abs")
-    file_a = _entity("#FILE:a", "code")
-    file_b = _entity("#FILE:b", "code")
-    contract = _entity("#CTRCT:Parser", "contract", members=["#FILE:a"])
-    topology["properties"].append(_link("LINK::ABS_RUNTIME", "#ABS:Runtime", "#FILE:a", "#FILE:b"))
+    file_a = _entity("#LOGIC:a", "code")
+    file_b = _entity("#LOGIC:b", "code")
+    contract = _entity("#CTRCT:Parser", "contract", members=["#LOGIC:a"])
+    topology["properties"].append(_link("LINK::ABS_RUNTIME", "#ABS:Runtime", "#LOGIC:a", "#LOGIC:b"))
     file_b["properties"].append(
         _link(
             "LINK::B_PARSER_CONTRACT",
             "contract_affiliation",
-            "#FILE:b",
+            "#LOGIC:b",
             "#CTRCT:Parser",
             "RULESET_LINK_CONTRACT_AFFILIATION",
         )
@@ -64,7 +64,7 @@ def _document() -> dict:
     return {
         "format": {"contract_format": "CANONICAL_CONTRACT", "format_version": "2.1"},
         "identity": {"id": "CW_CORE_1_1_TEST", "name": "CW Core 1.1 Test", "type": "test", "version": "1.0.0"},
-        "specification_ref": "CW_CORE@1.1.0",
+        "specification_ref": "CW_CORE@1.4.0",
         "status": "unlocked",
         "purpose": "CW Core 1.1 regression fixture",
         "scope": {"owns": ["test model"], "does_not_own": []},
@@ -88,8 +88,8 @@ def _add_required_dependency(document: dict, *, endpoint_nodetype: str) -> None:
             "other_endpoint": {"entity_nodetype_ref": endpoint_nodetype},
         }
     ]
-    link = _link("LINK::B_TO_A", "dependency", "#FILE:b", "#FILE:a", "RULESET_LINK_DEPENDENCY")
-    link["value"]["required_link_ref"] = {"entity_ref": "#FILE:a", "required_link_id": "REQ_DEP"}
+    link = _link("LINK::B_TO_A", "dependency", "#LOGIC:b", "#LOGIC:a", "RULESET_LINK_DEPENDENCY")
+    link["value"]["required_link_ref"] = {"entity_ref": "#LOGIC:a", "required_link_id": "REQ_DEP"}
     file_b["properties"].append(link)
 
 
@@ -112,9 +112,9 @@ def _run(document: dict) -> dict:
 class CWCore11Tests(unittest.TestCase):
     def test_default_bundle_is_locked_core_1_1(self) -> None:
         bundle = resolve_bundle(default_start=ROOT / "linter")
-        self.assertEqual(bundle.ccf.get("version"), "2.4.3")
-        self.assertEqual(bundle.nodetypes.get("version"), "1.18.0")
-        self.assertEqual(bundle.rulesets.get("version"), "3.14.0")
+        self.assertEqual(bundle.ccf.get("version"), "2.6.0")
+        self.assertEqual(bundle.nodetypes.get("version"), "1.19.0")
+        self.assertEqual(bundle.rulesets.get("version"), "4.2.0")
 
     def test_topology_members_and_contract_affiliation_are_ready(self) -> None:
         result = _run(_document())
@@ -136,7 +136,7 @@ class CWCore11Tests(unittest.TestCase):
 
     def test_duplicate_contract_member_is_invalid(self) -> None:
         document = _document()
-        document["entities"][3]["members"] = ["#FILE:a", "#FILE:a"]
+        document["entities"][3]["members"] = ["#LOGIC:a", "#LOGIC:a"]
         result = _run(document)
         self.assertEqual(result["result"], "INVALID_MODEL", result)
         self.assertTrue(any(item["code"] == "NODE_SECTION_REF_DUPLICATE" for item in result["findings"]))

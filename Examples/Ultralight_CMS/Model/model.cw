@@ -43,20 +43,20 @@
       "artifact_ref": "CTRCT/UltralightCMS/RenderedDocument.cw"
     },
     {
-      "entity_ref": "#FILE:index",
-      "artifact_ref": "FILE/index.cw"
+      "entity_ref": "#LOGIC:index",
+      "artifact_ref": "LOGIC/index.cw"
     },
     {
-      "entity_ref": "#FILE:renderer",
-      "artifact_ref": "FILE/renderer.cw"
+      "entity_ref": "#LOGIC:renderer",
+      "artifact_ref": "LOGIC/renderer.cw"
     },
     {
-      "entity_ref": "#FILE:content",
-      "artifact_ref": "FILE/content.cw"
+      "entity_ref": "#LOGIC:content",
+      "artifact_ref": "LOGIC/content.cw"
     },
     {
-      "entity_ref": "#FILE:style",
-      "artifact_ref": "FILE/style.cw"
+      "entity_ref": "#LOGIC:style",
+      "artifact_ref": "LOGIC/style.cw"
     },
     {
       "entity_ref": "#DOC:UltralightCMS:Architecture",

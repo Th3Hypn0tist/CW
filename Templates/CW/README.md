@@ -4,7 +4,7 @@ This directory is the minimal sharded CW template.
 
 ```text
 CW/
-├── FILE/
+├── LOGIC/
 │   └── code.cw
 ├── ABS/
 │   └── abs.cw
@@ -17,7 +17,7 @@ CW/
 Every current canonical StructureTree root has one minimal Node template.
 
 ```text
-#FILE  -> FILE/
+#LOGIC  -> LOGIC/
 #ABS   -> ABS/
 #DOC   -> DOC/
 #CTRCT -> CTRCT/

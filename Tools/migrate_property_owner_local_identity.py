@@ -334,8 +334,8 @@ def migrate_golden_model() -> None:
             if prop.get("id") == prop_id:
                 prop["value"]["schema_ref"] = prop_addr(owner, schema)
 
-    edit("FILE/content.cw", lambda e: set_data_schema(e, "DATA_CONTENT_COLLECTION", "#CTRCT:UltralightCMS:Content", "SCHEMA_CONTENT_COLLECTION"))
-    edit("FILE/style.cw", lambda e: set_data_schema(e, "DATA_STYLE_STYLESHEET", "#CTRCT:UltralightCMS:Style", "SCHEMA_STYLE_SHEET"))
+    edit("LOGIC/content.cw", lambda e: set_data_schema(e, "DATA_CONTENT_COLLECTION", "#CTRCT:UltralightCMS:Content", "SCHEMA_CONTENT_COLLECTION"))
+    edit("LOGIC/style.cw", lambda e: set_data_schema(e, "DATA_STYLE_STYLESHEET", "#CTRCT:UltralightCMS:Style", "SCHEMA_STYLE_SHEET"))
 
     def index_fix(e: dict[str, Any]) -> None:
         set_data_schema(e, "DATA_PAGE_REQUEST", "#CTRCT:UltralightCMS:PageRequest", "SCHEMA_PAGE_REQUEST")
@@ -344,9 +344,9 @@ def migrate_golden_model() -> None:
         if not any(p.get("id") == "LINK_OPEN_PAGE_CAUSES_RENDER_PAGE" for p in props):
             props.append({
                 "id": "LINK_OPEN_PAGE_CAUSES_RENDER_PAGE", "property_type_ref": "link", "ruleset_ref": "RULESET_LINK_EVENT_CAUSE", "status": "unlocked",
-                "value": {"link_type_ref": "event_cause", "parent_ref": "FUNCTION_OPEN_PAGE", "child_ref": prop_addr("#FILE:renderer", "EVENT_RENDER_PAGE"), "properties": {}}
+                "value": {"link_type_ref": "event_cause", "parent_ref": "FUNCTION_OPEN_PAGE", "child_ref": prop_addr("#LOGIC:renderer", "EVENT_RENDER_PAGE"), "properties": {}}
             })
-    edit("FILE/index.cw", index_fix)
+    edit("LOGIC/index.cw", index_fix)
 
     def renderer_fix(e: dict[str, Any]) -> None:
         set_data_schema(e, "DATA_SELECTED_CONTENT", "#CTRCT:UltralightCMS:Content", "SCHEMA_PAGE_CONTENT")
@@ -354,19 +354,19 @@ def migrate_golden_model() -> None:
         set_data_schema(e, "DATA_PUBLISH_DOCUMENT", "#CTRCT:UltralightCMS:RenderedDocument", "SCHEMA_RENDERED_DOCUMENT")
         e["properties"] = [p for p in e["properties"] if p.get("id") != "LINK_OPEN_PAGE_CAUSES_RENDER_PAGE"]
         external = {
-            "LINK_RENDER_REQUEST_INPUT": prop_addr("#FILE:index", "DATA_PAGE_REQUEST"),
-            "LINK_RENDER_CONTENT_INPUT": prop_addr("#FILE:content", "DATA_CONTENT_COLLECTION"),
-            "LINK_RENDER_STYLE_INPUT": prop_addr("#FILE:style", "DATA_STYLE_STYLESHEET"),
-            "LINK_RENDER_REQUEST_READY": prop_addr("#FILE:index", "DATA_PAGE_REQUEST"),
-            "LINK_RENDER_CONTENT_READY": prop_addr("#FILE:content", "DATA_CONTENT_COLLECTION"),
-            "LINK_RENDER_STYLE_READY": prop_addr("#FILE:style", "DATA_STYLE_STYLESHEET")
+            "LINK_RENDER_REQUEST_INPUT": prop_addr("#LOGIC:index", "DATA_PAGE_REQUEST"),
+            "LINK_RENDER_CONTENT_INPUT": prop_addr("#LOGIC:content", "DATA_CONTENT_COLLECTION"),
+            "LINK_RENDER_STYLE_INPUT": prop_addr("#LOGIC:style", "DATA_STYLE_STYLESHEET"),
+            "LINK_RENDER_REQUEST_READY": prop_addr("#LOGIC:index", "DATA_PAGE_REQUEST"),
+            "LINK_RENDER_CONTENT_READY": prop_addr("#LOGIC:content", "DATA_CONTENT_COLLECTION"),
+            "LINK_RENDER_STYLE_READY": prop_addr("#LOGIC:style", "DATA_STYLE_STYLESHEET")
         }
         for p in e["properties"]:
             pid = p.get("id")
             if pid in external:
                 p["value"]["parent_ref"] = external[pid]
             if pid == "LINK_PUBLISH_TARGET":
-                p["value"]["child_ref"] = prop_addr("#FILE:index", "DATA_INDEX_DOCUMENT")
+                p["value"]["child_ref"] = prop_addr("#LOGIC:index", "DATA_INDEX_DOCUMENT")
             if pid == "FUNCTION_RESOLVE_PAGE":
                 p["value"]["input_refs"] = ["LINK_RENDER_REQUEST_INPUT", "LINK_RENDER_CONTENT_INPUT"]
                 text = json.dumps(p["value"].get("logic", {}))
@@ -378,7 +378,7 @@ def migrate_golden_model() -> None:
                 p["value"]["logic"] = json.loads(text)
             if pid in {"LINK_COMPOSE_STYLE_INPUT", "LINK_COMPOSE_STYLE_READY"}:
                 p["value"]["parent_ref"] = "LINK_RENDER_STYLE_INPUT"
-    edit("FILE/renderer.cw", renderer_fix)
+    edit("LOGIC/renderer.cw", renderer_fix)
 
     def rendered_fix(e: dict[str, Any]) -> None:
         for p in e["properties"]:

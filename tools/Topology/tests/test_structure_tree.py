@@ -8,14 +8,14 @@ def _document() -> dict:
     return {
         "entities": [
             {
-                "id": "#FILE:system:commands:parser",
+                "id": "#LOGIC:system:commands:parser",
                 "name": "parser",
                 "entity_type_ref": "code",
                 "status": "unlocked",
                 "properties": [],
             },
             {
-                "id": "#FILE:system:commands:registry",
+                "id": "#LOGIC:system:commands:registry",
                 "name": "registry",
                 "entity_type_ref": "code",
                 "status": "unlocked",
@@ -51,7 +51,7 @@ def test_all_identity_families_share_one_root() -> None:
     text = project(edges, nodes).text
 
     assert text.splitlines()[0] == "ROOT"
-    for branch in ("#FILE", "#DOC", "#CTRCT", "#ABS"):
+    for branch in ("#LOGIC", "#DOC", "#CTRCT", "#ABS"):
         assert branch in text
 
 
@@ -61,7 +61,7 @@ def test_directory_nodes_are_projection_only_and_entities_remain_leaves() -> Non
 
     assert "system" in text
     assert "commands" in text
-    assert "#FILE:system:commands:parser" in text
+    assert "#LOGIC:system:commands:parser" in text
     assert all(edge.relation == "directory_child" for edge in edges)
 
 

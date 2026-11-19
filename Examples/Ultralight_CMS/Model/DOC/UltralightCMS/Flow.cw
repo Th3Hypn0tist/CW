@@ -11,10 +11,10 @@
       "status": "unlocked",
       "value": {
         "member_refs": [
-          "#FILE:index",
-          "#FILE:renderer",
-          "#FILE:content",
-          "#FILE:style"
+          "#LOGIC:index",
+          "#LOGIC:renderer",
+          "#LOGIC:content",
+          "#LOGIC:style"
         ],
         "properties": {}
       }

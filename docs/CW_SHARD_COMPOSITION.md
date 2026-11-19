@@ -35,7 +35,7 @@ A sharded CW directory has one root artifact and zero or more Node shards.
 
 ```text
 model.cw
-FILE/
+LOGIC/
   ... .cw
 ABS/
   ... .cw
@@ -67,7 +67,7 @@ A Node shard is a JSON-serialized canonical Entity object stored in a `.cw` arti
 
 ```json
 {
-  "id": "#FILE:app",
+  "id": "#LOGIC:app",
   "name": "app",
   "entity_type_ref": "code",
   "status": "unlocked",

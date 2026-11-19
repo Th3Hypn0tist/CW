@@ -32,7 +32,7 @@ All core Entity families use the same canonical Entity and Property model and th
 
 The core Entity identity families are:
 
-- `#FILE` — master implementation topology
+- `#LOGIC` — master logic topology
 - `#ABS` — abstraction topology
 - `#DOC` — documentation topology
 - `#CTRCT` — contract topology
@@ -43,17 +43,17 @@ Their specialization is selected through the canonical Entity type reference and
 
 A NodeType may define structural projection expectations, member structure, interfaces, Property presentation expectations, and Required Link declarations. A NodeType SHALL NOT redefine Property value semantics or Link semantics owned by Rulesets.
 
-### 4. Master implementation topology
+### 4. Master logic topology
 
-`#FILE` SHALL provide the master implementation topology.
+`#LOGIC` SHALL provide the master logic topology for CW Ruleset-defined semantics, including dependencies, causality, Events and Functions.
 
-One accepted implementation source file maps to one canonical `#FILE` Entity identity.
+One accepted implementation source file maps to one canonical `#LOGIC` Entity identity when imported from source; source files remain representations and the Node's semantic contents remain governed by CW Rulesets.
 
 Source-language suffix, filename extension, rendering choice, or serialization location SHALL NOT create a second canonical identity.
 
-`#ABS`, `#DOC`, and `#CTRCT` may refer to canonical `#FILE` or `#ABS` identities where they concern implementation or abstraction structure.
+`#ABS`, `#DOC`, and `#CTRCT` may refer to canonical `#LOGIC` or `#ABS` identities where they concern implementation or abstraction structure.
 
-They SHALL NOT reproduce a referenced `#FILE` or `#ABS` semantic object as a second authoritative definition.
+They SHALL NOT reproduce a referenced `#LOGIC` or `#ABS` semantic object as a second authoritative definition.
 
 ### 5. Abstraction topology
 
@@ -69,7 +69,7 @@ Any machine-significant abstraction relation SHALL be represented through canoni
 
 `#DOC` represents a canonical document Entity.
 
-A `#DOC` Entity may document, explain, justify, specify, or otherwise relate to canonical `#FILE`, `#ABS`, `#DOC`, or `#CTRCT` identities through canonical Links permitted by the governing Rulesets.
+A `#DOC` Entity may document, explain, justify, specify, or otherwise relate to canonical `#LOGIC`, `#ABS`, `#DOC`, or `#CTRCT` identities through canonical Links permitted by the governing Rulesets.
 
 A document is not required to use the `.cw` extension.
 
@@ -91,7 +91,7 @@ Representation-specific parsing, extraction, previewing, or rendering belongs to
 
 `#CTRCT` represents a canonical contract Entity.
 
-A contract may define machine-significant constraints, obligations, interfaces, or agreements concerning canonical `#FILE` or `#ABS` targets, subject to the governing canonical Properties and Rulesets.
+A contract may define machine-significant constraints, obligations, interfaces, or agreements concerning canonical `#LOGIC` or `#ABS` targets, subject to the governing canonical Properties and Rulesets.
 
 A contract SHALL NOT become an alternate definition of the referenced target.
 
@@ -120,7 +120,7 @@ A document such as `rationale.md` may therefore be canonically connected to code
 
 When one canonical topology concerns another canonical object, it SHALL reference that object's canonical identity rather than duplicate its semantic definition.
 
-This applies across `#FILE`, `#ABS`, `#DOC`, and `#CTRCT`.
+This applies across `#LOGIC`, `#ABS`, `#DOC`, and `#CTRCT`.
 
 A reference may create another topology, navigation path, view, abstraction, document relation, or contract relation. It SHALL NOT create another truth.
 
@@ -141,7 +141,7 @@ Both forms SHALL resolve to the same canonical semantic model.
 Sharded root families MAY include:
 
 ```text
-FILE/
+LOGIC/
 ABS/
 DOC/
 CTRCT/

@@ -6,7 +6,7 @@ CW templates are separated by purpose:
 Templates/
 ├── CanonicalWireframe_Template.cw  # monolithic canonical model starter
 ├── CW/                             # minimal sharded StructureTree template
-│   ├── FILE/
+│   ├── LOGIC/
 │   │   └── code.cw
 │   ├── ABS/
 │   │   └── abs.cw

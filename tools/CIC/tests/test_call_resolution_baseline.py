@@ -10,19 +10,19 @@ class CICFunctionCallResolutionTests(unittest.TestCase):
     def test_CALL_001_same_file_top_level_call_resolves_function_properties(self):
         bundle = import_files([{"path": "app.py", "content": "def helper():\n    return 1\n\ndef run():\n    return helper()\n"}])
         item = next(call for call in bundle.ir["call_evidence"] if call["source_function_ref"].endswith("::run"))
-        self.assertEqual(item["target_function_ref"], "FUNCTION::#FILE:app::helper")
+        self.assertEqual(item["target_function_ref"], "FUNCTION::#LOGIC:app::helper")
         self.assertEqual(item["resolution_status"], "RESOLVED")
         self.assertFalse(item["canonical_semantic_authority"])
 
     def test_CALL_002_parent_call_resolves_nested_function_property(self):
         bundle = import_files([{"path": "app.py", "content": "def outer():\n    def inner():\n        return 1\n    return inner()\n"}])
-        item = next(call for call in bundle.ir["call_evidence"] if call["source_function_ref"] == "FUNCTION::#FILE:app::outer")
-        self.assertEqual(item["target_function_ref"], "FUNCTION::#FILE:app::outer.<locals>.inner")
+        item = next(call for call in bundle.ir["call_evidence"] if call["source_function_ref"] == "FUNCTION::#LOGIC:app::outer")
+        self.assertEqual(item["target_function_ref"], "FUNCTION::#LOGIC:app::outer.<locals>.inner")
 
     def test_CALL_003_python_self_method_resolves_same_class_surface(self):
         bundle = import_files([{"path": "controller.py", "content": "class Controller:\n    def close(self):\n        return True\n    def open(self):\n        return self.close()\n"}])
         item = next(call for call in bundle.ir["call_evidence"] if call["source_function_ref"].endswith("::Controller.open"))
-        self.assertEqual(item["target_function_ref"], "FUNCTION::#FILE:controller::Controller.close")
+        self.assertEqual(item["target_function_ref"], "FUNCTION::#LOGIC:controller::Controller.close")
 
     def test_CALL_004_python_from_import_resolves_target_file_function(self):
         bundle = import_files([
@@ -30,7 +30,7 @@ class CICFunctionCallResolutionTests(unittest.TestCase):
             {"path": "dep.py", "content": "def helper():\n    return 1\n"},
         ])
         item = next(call for call in bundle.ir["call_evidence"] if call["source_function_ref"].endswith("::run"))
-        self.assertEqual(item["target_function_ref"], "FUNCTION::#FILE:dep::helper")
+        self.assertEqual(item["target_function_ref"], "FUNCTION::#LOGIC:dep::helper")
 
     def test_CALL_005_python_module_alias_resolves_target_surface(self):
         bundle = import_files([
@@ -38,7 +38,7 @@ class CICFunctionCallResolutionTests(unittest.TestCase):
             {"path": "dep.py", "content": "def helper():\n    return 1\n"},
         ])
         item = next(call for call in bundle.ir["call_evidence"] if call["source_function_ref"].endswith("::run"))
-        self.assertEqual(item["target_function_ref"], "FUNCTION::#FILE:dep::helper")
+        self.assertEqual(item["target_function_ref"], "FUNCTION::#LOGIC:dep::helper")
 
     def test_CALL_006_unproven_runtime_call_remains_explicit_unresolved(self):
         bundle = import_files([{"path": "app.py", "content": "def run(cb):\n    return cb()\n"}])
@@ -58,7 +58,7 @@ class CICFunctionCallResolutionTests(unittest.TestCase):
     def test_CALL_009_builtin_js_parser_preserves_unresolved_runtime_call_evidence(self):
         bundle = import_files([{"path": "web/app.js", "content": "export function run() { return helper(); }\n"}])
         item = bundle.ir["call_evidence"][0]
-        self.assertEqual(item["source_function_ref"], "FUNCTION::#FILE:web:app::run")
+        self.assertEqual(item["source_function_ref"], "FUNCTION::#LOGIC:web:app::run")
         self.assertEqual(item["target_expression"], "helper")
         self.assertEqual(item["resolution_status"], "UNRESOLVED")
 
